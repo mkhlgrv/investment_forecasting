@@ -1,2 +1,2 @@
 # hds_macro
-High Dimensional Sparce Economentric Models in Macroeconomics
+High dimensional sparce economentric models in macroeconomics
