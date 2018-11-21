@@ -1,2 +1,5 @@
-# hds_macro
-High dimensional sparce economentric models in macroeconomics
+# High Dimensional Sparce Economentric Models in Macroeconomics
+## Mikhail Gareev
+
+
+
