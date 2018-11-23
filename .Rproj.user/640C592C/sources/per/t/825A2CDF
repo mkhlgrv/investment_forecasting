@@ -1,0 +1,22 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1542958570750.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "2716271800",
+    "id" : "825A2CDF",
+    "lastKnownWriteTime" : 1543006210,
+    "last_content_update" : 1543006210888,
+    "path" : "C:/mkhlgrv/hds_macro/code/importbarrolee.R",
+    "project_path" : "code/importbarrolee.R",
+    "properties" : {
+        "cursorPosition" : "175,24",
+        "scrollLine" : "161"
+    },
+    "relative_order" : 1,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

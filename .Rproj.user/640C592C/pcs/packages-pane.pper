@@ -1,0 +1,7 @@
+{
+    "installOptions" : {
+        "installDependencies" : true,
+        "installFromRepository" : true,
+        "libraryPath" : "\\\\AVRORASRV/data/MGAREEV/My Documents/R/win-library/3.5"
+    }
+}
