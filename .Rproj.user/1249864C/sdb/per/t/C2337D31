@@ -1,0 +1,20 @@
+{
+    "collab_server" : "",
+    "contents" : "library(wbstats)\nlibrary(dplyr)\nlibrary(data.table)\nlibrary(rio)\nlibrary(stringr)\nlibrary(magrittr)\nlibrary(purrr)\nlibrary(ggplot2)\n",
+    "created" : 1543540179000.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "1955537122",
+    "id" : "C2337D31",
+    "lastKnownWriteTime" : 1543542399,
+    "last_content_update" : 1543542399444,
+    "path" : "C:/mkhlgrv/hds_macro/code/lib.R",
+    "project_path" : "code/lib.R",
+    "properties" : {
+    },
+    "relative_order" : 2,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}
