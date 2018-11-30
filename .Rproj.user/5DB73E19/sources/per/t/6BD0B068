@@ -1,0 +1,23 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1543583614680.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "2518465934",
+    "id" : "6BD0B068",
+    "lastKnownWriteTime" : 1543587022,
+    "last_content_update" : 1543587022360,
+    "path" : "C:/hds_macro/2report.R",
+    "project_path" : "2report.R",
+    "properties" : {
+        "cursorPosition" : "5,41",
+        "scrollLine" : "0",
+        "tempName" : "Untitled1"
+    },
+    "relative_order" : 5,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}
