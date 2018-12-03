@@ -1,0 +1,58 @@
+\headcommand {\slideentry {0}{0}{1}{1/1}{}{0}}
+\headcommand {\beamer@framepages {1}{1}}
+\headcommand {\slideentry {0}{0}{2}{2/2}{}{0}}
+\headcommand {\beamer@framepages {2}{2}}
+\headcommand {\slideentry {0}{0}{3}{3/3}{}{0}}
+\headcommand {\beamer@framepages {3}{3}}
+\headcommand {\beamer@sectionpages {1}{3}}
+\headcommand {\beamer@subsectionpages {1}{3}}
+\headcommand {\sectionentry {1}{Методы снижения размерности}{4}{Методы снижения размерности}{0}}
+\headcommand {\beamer@subsectionpages {4}{3}}
+\headcommand {\beamer@subsectionentry {0}{1}{1}{4}{Разреженная линейная модель с высокой размерностью в данных}}
+\headcommand {\slideentry {1}{1}{1}{4/4}{Разреженная линейная модель с высокой размерностью в данных}{0}}
+\headcommand {\beamer@framepages {4}{4}}
+\headcommand {\beamer@subsectionpages {4}{4}}
+\headcommand {\beamer@subsectionentry {0}{1}{2}{5}{Oracle Problem}}
+\headcommand {\slideentry {1}{2}{1}{5/5}{Oracle Problem}{0}}
+\headcommand {\beamer@framepages {5}{5}}
+\headcommand {\beamer@subsectionpages {5}{5}}
+\headcommand {\slideentry {1}{3}{1}{6/6}{}{0}}
+\headcommand {\beamer@framepages {6}{6}}
+\headcommand {\slideentry {1}{3}{2}{7/7}{}{0}}
+\headcommand {\beamer@framepages {7}{7}}
+\headcommand {\beamer@sectionpages {4}{7}}
+\headcommand {\beamer@subsectionpages {6}{7}}
+\headcommand {\sectionentry {2}{Проверка гипотезы конвергенции с помощью методов снижения размерности}{8}{Проверка гипотезы конвергенции с помощью методов снижения размерности}{0}}
+\headcommand {\beamer@subsectionpages {8}{7}}
+\headcommand {\beamer@subsectionentry {0}{2}{1}{8}{Однофакторная модель}}
+\headcommand {\slideentry {2}{1}{1}{8/8}{Однофакторная модель}{0}}
+\headcommand {\beamer@framepages {8}{8}}
+\headcommand {\beamer@sectionpages {8}{8}}
+\headcommand {\beamer@subsectionpages {8}{8}}
+\headcommand {\sectionentry {3}{Проверка гипотезы конвергенции с помощью методов снижения размерности.}{9}{Проверка гипотезы конвергенции с помощью методов снижения размерности.}{0}}
+\headcommand {\beamer@subsectionpages {9}{8}}
+\headcommand {\beamer@subsectionentry {0}{3}{1}{9}{Использование LASSO}}
+\headcommand {\slideentry {3}{1}{1}{9/9}{Использование LASSO}{0}}
+\headcommand {\beamer@framepages {9}{9}}
+\headcommand {\beamer@subsectionpages {9}{9}}
+\headcommand {\beamer@subsectionentry {0}{3}{2}{10}{Данные}}
+\headcommand {\slideentry {3}{2}{1}{10/10}{Данные}{0}}
+\headcommand {\beamer@framepages {10}{10}}
+\headcommand {\beamer@subsectionpages {10}{10}}
+\headcommand {\beamer@subsectionentry {0}{3}{3}{11}{Сравнение результатов}}
+\headcommand {\slideentry {3}{3}{1}{11/11}{Сравнение результатов}{0}}
+\headcommand {\beamer@framepages {11}{11}}
+\headcommand {\beamer@sectionpages {9}{11}}
+\headcommand {\beamer@subsectionpages {11}{11}}
+\headcommand {\sectionentry {4}{Краткий вывод и планы}{12}{Краткий вывод и планы}{0}}
+\headcommand {\slideentry {4}{0}{1}{12/12}{}{0}}
+\headcommand {\beamer@framepages {12}{12}}
+\headcommand {\slideentry {4}{0}{2}{13/13}{}{0}}
+\headcommand {\beamer@framepages {13}{13}}
+\headcommand {\slideentry {4}{0}{3}{14/14}{}{0}}
+\headcommand {\beamer@framepages {14}{14}}
+\headcommand {\beamer@partpages {1}{14}}
+\headcommand {\beamer@subsectionpages {12}{14}}
+\headcommand {\beamer@sectionpages {12}{14}}
+\headcommand {\beamer@documentpages {14}}
+\headcommand {\gdef \inserttotalframenumber {14}}
