@@ -1,18 +1,21 @@
-# rm(list =ls())
+ rm(list =ls())
 suppressMessages(source("code/lib.R"))
-readme <- readLines("data/barrolee/readme.txt")[-c(1:716)]
-firstlines <- which(grepl(".prn",readme))
+readme_vars <- readLines("data/barrolee/readme.txt")[-c(1:716)]
+contain_prn <- which(grepl(".prn",readme_vars
+                        ))
 countries <- readLines("data/barrolee/readme.txt")[c(565:702)] %>%
   gsub(pattern = " {2,}", replacement = "  ", x = .) %>%
   gsub(pattern = "^ ", replacement = "", x = .) %>%
   strsplit(split = "  ") %>%
-  do.call(what =rbind, args = .) %>%
+  do.call(what = rbind, args = .) %>%
   as.data.frame() %>%
   set_names(c("SHCODE", "COUNTRY  NAME", "WBCTRY", "SMPL98", "SMPL97"))
-get.names.BL <- function(x, i) {
-  if(!is.na(firstlines[i+1])) {
-    data.frame(File = word(readme[x]),
-               Colname = (c(readme[x:(firstlines[i+1]-1)]) %>%
+get.vars.BL <- function(x, i) {
+  if(!is.na(contain_prn[i+1])) {
+    data.frame(File = word(readme_vars
+                          [x]),
+               Colname_BL = (c(readme_vars
+                          [x:(contain_prn[i+1]-1)]) %>%
       paste(collapse = " ") %>%
        gsub(pattern = ".{1,}: {1,}", replacement = "", x = .) %>%
        gsub(pattern = " {2,}", replacement = " ", x = .) %>%
@@ -22,8 +25,11 @@ get.names.BL <- function(x, i) {
       )
     )
   } else {
-    data.frame(File = word(readme[x]),
-               Colname = (c(readme[x:length(readme)]) %>%
+    data.frame(File = word(readme_vars
+                          [x]),
+               Colname_BL = (c(readme_vars
+                          [x:length(readme_vars
+                                                )]) %>%
                              paste(collapse = " ") %>%
                              gsub(pattern = ".{1,}: {1,}", replacement = "", x = .) %>%
                              gsub(pattern = " {2,}", replacement = " ", x = .) %>%
@@ -34,155 +40,72 @@ get.names.BL <- function(x, i) {
     )
   }
 }
-set.seed(1)
-file_colname <- imap_dfr(firstlines, get.names.BL) 
+vars_BL <- imap_dfr(contain_prn, get.vars.BL) %>%
+  mutate(Colname_correct = Colname_BL)
+vars_BL$Colname_correct[which(vars_BL$Colname_BL=="grsh56a")] <- "grsh57"
+vars_BL$Colname_correct[which(vars_BL$Colname_BL=="bmp2ml")] <- "bmp2l"
+vars_BL$Colname_correct[grep("bmp[0-9]{1}l", vars_BL$Colname_correct)] <- paste0("bmpl", c(1:6))
 
-set.names.BL <- function(x){
-    read.table(paste0("data/barrolee/",x$File[1])) %>%
-      purrr::set_names(x$Colname)
+
+
+
+
+#type x
+vars1 <- vars_BL$Colname_correct %>%
+  grep(pattern ="[a-z][0-9]{1}$|grsh5|invsh5|invsh4|
+                    grsh4|govsh4|govsh5|gvxdxe4|gvxdxe5", x = ., value = TRUE) %>% .[-grep(pattern = "durs1", x = .)]
+
+# type xx
+vars2 <- vars_BL$Colname_correct  %>%
+  grep(pattern = "[a-z][0-9]{2}$|gdpsh5|gdpsh4|pop15|pop65|lifee0|pysh5|pcsh5|pish5|pgsh5", x = ., value = TRUE) %>%
+.[-grep("grsh5|invsh5|invsh4|grsh4|govsh4|govsh5|gvxdxe4|gvxdxe5|smpl97", x = .)]
+vars0 <- vars_BL$Colname_correct %>% .[-which(vars_BL$Colname_correct %in% c(vars1, vars2))] 
+
+vars_BL <- vars_BL %>% mutate(Type = ifelse(Colname_correct %in% vars0,
+                                 0,
+                                 ifelse(Colname_correct %in% vars1,
+                                        1,
+                                        ifelse(Colname_correct %in% vars2,
+                                               2,
+                                               NA)))) %>%
+  mutate(Colname_unique = ifelse(Type == 0,
+                         Colname_correct,
+                         ifelse(Type == 1,
+                                substr(Colname_correct, 1, nchar(Colname_correct) - 1),
+                         ifelse(Type == 2,
+                                substr(Colname_correct, 1, nchar(Colname_correct) - 2),NA))),
+         Period = ifelse(Type == 0,
+                         "",
+                         ifelse(Type == 1,
+                                substring(Colname_correct, nchar(Colname_correct)),
+                         ifelse(Type == 2,
+                                substring(Colname_correct, nchar(Colname_correct) - 1),
+                                NA))),
+         Colname_wide = paste(Colname_unique, Type, Period, sep = "_"))
+
+
+
+read.set.names.BL <- function(x){
+  read.table(paste0("data/barrolee/",x$File[1])) %>%
+    purrr::set_names(x$Colname_wide)
 }
 
-df <- file_colname %>%
+BL <- vars_BL %>%
   split(.$File) %>%
-  map_dfc(set.names.BL) %>% 
-  mutate(WBCTRY = as.character(countries$WBCTRY)) #%>%
-# t()
+  map_dfc(read.set.names.BL) %>% 
+  set_rownames(countries$WBCTRY)
+colnames(BL)
+# Пример
+vars_65 <- vars_BL %>% filter(Type == 0 | (Type == 1&Period == 1) | (Type == 2 & Period == 65)) %>% pull(Colname_wide)
+X <- BL %>% select(vars_65,-gdpsh4_2_65)
+Y <- BL %>% pull(gdpsh4_2_65)
+X <- X[!is.na(Y),]
+Y <- Y[!is.na(Y)]
 
-#which(names(df) == "grsh56a")
-# 158
-#which(file_colname$Colname=="grsh56a")
-# 42
-names(df)[158] <- file_colname$Colname[42] <- "grsh57"
-
-#which(names(df) == "bmp2ml")
-# 8
-#which(file_colname$Colname=="bmp2ml")
-# 538
-names(df)[7:12] <-  file_colname$Colname[537:542] <- paste0("bmpl", c(1:6))
-
-
-
-
-df_list <- list()
-df_list[[1]] <- df %>%
-  select(matches("[a-z][0-9]{1}$|grsh5|invsh5|invsh4|
-                    grsh4|govsh4|govsh5|gvxdxe4|gvxdxe5"),
-        -durs1)
-df_list[[2]] <- df %>%
-  select(matches("[a-z][0-9]{2}$|gdpsh5|gdpsh4|pop15|pop65|lifee0|pysh5|pcsh5|pish5|pgsh5"),
-         -c(matches("grsh5|invsh5|invsh4|
-                    grsh4|govsh4|govsh5|gvxdxe4|gvxdxe5|smpl97")
-      ))
-df_list[[3]] <- df %>%
-  select(names(df)[which(!names(df) %in% c(names(df_list[[1]]), names(df_list[[2]])))])
-# с одной цифрой или просто плохие
-# INVWBx GRWBx INVSH5x GRSH5x 
-# INVSH4x GRSH4x 
-# POP15xx
-# GOVSH4x GOVSH5x GDEx GEERECx GEETOTx
-# INVPUBx GGCFDx GVXDXE4x GVXDXE5x PINSTABx ASSASSPx
-# COUPx REVOLx PINSTABx POLRIGHTx CIVLIBx EXx
-# IMx BMPx TOTx LLYx
-
-# SMPL97 DURS1
-
-# GDPSH4xx GDPSH5xx POP65xx
-
-# Type xx for date indicators, x for averagee period indicators, con for constant
-
-cut.colname.BL <- function(df, i) {
-  if(i == 3) {
-    i <- 0
-  }
-  data.frame(Colname = colnames(df)) %>%
-    inner_join(file_colname, by = "Colname") %>%
-    mutate(Colname_cut = substr(Colname, 1,nchar(Colname)-i),
-           Type = ifelse(i == 2, "xx",
-                          ifelse(i == 1,
-                                  "x",
-                                  "con"))) %>%
-    unique() %>%
-    return()
+for(i in 1:ncol(X)){
+  X[,i][is.na(X[,i])] <- mean(X[,i], na.rm = TRUE)
 }
-cut_colname_type <- imap_dfr(df_list, cut.colname.BL)  
-# only for melt xx or x
-melt.BL <- function(cn, df, type) {
-  if(type == "con") {
-    df1 <- df %>%
-      select(matches(cn), WBCTRY) %>%
-      as.data.table() %>%
-      melt.data.table(id.vars = "WBCTRY",
-                      variable.name = "Indicator",
-                      value.name = "Value") %>% 
-      inner_join(map_dfr(1:9,function(x) tibble(WBCTRY = df$WBCTRY,
-                                                Year = as.character(1945+x*5), Type = type)
-                         ), by = "WBCTRY")
-    # сюда добавить год
-  } else{
-    df1 <- df %>%
-      select(matches(paste0("^", cn, "[0-9]{",nchar(type),"}$")), WBCTRY) %>%
-      as.data.table() %>%
-      melt.data.table(id.vars = "WBCTRY",
-                      variable.name = "Indicator",
-                      value.name = "Value")
-    if(type == "xx"){
-      df1 %>% mutate(Year = paste0("19",
-                                   substring(Indicator,
-                                             nchar(as.character(Indicator))-1)),
-                     Indicator = substr(Indicator, 1, nchar(as.character(Indicator))-2),
-                     Type = type)
-    } else{
-      if(type == "x") {
-        period_to_year <- c("1" = "65",
-                            "2" ="70",
-                            "3" = "75",
-                            "4" = "80",
-                            "5" = "85",
-                            "6" = "90",
-                            "7" = "89")
-        df1 %>% mutate(Year = paste0("19",
-                                     period_to_year[substring(Indicator,
-                                                              nchar(as.character(Indicator)))]),
-                       Indicator = substr(Indicator, 1, nchar(as.character(Indicator))-2),
-                       Type = type)
-      }
-    }
-  }
-  
-}
-BL_long <- bind_rows(map_dfr(cut_colname_type %>% filter(Type == "xx") %>% pull(Colname_cut) %>% unique, melt.BL, df, "xx"),
-map_dfr(cut_colname_type %>% filter(Type == "x") %>% pull(Colname_cut) %>% unique, melt.BL, df, "x"),
-map_dfr(cut_colname_type %>% filter(Type == "con") %>% pull(Colname_cut) %>% unique, melt.BL, df, "con"))
-BL_wide <- BL_long %>%
-  filter(Type != "con") %>%
-  as.data.table %>%
-  dcast.data.table(WBCTRY~Indicator+Year+Type,
-                   value.var = "Value", fun.aggregate = max) %>% bind_cols(BL_long %>%
-  filter(Type == "con") %>%
-  as.data.table %>%
-  dcast.data.table(WBCTRY~Indicator,
-                   value.var = "Value",
-                   fun.aggregate = max))
-# в cut_colname_type на 1 ед меньше потому что нет WBCTRY
+X <- as.matrix(X)
+model1 <- glmnet(X,Y)
+summary(model1)
 
-cut_colname_type
-cut_colname_type %>% split(.$Colname_cut) %>%
-  map(lam)
-lam <- function(df){
-  N1 <- nrow(df)
-  if(df$Type %>% unique == "con"){
-    N2 <- BL_wide %>%
-      select(matches(paste0("^",df$Colname_cut %>% unique,"$"))) %>% 
-      names() %>% length
-  } else{
-      N2 <- BL_wide %>%
-        select(matches(paste0("^",df$Colname_cut %>% unique,"_"))) %>% 
-        names() %>% length
-  }
-  
-  
-  if(N1 != N2){
-    print(df$Colname_cut %>% unique)
-    print(N1-N2)
-  } else {NA}
-}
