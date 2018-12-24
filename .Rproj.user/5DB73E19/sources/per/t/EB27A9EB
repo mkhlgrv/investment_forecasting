@@ -1,21 +1,21 @@
 {
     "collab_server" : "",
     "contents" : "",
-    "created" : 1543004948761.000,
+    "created" : 1543583306149.000,
     "dirty" : false,
     "encoding" : "UTF-8",
     "folds" : "",
     "hash" : "764344487",
-    "id" : "E9101997",
-    "lastKnownWriteTime" : 1542958528,
-    "last_content_update" : 1542958528,
-    "path" : "C:/mkhlgrv/hds_macro/data/barrolee/readme.txt",
+    "id" : "EB27A9EB",
+    "lastKnownWriteTime" : 1543570203,
+    "last_content_update" : 1543570203,
+    "path" : "C:/hds_macro/data/barrolee/readme.txt",
     "project_path" : "data/barrolee/readme.txt",
     "properties" : {
-        "cursorPosition" : "398,0",
-        "scrollLine" : "398"
+        "cursorPosition" : "130,0",
+        "scrollLine" : "128"
     },
-    "relative_order" : 2,
+    "relative_order" : 4,
     "source_on_save" : false,
     "source_window" : "",
     "type" : "text"

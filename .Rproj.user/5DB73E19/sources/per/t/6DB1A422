@@ -1,0 +1,22 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1543584192000.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "3937454119",
+    "id" : "6DB1A422",
+    "lastKnownWriteTime" : 1543576308,
+    "last_content_update" : 1543576308,
+    "path" : "C:/hds_macro/code/lib.R",
+    "project_path" : "code/lib.R",
+    "properties" : {
+        "cursorPosition" : "11,0",
+        "scrollLine" : "0"
+    },
+    "relative_order" : 7,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}
