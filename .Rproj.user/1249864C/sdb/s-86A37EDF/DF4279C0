@@ -1,0 +1,20 @@
+{
+    "collab_server" : "",
+    "contents" : "\nsource(\"code/importbarrolee.R\")\ndata1 <- BL %>% select(gdpsh5_2_80, grsh5_1_5) %>%\n  mutate(G = log(gdpsh5_2_80),\n         g = grsh5_1_5)\nmodel1 <- lm(formula = g~G, data = data1)\np1 <- ggplot(data = data1, aes(x = G, y = g)) +\n  scale_y_continuous(labels = scales::percent) +\n  xlab(\"GDP per capita, 1980 (log)\") +\n  ylab(TeX(\"Growth, $1980 \\U2013 1984$\")) +\n  geom_point()\np1+geom_smooth(method = \"lm\")\nsummary(model1)\n\nmodel1$fitted.values\n\n\nstargazer(model1, model1, title=\"Regression Results\",\n          dep.var.labels=c(\"Overall Rating\",\"High Rating\"),\n          covariate.labels=c(\"Handling of Complaints\"),\n          omit.stat=c(\"LL\",\"ser\",\"f\"),\n          ci=TRUE,\n          ci.level=0.95,\n          single.row=TRUE)\np2 <- p1+geom_smooth(method = \"lm\")\n\n#data2\n\n\n\n\n\nremove.sparsed.cols <- function(df, prop) {\n  sparsed_cols <- c()\n  for(i in 1:ncol(df)){\n    if(sum(is.na(df[,i]))/nrow(df) >= prop){\n      sparsed_cols <- c(sparsed_cols, i)\n    }\n  }\n  if(is.null(sparsed_cols)){\n    df\n  } else{\n    df[, - sparsed_cols]\n  }\n}\n\ndata2 <- BL %>% select(vars_BL %>%\n                         filter(Type == 0 | (Period %in% c(\"80\", \"4\"))) %>%\n                         pull(Colname_wide)) %>%\n  remove.sparsed.cols(0.3) %>%\n  na.omit\nrn <- rownames(data2)\n#data2 <- data2[!is.na(data2$grsh_x),]\ndata2 %<>% mutate(G = gdpsh5_2_80,\n                  Gl = log(gdpsh5_2_80),\n                 g = grsh5_1_4) %>%\n  select(-c(gdpsh5_2_80, grsh5_1_4,grsh4_1_4, gdpsh4_2_80, grwb_1_4, gdpwb_2_80))\ndata2.x <- data2 %>% select(-c(g)) %>% as.matrix()\n\ndata2.y <- data2 %>% pull(g) \n\nmodel2 <- cv.glmnet(x = data2.x, y= data2.y, standardize = TRUE)\n\nbestlam <- model2$lambda.min\nlasso.coef  <- predict(model2, type = 'coefficients', s = 0.001)\nlasso.coef\n",
+    "created" : 1545681829601.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "940916001",
+    "id" : "DF4279C0",
+    "lastKnownWriteTime" : 1545692677,
+    "last_content_update" : 1545692677195,
+    "path" : "C:/mkhlgrv/hds_macro/code/report_sem1.R",
+    "project_path" : "code/report_sem1.R",
+    "properties" : {
+    },
+    "relative_order" : 4,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

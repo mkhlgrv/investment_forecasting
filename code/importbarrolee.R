@@ -1,4 +1,4 @@
- rm(list =ls())
+rm(list =ls())
 suppressMessages(source("code/lib.R"))
 readme_vars <- readLines("data/barrolee/readme.txt")[-c(1:716)]
 contain_prn <- which(grepl(".prn",readme_vars
@@ -52,7 +52,7 @@ vars_BL$Colname_correct[grep("bmp[0-9]{1}l", vars_BL$Colname_correct)] <- paste0
 
 #type x
 vars1 <- vars_BL$Colname_correct %>%
-  grep(pattern ="[a-z][0-9]{1}$|grsh5|invsh5|invsh4|
+  grep(pattern ="[a-z][0-9]{1}$|grsh4|grsh5|invsh5|invsh4|
                     grsh4|govsh4|govsh5|gvxdxe4|gvxdxe5", x = ., value = TRUE) %>% .[-grep(pattern = "durs1", x = .)]
 
 # type xx
