@@ -1,4 +1,3 @@
-
 source("code/importbarrolee.R")
 data1 <- BL %>% select(gdpsh5_2_80, grsh5_1_5) %>%
   mutate(G = log(gdpsh5_2_80),
