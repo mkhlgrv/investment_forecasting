@@ -51,20 +51,22 @@ missmap(df)
 save(df, file = "rawdata_panel.RData")
 
 
-# Но многие ряды повторяются. Исключим ряды с сильно коррелированными значениями
-# Позднее мы проверим некоторые модели и на неочищенных данных
 
 # корреляции
-corpairs <- list()
-cormat <- cor(df[,-1])
-for(i in 1:nrow(cormat)){
-  for(j in i:ncol(cormat)){
-    if(cormat[i,j]>=0.99)
-      corpairs <- rlist::list.append(corpairs, data.frame(cn1 = colnames(cormat)[i],cn2= colnames(cormat)[j]))
-  }
-}
-corpairs %>%
-  bind_rows %>%
-  arrange(cn1) %>% 
-  inner_join(series_info %>% select(tsname, fullname), by = c("cn1" = "tsname")) %>% setnames("fullname", "n1")%>%
-  inner_join(series_info %>% select(tsname, fullname), by = c("cn2" = "tsname")) %>% setnames("fullname", "n2")
+# corpairs <- list()
+# cormat <- cor(df[,-1])
+# for(i in 1:nrow(cormat)){
+#   for(j in i:ncol(cormat)){
+#     if(i != j & cormat[i,j]>=0.9)
+#       corpairs <- rlist::list.append(corpairs, data.frame(correl = cormat[i,j], cn1 = colnames(cormat)[i],cn2= colnames(cormat)[j]))
+#   }
+# }
+nonsa <- expand.grid(cn1 = colnames(df[,-1]), cn2 = colnames(df[,-1]), stringsAsFactors = FALSE) %>%
+  as.tibble %>%
+  mutate(remove = ifelse(cn1 == paste0(cn2, "_SA"),cn2, ifelse(cn2 == paste0(cn1, "_SA"),cn1, NA))) %>%
+  na.omit %>%
+  pull(remove) %>%
+  unique %>%
+  c(. , "UNEMPL_M")
+df %<>% select(-nonsa)
+missmap(df)
