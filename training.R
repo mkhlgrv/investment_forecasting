@@ -117,3 +117,47 @@ result_df %>%
   geom_line(aes(x = date, y = y_true,colour = "true"))+
   geom_line(aes(x = date, y =y_pred, colour = model)) +
   facet_grid(rows = vars(horizon), cols = vars(window))
+
+# Panel data ----
+rm(list=ls())
+load("tfdata_panel.RData")
+## LASSO ----
+get.panel.r <- function(df, window, horizon){
+  if(!"zoo" %in% class(df)){
+    stop("df class must be 'zoo'")
+  }
+  df %<>% na.omit
+  dates <- time(df)
+  model.matrix(UNEMPL_M_SH~., data = df_tf)
+  expand.grid(window = window, horizon = horizon) %>% 
+    split(seq(nrow(.))) %>% map_dfr(function(x){
+      TS <- createTimeSlices(dates, initialWindow = x$window,
+                             horizon = x$horizon,
+                             fixedWindow = TRUE,
+                             skip = FALSE)
+      map2_dfr(TS$train, TS$test, function(tr, te){
+        df_train <- df %>%
+          window(start = dates[first(tr)],
+                 end = dates[last(tr)])
+        df_test <- df %>%
+          window(start = dates[first(te)],
+                 end = dates[last(te)])
+        date_test <- dates[last(te)]
+        model <- auto.arima(y_train, max.q = 0, d = 0, allowmean = FALSE)
+        y_pred <- forecast(model, h = x$horizon) %>% as.data.frame %>% .[,1] %>% last
+        data.frame(date =date_test,
+                   window = x$window,
+                   horizon = x$horizon,
+                   y_true = y_test,
+                   y_pred= y_pred)
+      })
+      
+    }) %>%
+    mutate(model = "arp")
+}
+
+model2 <- cv.glmnet(x = data2.x, y= data2.y, standardize = TRUE)
+
+bestlam <- model2$lambda.min
+lasso.coef  <- predict(model2, type = 'coefficients', s = 0.001)
+lasso.coef
