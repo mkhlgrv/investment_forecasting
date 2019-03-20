@@ -1,62 +1,11 @@
-library(sophisthse)
-library(tseries)
-library(MLmetrics)
-library(caret)
-library(xts)
-series <- series_info %>%
-  filter(freq == 12)
-# загружаем данные
-df <- sophisthse(series.name = series$table, output = "data.frame")
-
-missmap(df)
-df2 <- df %>%
-  filter(!is.na(UNEMPL_M_SH),
-               `T` >= zoo::as.yearmon("2002-01-01"),
-         `T` <= zoo::as.yearmon("2016-12-01"))
-
-nonmis <- sapply(df2, function(y) sum(length(which(is.na(y))))) %>%
-  data.frame %>%
-  rownames_to_column("tname") %>%
-  filter(`.` == 0) %>%
-  pull(tname)
-  
-df2 %<>% select(nonmis)
-# пропущенные значения
-missmap(df2)
-getwd()
-df <- df2
-#save(df, file = "df.RData")
+# AR -----
 rm(list = ls())
-load("df.RData")
-
-# нарисуем данные
-ggplot(df) + geom_line(aes(x = `T`, y = UNEMPL_M_SH))
-# Во-первых, очистим данные от сезонности и тренда
-
-# addictive 
-y_dec <- sophisthse(series.name = "UNEMPL_M_SH", output = "zoo") %>%
-  window(start = zoo::as.yearmon("2002-01-01"),
-         end = zoo::as.yearmon("2018-12-01")) %>% 
-  decompose()
-y <- y_dec$x - y_dec$seasonal
-autoplot(y)
-# adf test выбираем addictive seasoanlity
-y <- y - stats::lag(y, -1, na.pad = TRUE)
-autoplot(y)
-# кажется этого достаточно
-acf(y, lag.max = length(y))
-pacf(y, lag.max = length(y))
-# корреляции
-cormat <- cor(df[,-1])
-cormatbig <- matrix(0, 130, 130)
-cormatbig[which(abs(cormat)>0.99)] <- 1
-
-
-y_dates <- zoo::as.yearmon(time(y))
+load("rawdata_ar.RData")
 # Случайное блужданиe
 
 # Модель предполагает, что безработица сохранится на таком же уровне
 # посчитаем score mae rmse
+
 
 get.rw <- function(y, dates){# безработица
   data.frame(date = dates,
