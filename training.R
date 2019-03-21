@@ -118,17 +118,20 @@ result_df %>%
   geom_line(aes(x = date, y =y_pred, colour = model)) +
   facet_grid(rows = vars(horizon), cols = vars(window))
 
+# НАДО Поменять даты на ноябрь 2001 - январь 2017!!!
 # Panel data ----
 rm(list=ls())
 load("tfdata_panel.RData")
 ## LASSO ----
 get.panel.r <- function(df, window, horizon){
   if(!"zoo" %in% class(df)){
-    stop("df class must be 'zoo'")
+    stop("df must be 'zoo'")
   }
+  # важно, что предсказываем мы следующее значение безработицы 
+  # (преобразуем здесь, а не внутри import.R, потому что, возможно, будем исследвоать не только unemp)
+  df$UNEMPL_M_SH <- lag.xts(df$UNEMPL_M_SH, k = -1)
   df %<>% na.omit
   dates <- time(df)
-  model.matrix(UNEMPL_M_SH~., data = df_tf)
   expand.grid(window = window, horizon = horizon) %>% 
     split(seq(nrow(.))) %>% map_dfr(function(x){
       TS <- createTimeSlices(dates, initialWindow = x$window,
@@ -143,7 +146,14 @@ get.panel.r <- function(df, window, horizon){
           window(start = dates[first(te)],
                  end = dates[last(te)])
         date_test <- dates[last(te)]
-        model <- auto.arima(y_train, max.q = 0, d = 0, allowmean = FALSE)
+        print()
+        X <- model.matrix(UNEMPL_M_SH~., data = df_train)
+        y < df_train$UNEMPL_M_SH
+        
+        lambdas <- seq(50, 0.1, length = 30)
+        m_lassso <- glmnet(X, Y, alpha = 1, lambda = lambdas)
+        plot(m_lasso, xvar = "lambda", label = TRUE)
+        stop()
         y_pred <- forecast(model, h = x$horizon) %>% as.data.frame %>% .[,1] %>% last
         data.frame(date =date_test,
                    window = x$window,
@@ -155,9 +165,10 @@ get.panel.r <- function(df, window, horizon){
     }) %>%
     mutate(model = "arp")
 }
-
+get.panel.r(df_tf, 120, 6)
 model2 <- cv.glmnet(x = data2.x, y= data2.y, standardize = TRUE)
 
 bestlam <- model2$lambda.min
 lasso.coef  <- predict(model2, type = 'coefficients', s = 0.001)
 lasso.coef
+cv.g

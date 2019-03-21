@@ -36,8 +36,8 @@ series <- series_info %>%
 df_raw <- sophisthse(series.name = series$table %>% unique, output = "data.frame")
 df <- df_raw %>%
   filter(!is.na(UNEMPL_M_SH),
-         `T` >= zoo::as.yearmon("2002-01-01"),
-         `T` <= zoo::as.yearmon("2016-12-01"))
+         `T` >= zoo::as.yearmon("2001-11-01"),
+         `T` <= zoo::as.yearmon("2017-01-01"))
 
 nonmis <- sapply(df, function(y) sum(length(which(is.na(y))))) %>%
   data.frame %>%
@@ -49,7 +49,7 @@ nonmis <- sapply(df, function(y) sum(length(which(is.na(y))))) %>%
 df %<>% select(nonmis)
 # пропущенных значений нет
 missmap(df)
-# теперь определим ряды, у которых уже сть пара в виде очищенного от сезонности ряда
+# теперь определим ряды, у которых уже есть пара в виде очищенного от сезонности ряда
 nonsa <- expand.grid(cn1 = colnames(df[,-1]), cn2 = colnames(df[,-1]), stringsAsFactors = FALSE) %>%
   as.tibble %>%
   mutate(remove = ifelse(cn1 == paste0(cn2, "_SA"),cn2, ifelse(cn2 == paste0(cn1, "_SA"),cn1, NA))) %>%
@@ -63,8 +63,8 @@ df %<>% select(-nonsa)
 # эти ряды будем использовать при скачивании данных формате zoo
 
 df <- sophisthse(series.name = nonmis[which(!nonmis %in% c("T","UNEMPL_M"))], output = "zoo") %>%
-  window(start = zoo::as.yearmon("2002-01-01"),
-       end = zoo::as.yearmon("2016-12-01"))
+  window(start = zoo::as.yearmon("2001-11-01"),
+       end = zoo::as.yearmon("2017-01-01"))
 # удалим те ряды, у которые есть пара, уже очищенная от сезонности
 df %<>% .[,which(!names(.) %in% nonsa)]
 # сохраним сырые данные
@@ -131,3 +131,4 @@ df_tf <- get.stationary.panel(df)$df
 df_tf_type <- get.stationary.panel(df)$type
 
 save(df_tf, df_tf_type, file = "tfdata_panel.RData")
+rm(list=ls())
