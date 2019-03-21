@@ -145,14 +145,14 @@ get.panel.r <- function(df, window, horizon){
         df_test <- df %>%
           window(start = dates[first(te)],
                  end = dates[last(te)])
-        date_test <- dates[last(te)]
-        print()
-        X <- model.matrix(UNEMPL_M_SH~., data = df_train)
-        y < df_train$UNEMPL_M_SH
         
-        lambdas <- seq(50, 0.1, length = 30)
-        m_lassso <- glmnet(X, Y, alpha = 1, lambda = lambdas)
-        plot(m_lasso, xvar = "lambda", label = TRUE)
+        date_test <- dates[last(te)]
+        X <- model.matrix(UNEMPL_M_SH~., data = df_train)
+        y <- df_train$UNEMPL_M_SH
+        lambdas <- seq(0.07, 1/10000000000, length = 300) # надо разобраться
+        m_lasso <- glmnet(X, y, alpha = 1, lambda = lambdas)
+        print(m_lasso)
+        print(plot(m_lasso, xvar = "lambda", label = TRUE))
         stop()
         y_pred <- forecast(model, h = x$horizon) %>% as.data.frame %>% .[,1] %>% last
         data.frame(date =date_test,
