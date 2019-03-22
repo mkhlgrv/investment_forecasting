@@ -96,7 +96,8 @@ get.stationary.panel <- function(df){
         if(d1<=0.05){
           type <-  "d1"
           x_stat <- diff.xts(x)
-        } else{
+        } else
+          {
           log_d1 <- 1
           try({
             log_d1 <- adf.test(diff.xts(log(x)) %>% na.omit) %>% .$p.value
