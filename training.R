@@ -123,35 +123,41 @@ result_df %>%
 rm(list=ls())
 load("tfdata_panel.RData")
 ## LASSO ----
+
+
+
+
+
 get.panel.r <- function(df, window, horizon){
   if(!"zoo" %in% class(df)){
     stop("df must be 'zoo'")
   }
-  # важно, что предсказываем мы следующее значение безработицы 
-  # (преобразуем здесь, а не внутри import.R, потому что, возможно, будем исследвоать не только unemp)
-  df$UNEMPL_M_SH <- lag.xts(df$UNEMPL_M_SH, k = -1)
+  df$CPI_M_CHI <- lag.xts(df$CPI_M_CHI, k = -1)
   df %<>% na.omit
   dates <- time(df)
+  y <- df$UNEMPL_M_SH
+  X <- model.matrix(UNEMPL_M_SH~., data = df)
+  # важно, что предсказываем мы следующее значение безработицы 
+  # (преобразуем здесь, а не внутри import.R, потому что, возможно, будем исследовать не только unemp)
+  
   expand.grid(window = window, horizon = horizon) %>% 
     split(seq(nrow(.))) %>% map_dfr(function(x){
+      
       TS <- createTimeSlices(dates, initialWindow = x$window,
                              horizon = x$horizon,
                              fixedWindow = TRUE,
                              skip = FALSE)
       map2_dfr(TS$train, TS$test, function(tr, te){
-        df_train <- df %>%
-          window(start = dates[first(tr)],
-                 end = dates[last(tr)])
-        df_test <- df %>%
-          window(start = dates[first(te)],
-                 end = dates[last(te)])
         
-        date_test <- dates[last(te)]
-        X <- model.matrix(UNEMPL_M_SH~., data = df_train)
-        y <- df_train$UNEMPL_M_SH
-        lambdas <- seq(0.07, 1/10000000000, length = 300) # надо разобраться
-        m_lasso <- glmnet(X, y, alpha = 1, lambda = lambdas)
-        print(m_lasso)
+        # разбиваем выборку
+        X.train <- X[tr, ]
+        X.test <- X[te, ]
+        y.train <- y[tr]
+        y.test <- y[tr]
+        # проводим предварительную кросс-валидацию  для нахождения best lambda
+        datei <- dates[last(te)]
+        m_lasso <- glmnet(X.train, y.train, alpha = 1, lambda = seq(0.03784811, 1/2000, length=100))
+        #print(m_lasso)
         print(plot(m_lasso, xvar = "lambda", label = TRUE))
         stop()
         y_pred <- forecast(model, h = x$horizon) %>% as.data.frame %>% .[,1] %>% last
@@ -165,6 +171,9 @@ get.panel.r <- function(df, window, horizon){
     }) %>%
     mutate(model = "arp")
 }
+
+
+
 get.panel.r(df_tf, 120, 6)
 model2 <- cv.glmnet(x = data2.x, y= data2.y, standardize = TRUE)
 
