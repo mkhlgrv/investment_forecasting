@@ -36,10 +36,9 @@ series <- series_info %>%
 df_raw <- sophisthse(series.name = series$table %>% unique, output = "data.frame")
 df <- df_raw %>%
   filter(!is.na(UNEMPL_M_SH),
-         `T` >= zoo::as.yearmon("2002-11-01"),
-         `T` <= zoo::as.yearmon("2016-01-01"))
+         `T` >= zoo::as.yearmon("2001-11-01"),
+         `T` <= zoo::as.yearmon("2017-01-01"))
 
-missmap(df)
 nonmis <- sapply(df, function(y) sum(length(which(is.na(y))))) %>%
   data.frame %>%
   rownames_to_column("tname") %>%
@@ -70,8 +69,6 @@ df <- sophisthse(series.name = nonmis[which(!nonmis %in% c("T","UNEMPL_M"))], ou
 df %<>% .[,which(!names(.) %in% nonsa)]
 # сохраним сырые данные
 save(df, file = "rawdata_panel.RData")
-rm(list = ls())
-load("rawdata_panel.RData")
 # Трансформируем ряды (приведём к стационарном виду). Это делать не обязательно, поэтому позднее для
 # некоторых моделей попробуем не использовать трансформацию
 # ряд GKO_M имеет пропуск
@@ -79,7 +76,6 @@ df$GKO_M <- na.locf(df$GKO_M)
 get.stationary.panel <- function(df){
   dates <- time(df)
   result <- df %>%
-    na.omit %>%
     as.xts %>%
     as.list %>%
     imap(function(x,i){
