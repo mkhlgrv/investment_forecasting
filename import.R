@@ -1,34 +1,7 @@
 source("lib.R")
+# Data import ----
 
-# AR data import ----
-
-
-# Во-первых, очистим данные от сезонности и тренда
-
-# addictive 
-y_dec <-sophisthse(series.name = "UNEMPL_M_SH", output = "zoo") %>%
-    #window(start = zoo::as.yearmon("2002-01-01"),
-    #     end = zoo::as.yearmon("2016-12-01")) %>% 
-  decompose()
-y <- y_dec$x - y_dec$seasonal
-autoplot(y)
-# adf test выбираем addictive seasoanlity
-y <- log(y) - log(stats::lag(y, -1, na.pad = TRUE))
-autoplot(y)
-# кажется этого достаточно
-acf(y, lag.max = length(y))
-pacf(y, lag.max = length(y))
-adf.test(y)
-# гипотеза о единичном корне отвергается
-
-
-y_dates <- zoo::as.yearmon(time(y))
-save(y, y_dates, file = "rawdata_ar.RData")
-
-
-
-# Panel data import ----
-
+## Pre-import ----
 # Загрузим дата фрейм (предварительно), что бы было легче определить, какие переменные будем использовать
 series <- series_info %>%
   filter(freq == 12)
@@ -62,16 +35,18 @@ df %<>% select(-nonsa)
 # получим 84 ряда
 
 # эти ряды будем использовать при скачивании данных формате zoo
-
+## Import ----
 df <- sophisthse(series.name = nonmis[which(!nonmis %in% c("T","UNEMPL_M"))], output = "zoo") %>%
   window(start = zoo::as.yearmon("2001-11-01"),
        end = zoo::as.yearmon("2017-12-01"))
 # удалим те ряды, у которые есть пара, уже очищенная от сезонности
 df %<>% .[,which(!names(.) %in% nonsa)]
 # сохраним сырые данные
-save(df, file = "rawdata_panel.RData")
+save(df, file = "rawdata.RData")
 rm(list = ls())
-load("rawdata_panel.RData")
+load("rawdata.RData")
+
+## Transfrom ----
 # Трансформируем ряды (приведём к стационарном виду). Это делать не обязательно, поэтому позднее для
 # некоторых моделей попробуем не использовать трансформацию
 # ряд GKO_M имеет пропуск
@@ -139,6 +114,8 @@ stat_out <- get.stationary.panel(df)
 df_tf <- stat_out$df
 # данные о типе трансформации
 df_tf_type <- stat_out$type
+# Пропущенные значения (есть по краям, ничего страшного (крайние данные были нужны только для безработицы))
 missmap(df_tf)
-save(df_tf, df_tf_type, file = "tfdata_panel.RData")
+
+save(df_tf, df_tf_type, file = "tfdata.RData")
 rm(list=ls())

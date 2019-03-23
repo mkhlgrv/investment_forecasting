@@ -1,138 +1,92 @@
-# AR -----
-rm(list = ls())
-load("rawdata_ar.RData")
-# Случайное блужданиe
+# Autoregression -----
+# Random Walk and AR(p)
 
+rm(list = ls())
+load("tfdata.RData")
 # Модель предполагает, что безработица сохранится на таком же уровне
 # посчитаем score mae rmse
 
-
-get.rw <- function(y, dates){# безработица
-  data.frame(date = dates,
-                       window = 0,
-                       horizon = 1,
-             # костыль, надо нормально скачать xts
-                       y_true = y %>% as.vector(),
-             y_pred = 0,
-                       model = "randomwalk") %>%
-    #mutate(y_pred = lag(y_true)) %>% 
-    na.omit
-}
-
-get.ar1 <- function(y, dates, window, horizon){
-  expand.grid(window = window, horizon = horizon) %>% 
-    split(seq(nrow(.))) %>% map_dfr(function(x){
-      TS <- createTimeSlices(y, initialWindow = x$window,
-                             horizon = x$horizon,
-                             fixedWindow = TRUE,
-                             skip = FALSE)
-      map2_dfr(TS$train, TS$test, function(tr, te){
-        y_train <-  y[tr]
-        y_test <- y[te] %>% last
-        date_test <- dates[te] %>% last
-        model <- auto.arima(y_train,max.order = 1, max.q = 0, d = 0, allowmean = FALSE)
-        y_pred <- forecast(model, h = x$horizon) %>% as.data.frame %>% .[,1] %>% last
-        data.frame(date =date_test,
+get.ar <- function(df, window, horizon, nlead, model){
+  # Данные
+  y <- df_tf$UNEMPL_M_SH %>% na.omit
+  # время
+  dates <- time(y)
+  if(model == "rw"){
+    nlead %>% map(function(nleadi){
+      tibble(model = model,
+             nlead = nleadi,
+             pred.date =lag.xts(dates, k = nleadi), 
+             date  = dates,
+             y.true = y %>% as.numeric,
+             y.pred = lag.xts(y, k = nleadi) %>% as.numeric)
+    }) %>% do.call.pipe(rbind)
+  } else if(model == "arp"){
+    bestarma <- auto.arima(y,d = 0, max.p = 12, max.q = 12, seasonal = FALSE)
+    bestp <- bestarma$arma[1]
+    bestq <- bestarma$arma[2]
+    map(nlead, function(nleadi){
+      # получаем результаты для каждой комбинации window, horizon
+      expand.grid(window = window, horizon = horizon) %>%
+        split(seq(nrow(.))) %>%
+        map(function(x){
+          TS <- createTimeSlices(y,
+                                 initialWindow = x$window,
+                                 horizon = x$horizon,
+                                 fixedWindow = TRUE,
+                                 skip = nleadi-1)
+          map2(TS$train, TS$test, function(tr, te){
+            # разбиваем выборку  
+            y.train <- y[tr]
+            y.true <- y[te] %>% as.numeric
+            m_arma <- arima0(y,
+                             order = c(bestp, 0 , bestq))
+            y.pred <- predict(m_arma, n.ahead = horizon + nleadi-1, se.fit = FALSE) %>%
+              .[(nleadi): (horizon + nleadi-1)]
+            tibble(model = model,
+                   nlead = nleadi,
+                   bestp = bestp,
+                   bestq = bestq,
                    window = x$window,
                    horizon = x$horizon,
-                   y_true = y_test,
-                   y_pred= y_pred)
-      })
-      
-    }) %>%
-    mutate(model = "ar1")
+                   pred.date = dates[last(tr)],# дата предсказания
+                   date = dates[te],
+                   y.true = y.true,
+                   y.pred= y.pred)
+          }) %>% do.call.pipe(rbind)
+          
+        })%>%
+        do.call.pipe(rbind)
+    })%>%
+      do.call.pipe(rbind)
+  
+    } else stop("unknown model") 
+
 }
 
-get.ar <- function(y, dates, window, horizon){
-  expand.grid(window = window, horizon = horizon) %>% 
-    split(seq(nrow(.))) %>% map_dfr(function(x){
-      TS <- createTimeSlices(y, initialWindow = x$window,
-                       horizon = x$horizon,
-                       fixedWindow = TRUE,
-                      skip = FALSE)
-      map2_dfr(TS$train, TS$test, function(tr, te){
-        y_train <-  y[tr]
-        y_test <- y[te] %>% last
-        date_test <- dates[te] %>% last
-        model <- auto.arima(y_train, max.q = 0, d = 0, allowmean = FALSE)
-        y_pred <- forecast(model, h = x$horizon) %>% as.data.frame %>% .[,1] %>% last
-        data.frame(date =date_test,
-                   window = x$window,
-                   horizon = x$horizon,
-                   y_true = y_test,
-                   y_pred= y_pred)
-      })
-      
-    }) %>%
-    mutate(model = "arp")
-}
-result_df = rbind(get.rw(y = y,
-                             dates = y_dates), 
-                      get.ar1(y = y,
-                             dates = y_dates,
-                             window = c(120),
-                             horizon = c(1, 3, 6, 12)),        
-             get.ar(y = y,
-                    dates = y_dates,
-                    window = c(120),
-                    horizon = c(1, 3, 6, 12))) %>%
-  mutate(date = zoo::as.yearmon(date))
+arlist <- map(c("rw","arp"),
+              function(modeli){get.ar(df = df_tf,
+                                      window = 120,
+                                      horizon = 12,
+                                      nlead = c(1:12),
+                                      model = modeli)})
+save(arlist, file = "arlist.RData")
 
-# считаем значения метрик
-start_date <- result_df %>%  # раньше этой даты оценивать некорректно
-  group_by(window, horizon, model) %>%
-  summarise(start_date = min(date)) %>%
-  pull(start_date) %>%
-  max
-score_df <- result_df %>%
-  filter(date>= start_date) %>%
-  group_by(window, horizon, model) %>%
-  summarise(mae = MAE(y_pred, y_true),
-            rmse = RMSE(y_pred, y_true))
-
-score_df  %>% as.data.frame() %>% print(digits = 10)
-
-# строим график изменений
-result_df %>%
-  #filter(date>= start_date) %>%
-  filter(horizon==3) %>%
-  ggplot() +
-  geom_line(aes(x = date, y = y_true,colour = "true"))+
-  geom_line(aes(x = date, y =y_pred, colour = model)) +
-  facet_grid(rows = vars(horizon), cols = vars(window))
-# строим график в уровнях
-result_df %>%
-  #filter(date>= start_date) %>%
-  #filter(horizon==3) %>%
-  group_by(window, horizon, model) %>%
-  mutate(y_true = cumsum(y_true)) %>%
-  mutate(y_pred = sapply(seq_along(horizon), function(h, horizon, y_true){
-    indx = h - horizon[h]
-    if(indx > 0)
-      y_true[indx]
-    else
-      NA
-  }, horizon = horizon, y_true = y_true) + y_pred) %>%
-  ggplot() +
-  geom_line(aes(x = date, y = y_true,colour = "true"))+
-  geom_line(aes(x = date, y =y_pred, colour = model)) +
-  facet_grid(rows = vars(horizon), cols = vars(window))
-
-# НАДО Поменять даты на ноябрь 2001 - январь 2017!!!
 # Panel data ----
 rm(list=ls())
 load("tfdata_panel.RData")
 
-## LASSO ----
+## Regression with regularisation ----
+## Ridge, LASSO, Post-LASSO, and Elastic Network----
 
-get.panel.r <- function(df, window, horizon, nlead){
+do.call.pipe <- function(args,what){
+  do.call(what,args)
+}
+get.regular.r <- function(df, window, horizon, nlead, model){
   if(!any(c("zoo", "xts") %in% class(df))){
     stop("df must be 'zoo'")
   }
   # Поменяем порядок аргументов
-  do.call.pipe <- function(args,what){
-    do.call(what,args)
-  }
+  
   map(nlead, function(nleadi){
     
     # Преобразовываем данные
@@ -153,13 +107,22 @@ get.panel.r <- function(df, window, horizon, nlead){
                            horizon = x$horizon,
                            fixedWindow = TRUE,
                            skip = FALSE)
+        if(grepl("lasso", model)){
+          alpha = 1
+        } else if(grepl("ridge", model)){
+          alpha = 0
+        } else if(grepl("elnet", model)){
+          alpha = seq(0,1,by = 0.1)
+        }
+        set.seed(2019)
         cv.out <- train(x=X,
                         y=y,
                         method = "glmnet",
                         metric = "RMSE",
                         trControl = tc,
-                        tuneGrid = expand.grid(.alpha = 1,.lambda = seq(0.11,0.0001,length = 100)))
+                        tuneGrid = expand.grid(.alpha = alpha,.lambda = seq(0.1,0.00001,length = 5000)))
         bestlam <- cv.out$bestTune$lambda
+        bestal <- cv.out$bestTune$alpha
         # assign("cv.out", cv.out, envir = globalenv())
         # stop()
         TS <- createTimeSlices(y, 
@@ -176,15 +139,39 @@ get.panel.r <- function(df, window, horizon, nlead){
             X.test <- X[te, ]
             y.train <- y[tr]
             y.test <- y[te]
-            m_lasso <- glmnet(X.train, y.train, alpha = 1, lambda = lambda)
-            nonzero <- predict(m_lasso, type = "nonzero") %>% nrow
+            m_glm <- glmnet(X.train, y.train, alpha = bestal, lambda = lambda)
+            nonzero <- predict(m_glm, type = "nonzero") %>% nrow
             if(is.null(nonzero)){
               nonzero <- 0
-            }
-            y.pred <- predict(m_lasso,newx = X.test)
-            tibble(model = "lasso",
+            } 
+            if(!grepl("post", model)){
+              y.pred <- predict(m_glm,newx = X.test)
+              if(length(dim(y.pred)!=1)){
+                y.pred <- y.pred[,1]
+              }
+            } else if(grepl("post", model)){
+              if(nonzero!=0){
+                  nzvars <- predict(m_glm, type = "nonzero") %>% .[,1]
+                  train_post <- as.data.frame(X.train) %>%
+                    select(nzvars) %>%
+                    mutate(U = y.train)
+                  test_post <-  as.data.frame(X.test) %>%
+                    select(nzvars) %>%
+                    mutate(u = y.test)
+                  m_post <- lm(U~., data = train_post)
+                  y.pred <- predict(m_post, newdata = test_post)
+                } else{
+                message(paste0(model,
+                               ": none of nonzero coeffs for lambda = ",
+                               bestlam , ltype,
+                               " and alpha = ", bestal))
+                y.pred <- predict(m_glm,newx = X.test)
+              }
+            } else stop("unknown model")
+            tibble(model = model,
                    nlead = nleadi,
                    bestlam = bestlam,
+                   bestal = bestal,
                    lambda = ltype,
                    window = x$window,
                    horizon = x$horizon,
@@ -192,7 +179,7 @@ get.panel.r <- function(df, window, horizon, nlead){
                    date = dates[te],
                    nonzero = nonzero,
                    y.true = y.test,
-                   y.pred= y.pred[,1])
+                   y.pred= y.pred)
           }) %>% do.call.pipe(rbind)
         })%>% do.call.pipe(rbind)
         
@@ -201,57 +188,6 @@ get.panel.r <- function(df, window, horizon, nlead){
   })%>% do.call.pipe(rbind)
   
 }
-
-lasso.out <- get.panel.r(df_tf, 120, 12,nlead = c(1:6))
-rbind(lasso.out,
-      lasso.out.lag %>%
-        mutate(model = "lasso_lag")) %>%
-  select(-c(window, horizon)) %>%
-  filter(lambda == 5, nlead ==2) %>%
-  group_by(date, lambda, nlead, model) %>%
-  mutate(y.pred = mean(y.pred)) %>%
-  #dplyr::filter(date == max(date)) %>%
-  ungroup %>%
-  ggplot() +
-  geom_line(aes(x = date, y = y.true, colour = "true"), size =0.9) +
-  geom_line(aes(x = date, y = y.pred, colour = model), size = 0.9)+
-  ylab("unemploymnet")+
-  facet_wrap(vars(nlead))
-
-load("rawdata_panel.RData")
-unemp.true <- df$UNEMPL_M_SH %>%
-  as.data.frame() %>%
-  rownames_to_column %>%
-  setNames(c("date","y.true")) %>%
-  mutate(date = as.yearmon(date))
-# график в уровнях ----
-p <- rbind(lasso.out,
-      lasso.out.lag %>%
-        mutate(model = "lasso_lag")) %>%
-  filter(nlead %in% 2:4, lambda %in% 2:4) %>%
-  group_by(model, nlead, lambda, date) %>%
-  mutate(y.pred = mean(y.pred),
-         nonzero = mean(nonzero)) %>%
-  ungroup() %>%
-  select(-c(y.true, pred.date)) %>%
-  unique %>%
-  inner_join(unemp.true, by = "date") %>%
-  group_by(model, nlead, lambda) %>%
-  mutate(y.pred = sapply(seq_along(nlead), function(n,nlead, y.true){
-    nlag <- nlead[n]
-    lag(y.true,nlag)[n]
-  },nlead = nlead,y.true = y.true) + y.pred) %>% 
-  ggplot() +
-  geom_line(aes(x = date, y = y.true, colour = "true"), size =0.5) +
-  geom_line(aes(x = date, y = y.pred, colour = model), size = 0.5)+
-  ylab("unemploymnet")+
-  facet_grid(rows =vars(nlead),cols = vars(lambda))
-
-pdf("LASSO_forecast.pdf")
-print(p)
-dev.off()
-
-# Попрбобуем трансформировать данные еще сильнее. Добавим лагированные переменные
 create.lagv <- function(df, nlag){
   if(!is.integer(nlag)|nlag == 0){
     stop("lag must be integer and greater than 0")
@@ -270,11 +206,69 @@ create.lagv <- function(df, nlag){
   df
 }
 
+lasso.out <- get.regular.r(df_tf, 120, 12,nlead = c(1:6), model = "lasso")
+postlasso.out <-get.regular.r(df_tf, 120, 12,nlead = c(1:6), model = "post_lasso")
+# Попрбобуем трансформировать данные еще сильнее. Добавим лагированные переменные
 # все переменные залагованы на 6
 df_tf_lag <- create.lagv(df_tf, nlag = 6L)
+lasso.out.lag <- get.panel.r(df = df_tf_lag, window = 120, horizon = 12, nlead = c(1:6), model = "lasso_lag")
+postlassolag.out <-get.panel.r(df_tf_lag, 120, 12,nlead = c(1:6), model = "post_lasso_lag")
+
+ridge.out <- get.panel.r(df_tf_lag, 120, 12,nlead = c(1:6), model = "ridge")
+
+glmnet_list <- list(lasso.out, postlasso.out,lasso.out.lag, postlassolag.out, ridge.out %>% select(-bestal))
+save(glmnet_list, file = "glmnet_list.RData")
+glmneterror <- do.call(rbind, glmnet_list) %>%
+  select(-c(window, horizon)) %>%
+  #filter(lambda == 5, nlead ==2) %>%
+  group_by(date, lambda, nlead, model) %>%
+  mutate(y.pred = mean(y.pred),
+         nonzero = mean(nonzero)) %>%
+  mutate(error = y.pred - y.true) %>%
+  #dplyr::filter(date == max(date)) %>%
+  ungroup %>%
+  ggplot() +
+  geom_density(aes(x = error, colour = model), size = 0.4)+
+  #geom_line(aes(x = date, y = y.true, colour = "true"), size =0.9) +
+  #geom_line(aes(x = date, y = abs(y.true - y.pred), colour = model), size = 0.9)+
+  labs(title = "Forecast error distribution",y ="unemploymnet")+
+  facet_grid(rows =vars(nlead), cols = vars(lambda), labeller = label_both)
+
+pdf("glmnet_error.pdf")
+print(glmneterror)
+dev.off()
+load("rawdata_panel.RData")
+unemp.true <- df$UNEMPL_M_SH %>%
+  as.data.frame() %>%
+  rownames_to_column %>%
+  setNames(c("date","y.true")) %>%
+  mutate(date = as.yearmon(date))
+# график в уровнях ----
+p <- do.call(rbind, lasso_list) %>%
+  filter(nlead %in% 2:4, lambda %in% 2:4) %>%
+  group_by(model, nlead, lambda, date) %>%
+  mutate(y.pred = mean(y.pred),
+         nonzero = mean(nonzero)) %>%
+  ungroup() %>%
+  select(-c(y.true, pred.date)) %>%
+  unique %>%
+  inner_join(unemp.true, by = "date") %>%
+  group_by(model, nlead, lambda) %>%
+  mutate(y.pred = sapply(seq_along(nlead), function(n,nlead, y.true){
+    nlag <- nlead[n]
+    lag(y.true,nlag)[n]
+  },nlead = nlead,y.true = y.true) + y.pred) %>% 
+  ggplot() +
+  geom_smooth(aes(x = date, y = y.true, colour = "true"), size =0.5, span = 0.7, se = F) +
+  geom_smooth(aes(x = date, y = y.pred, colour = model), size = 0.5, span = 0.7, se = F)+
+  ylab("unemploymnet")+
+  facet_grid(rows =vars(nlead),cols = vars(lambda))
+
+pdf("LASSO_forecast.pdf")
+print(p)
+dev.off()
 
 
-lasso.out.lag <- get.panel.r(df = df_tf_lag, window = 120, horizon = 12, nlead = c(1:6))
 
 lasso.out.lag %>%
   
@@ -286,6 +280,10 @@ lasso.out.lag %>%
   geom_line(aes(x = date, y = y.true, colour = "true")) +
   geom_line(aes(x = date, y = y.pred, colour = "pred"))+
   facet_wrap(vars(lambda))
+
+# Теперь используем Post-LASSO
+
+
 
 
 get.score <- function(df){

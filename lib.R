@@ -33,7 +33,7 @@ library(sophisthse)
 library(DiagrammeRsvg) 
 library(rsvg) 
 library(neuralnet) 
-
+library(ggridges)
 library(tseries)
 library(xts) 
 library(DtD) 
