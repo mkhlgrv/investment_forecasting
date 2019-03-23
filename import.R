@@ -37,7 +37,7 @@ df_raw <- sophisthse(series.name = series$table %>% unique, output = "data.frame
 df <- df_raw %>%
   filter(!is.na(UNEMPL_M_SH),
          `T` >= zoo::as.yearmon("2002-11-01"),
-         `T` <= zoo::as.yearmon("2016-01-01"))
+         `T` <= zoo::as.yearmon("2015-12-01"))
 
 missmap(df)
 nonmis <- sapply(df, function(y) sum(length(which(is.na(y))))) %>%
@@ -52,7 +52,7 @@ df %<>% select(nonmis)
 missmap(df)
 # теперь определим ряды, у которых уже есть пара в виде очищенного от сезонности ряда
 nonsa <- expand.grid(cn1 = colnames(df[,-1]), cn2 = colnames(df[,-1]), stringsAsFactors = FALSE) %>%
-  as.tibble %>%
+  as_tibble %>%
   mutate(remove = ifelse(cn1 == paste0(cn2, "_SA"),cn2, ifelse(cn2 == paste0(cn1, "_SA"),cn1, NA))) %>%
   na.omit %>%
   pull(remove) %>%
@@ -65,7 +65,7 @@ df %<>% select(-nonsa)
 
 df <- sophisthse(series.name = nonmis[which(!nonmis %in% c("T","UNEMPL_M"))], output = "zoo") %>%
   window(start = zoo::as.yearmon("2001-11-01"),
-       end = zoo::as.yearmon("2017-01-01"))
+       end = zoo::as.yearmon("2017-12-01"))
 # удалим те ряды, у которые есть пара, уже очищенная от сезонности
 df %<>% .[,which(!names(.) %in% nonsa)]
 # сохраним сырые данные
@@ -79,10 +79,10 @@ df$GKO_M <- na.locf(df$GKO_M)
 get.stationary.panel <- function(df){
   dates <- time(df)
   result <- df %>%
-    na.omit %>%
     as.xts %>%
     as.list %>%
     imap(function(x,i){
+      x %<>% na.omit()
       x_dec <- decompose(x)
       x <- x_dec$x - x_dec$seasonal
       # проводим adf test для 
@@ -115,25 +115,30 @@ get.stationary.panel <- function(df){
               message(i)
               message(min(c(d0, d1, log_d1, d2)))
               x_stat = x
+             
             }
           }
-        }
+          }
+        
       }
+      x_stat <- as.xts(x_stat)
+      names(x_stat) <- i
       list(typedf = data.frame(tsname = i, type = type, stringsAsFactors = FALSE),
-           statdf = data.frame(x_stat, stringsAsFactors = FALSE) %>% set_names(i))
+           statdf = x_stat)
     })
-  statdf <- result %>% map_dfc(function(x){
+  statdf <- do.call(merge.xts, result %>% map(function(x){
     x$statdf
-  }) %>% as.zoo(order.by = dates)
+  }))
   typedf <- result %>% map_dfr(function(x){
     x$typedf
   })
   list(df = statdf, type = typedf)
 }
+stat_out <- get.stationary.panel(df)
 # получаем транcформированные ряды
-df_tf <- get.stationary.panel(df)$df
+df_tf <- stat_out$df
 # данные о типе трансформации
-df_tf_type <- get.stationary.panel(df)$type
-
+df_tf_type <- stat_out$type
+missmap(df_tf)
 save(df_tf, df_tf_type, file = "tfdata_panel.RData")
 rm(list=ls())

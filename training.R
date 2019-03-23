@@ -122,80 +122,124 @@ result_df %>%
 # Panel data ----
 rm(list=ls())
 load("tfdata_panel.RData")
+
 ## LASSO ----
 
-get.panel.r <- function(df, window, horizon){
-  if(!"zoo" %in% class(df)){
+get.panel.r <- function(df, window, horizon, nlead){
+  if(!any(c("zoo", "xts") %in% class(df))){
     stop("df must be 'zoo'")
   }
-  # важно, что предсказываем мы следующее значение безработицы 
-  df$UNEMPL_M_SH <- lag.xts(df$UNEMPL_M_SH, k = -1)
-  # удаляем крайние значения 
-  df %<>% na.omit
-  dates <- time(df)
+  # Поменяем порядок аргументов
+  do.call.pipe <- function(args,what){
+    do.call(what,args)
+  }
+  map(nlead, function(nleadi){
+    
+    # Преобразовываем данные
+    # (преобразуем здесь, а не внутри import.R, потому что, возможно, будем исследовать не только unemp)
+    # мы предсказываем следующее значение безработицы
+    df$UNEMPL_M_SH <- lag.xts(df$UNEMPL_M_SH, k = -nleadi)
+    # удаляем крайние значения 
+    df %<>% na.omit
+    dates <- time(df)
+    # приводим к матрично-векторному виду
+    y <- df$UNEMPL_M_SH %>% as.numeric()
+    X <- as.matrix(model.matrix(UNEMPL_M_SH~., data = df))
+    
+    # получаем результаты для каждой комбинации window, horizon
+    expand.grid(window = window, horizon = horizon) %>% 
+      split(seq(nrow(.))) %>% map(function(x){
+        tc <- trainControl(method = "timeslice", initialWindow = x$window,
+                           horizon = x$horizon,
+                           fixedWindow = TRUE,
+                           skip = FALSE)
+        cv.out <- train(x=X,
+                        y=y,
+                        method = "glmnet",
+                        metric = "RMSE",
+                        trControl = tc,
+                        tuneGrid = expand.grid(.alpha = 1,.lambda = seq(0.11,0.0001,length = 100)))
+        bestlam <- cv.out$bestTune$lambda
+        # assign("cv.out", cv.out, envir = globalenv())
+        # stop()
+        TS <- createTimeSlices(y, 
+                               initialWindow = x$window,
+                               horizon = x$horizon,
+                               fixedWindow = TRUE,
+                               skip = FALSE)
+        map2(list(bestlam, bestlam/2, bestlam/3, bestlam/4, bestlam/5),
+             as.list(seq(1:5)),
+             function(lambda, ltype){
+          map2(TS$train, TS$test, function(tr, te){
+            # разбиваем выборку
+            X.train <- X[tr, ]
+            X.test <- X[te, ]
+            y.train <- y[tr]
+            y.test <- y[te]
+            m_lasso <- glmnet(X.train, y.train, alpha = 1, lambda = lambda)
+            nonzero <- predict(m_lasso, type = "nonzero") %>% nrow
+            if(is.null(nonzero)){
+              nonzero <- 0
+            }
+            y.pred <- predict(m_lasso,newx = X.test)
+            tibble(model = "lasso",
+                   nlead = nleadi,
+                   bestlam = bestlam,
+                   lambda = ltype,
+                   window = x$window,
+                   horizon = x$horizon,
+                   pred.date = dates[last(tr)],# дата предсказания
+                   date = dates[te],
+                   nonzero = nonzero,
+                   y.true = y.test,
+                   y.pred= y.pred[,1])
+          }) %>% do.call.pipe(rbind)
+        })%>% do.call.pipe(rbind)
+        
+        
+      })%>% do.call.pipe(rbind)
+  })%>% do.call.pipe(rbind)
   
-  # преобразовываем данные
-  # (преобразуем здесь, а не внутри import.R, потому что, возможно, будем исследовать не только unemp)
-  y <- df$UNEMPL_M_SH %>% as.numeric()
-  X <- as.matrix(model.matrix(UNEMPL_M_SH~., data = df))
-  
-  expand.grid(window = window, horizon = horizon) %>% 
-    split(seq(nrow(.))) %>% map(function(x){
-      tc <- trainControl(method = "timeslice", initialWindow = x$window,
-                         horizon = x$horizon,
-                         fixedWindow = TRUE,
-                         skip = FALSE)
-      cv.out <- train(x=X,
-            y=y,
-            method = "glmnet",
-            metric = "RMSE",
-            trControl = tc,
-            tuneGrid = expand.grid(.alpha = 1,.lambda = seq(0.11,0.0001,length = 100)))
-      bestlam <- cv.out$bestTune$lambda
-      # assign("cv.out", cv.out, envir = globalenv())
-      # stop()
-      TS <- createTimeSlices(y, 
-                             initialWindow = x$window,
-                         horizon = x$horizon,
-                         fixedWindow = TRUE,
-                         skip = FALSE)
-      map(list(bestlam, bestlam/2, bestlam/3, bestlam/4, bestlam/5), function(lambda){
-        map2(TS$train, TS$test, function(tr, te){
-          # разбиваем выборку
-          X.train <- X[tr, ]
-          X.test <- X[te, ]
-          y.train <- y[tr]
-          y.test <- y[te]
-          m_lasso <- glmnet(X.train, y.train, alpha = 1, lambda = lambda)
-          nnonzero <- predict(m_lasso, type = "nonzero") %>% nrow
-          y.pred <- predict(m_lasso,newx = X.test)
-          tibble(pred.date = dates[last(tr)],# дата предсказания
-                 date = dates[te],
-                 nnonzero = nnonzero,
-                 model = "lasso",
-                 lambda = lambda,
-                 window = x$window,
-                 horizon = x$horizon,
-                 y.true = y.test,
-                 y.pred= y.pred[,1])
-        })
-      })
-
-      
-    })
 }
 
-lasso.out <- get.panel.r(df_tf, 120, c(12))
-lasso.out <- do.call(rbind,do.call(rbind,do.call(rbind,lasso.out)))
-lasso.out %>%
-  group_by(date, lambda) %>%
+lasso.out <- get.panel.r(df_tf, 120, 12,nlead = c(1:6))
+rbind(lasso.out,
+      lasso.out.lag %>%
+        mutate(model = "lasso_lag")) %>%
+  select(-c(window, horizon)) %>%
+  filter(lambda == 5, nlead ==2) %>%
+  group_by(date, lambda, nlead, model) %>%
   mutate(y.pred = mean(y.pred)) %>%
   #dplyr::filter(date == max(date)) %>%
   ungroup %>%
   ggplot() +
-  geom_line(aes(x = date, y = y.true, colour = "true")) +
-  geom_line(aes(x = date, y = y.pred, colour = "pred"))+
-  facet_wrap(vars(lambda))
+  geom_line(aes(x = date, y = y.true, colour = "true"), size =0.9) +
+  geom_line(aes(x = date, y = y.pred, colour = model), size = 0.9)+
+  ylab("unemploymnet")+
+  facet_wrap(vars(nlead))
+
+rbind(lasso.out,
+      lasso.out.lag %>%
+        mutate(model = "lasso_lag")) %>%
+  group_by(model, nlead, lambda, date) %>%
+  summarise(y.true = mean(y.true),
+            y.pred = mean(y.true),
+            nonzero = mean(nonzero)) %>%
+  ungroup %>%
+  group_by(model, nlead, lambda) %>%
+  mutate(y.true = cumsum(y.true)) %>%
+  mutate(y.pred = sapply(seq_along(nlead), function(n,nlead, y.true){
+    nlag <- nlead[n]
+    lag(y.true,nlag)[n]
+  },nlead = nlead,y.true = y.true) + y.pred) %>% View
+  ggplot(aes(x = date, y = y.true))+
+  geom_line()
+  m %>%
+  ggplot() +
+  geom_line(aes(x = date, y = y_true,colour = "true"))+
+  geom_line(aes(x = date, y =y_pred, colour = model)) +
+  facet_grid(rows = vars(horizon), cols = vars(window))
+
 
 # Попрбобуем трансформировать данные еще сильнее. Добавим лагированные переменные
 create.lagv <- function(df, nlag){
@@ -209,7 +253,7 @@ create.lagv <- function(df, nlag){
     }
     yname <- names(df)[j]
     for(i in 1:nlag){
-      df <- merge.zoo(df, new_lag=lag.xts(y, k = i))
+      df <- merge.xts(df, new_lag=lag.xts(y, k = i))
       names(df)[length(names(df))] <- paste0(yname, "_lag",i)
     }
   }
@@ -220,8 +264,8 @@ create.lagv <- function(df, nlag){
 df_tf_lag <- create.lagv(df_tf, nlag = 6L)
 
 
-lasso.out.lag <- get.panel.r(df = df_tf_lag, window = 120, horizon = 12)
-lasso.out.lag <- do.call(rbind,do.call(rbind,do.call(rbind,lasso.out.lag)))
+lasso.out.lag <- get.panel.r(df = df_tf_lag, window = 120, horizon = 12, nlead = c(1:6))
+
 lasso.out.lag %>%
   
   group_by(date, lambda) %>%
@@ -234,23 +278,28 @@ lasso.out.lag %>%
   facet_wrap(vars(lambda))
 
 
-get.rmspe <- function(df){
-    do.call(rbind, split(df,seq(nrow(df))) %>%
-    map(function(x){
-      x$horizon <- seq(as.Date(x$pred.date),
-                              as.Date(x$date),
-                              by = "month") %>%
-                          length-1
-      x
-    }))%>%
-    group_by(horizon, window, lambda) %>%
-    mutate(rmspe = RMSPE(y.pred, y.true)) %>%
+get.score <- function(df){
+    df %>% 
+    group_by(horizon, window, lambda, nlead, model) %>%
+    summarise(rmspe = RMSPE(y.pred, y.true),
+              rmse = RMSE(y.pred, y.true),
+              mae= MAE(y.pred, y.true),
+              r2 = R2_Score(y.pred, y.true),
+              nonzero = mean(nonzero)) %>%
     ungroup
 }
-score_df <- rbind(get.rmspe(lasso.out),
-get.rmspe(lasso.out.lag) %>% mutate(model = "lasso_lag"))
+
+
+score_df <- rbind(get.score(lasso.out),
+get.score(lasso.out.lag) %>% mutate(model = "lasso_lag"))
+score_df
+score_info <- score_df %>%
+  group_by(model, nlead) %>%
+  summarise(mean = mean(rmse),
+            sd = sd(rmse))
 score_df %>%
-  mutate(horizon=as.factor(horizon)) %>%
+  mutate(nlead=as.factor(nlead)) %>%
   ggplot()+
-  geom_boxplot(aes(y = rmspe, x = horizon, colour = model), position = position_dodge(width = 0.9))
+  geom_point(aes(y = rmse, x = nlead, colour = model), position = position_dodge(width = 0.9))+
+  geom_errorbar(data = score_info, aes(x = nlead, y = mean, ymin = mean-sd, ymax = mean+sd), position = position_dodge(width = 0.9))
   
