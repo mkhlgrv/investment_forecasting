@@ -1,6 +1,8 @@
-glmneterror <- do.call(rbind, glmnet_list) %>%
+load("regurarlist.RData")
+glmneterror <- 
+  do.call(rbind, regurarlist) %>%
   select(-c(window, horizon)) %>%
-  #filter(lambda == 5, nlead ==2) %>%
+  filter(nlead <=6) %>%
   group_by(date, lambda, nlead, model) %>%
   mutate(y.pred = mean(y.pred),
          nonzero = mean(nonzero)) %>%
@@ -14,7 +16,7 @@ glmneterror <- do.call(rbind, glmnet_list) %>%
   labs(title = "Forecast error distribution",y ="unemploymnet")+
   facet_grid(rows =vars(nlead), cols = vars(lambda), labeller = label_both)
 
-pdf("glmnet_error.pdf")
+pdf("plot/glmnet_error.pdf")
 print(glmneterror)
 dev.off()
 load("rawdata_panel.RData")

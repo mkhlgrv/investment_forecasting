@@ -102,7 +102,7 @@ get.regular.r <- function(df, window, horizon, nlead, model){
                    } else{
                      message(paste0(model,
                                     ": none of nonzero coeffs for lambda = ",
-                                    bestlam , ltype,
+                                    bestlam , "/",ltype,
                                     " and alpha = ", bestal))
                      y.pred <- predict(m_glm,newx = X.test)
                    }
