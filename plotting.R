@@ -1,3 +1,5 @@
+ do.call(rbind, regurarlist) %>%
+  select(-c(window, horizon)) 
 load("regurarlist.RData")
 glmneterror <- 
   do.call(rbind, regurarlist) %>%
@@ -66,23 +68,45 @@ lasso.out.lag %>%
 # Теперь используем Post-LASSO
 
 
+load("arlist.RData")
 
-
-get.score <- function(df){
-  df %>% 
-    group_by(horizon, window, lambda, nlead, model) %>%
-    summarise(rmspe = RMSPE(y.pred, y.true),
-              rmse = RMSE(y.pred, y.true),
-              mae= MAE(y.pred, y.true),
-              r2 = R2_Score(y.pred, y.true),
-              nonzero = mean(nonzero)) %>%
-    ungroup
+get.score <- function(df, type){
+  if(type == "regular"){
+    df %>% 
+      group_by(horizon, window, lambda, nlead, model) %>%
+      summarise(rmspe = RMSPE(y.pred, y.true),
+                rmse = RMSE(y.pred, y.true),
+                mae= MAE(y.pred, y.true),
+                r2 = R2_Score(y.pred, y.true),
+                nonzero = mean(nonzero))
+  } else if(type == "ar"){
+    df %>% 
+      group_by(model, nlead, bestq, bestp, window, horizon) %>%
+      summarise(rmspe = RMSPE(y.pred, y.true),
+                rmse = RMSE(y.pred, y.true),
+                mae= MAE(y.pred, y.true),
+                r2 = R2_Score(y.pred, y.true)) 
+  } else if(type == "rw"){
+    df %>% 
+      na.omit %>%
+      group_by(model, nlead) %>%
+      summarise(rmspe = RMSPE(y.pred, y.true),
+                rmse = RMSE(y.pred, y.true),
+                mae= MAE(y.pred, y.true),
+                r2 = R2_Score(y.pred, y.true)) 
+  }
 }
-
-
-score_df <- rbind(get.score(lasso.out),
-                  get.score(lasso.out.lag) %>% mutate(model = "lasso_lag"))
-score_df
+ar.score <- get.score(arlist[[2]], "ar")
+rw.score <- get.score(arlist[[1]], "rw")
+pc_ridge.score <- get.score(pc.ridge.out, "regular")
+pc.ridge.out
+score_df <- do.call(rbind, regurarlist) %>%
+  get.score(type = "regular")
+score_df %>% 
+  filter(lambda == 1, model != "ridge") %>%
+  ggplot()+
+  geom_jitter(aes(x = nlead, y = mae, colour = model),height = 0,width = 0.1 )+
+  geom_area(data = ar.score, aes(x = nlead, y = mae, fill = "ARMA(1,2)"), alpha= 0.1)
 score_info <- score_df %>%
   group_by(model, nlead) %>%
   summarise(mean = mean(rmse),
@@ -90,6 +114,6 @@ score_info <- score_df %>%
 score_df %>%
   mutate(nlead=as.factor(nlead)) %>%
   ggplot()+
-  geom_point(aes(y = rmse, x = nlead, colour = model), position = position_dodge(width = 0.9))+
-  geom_errorbar(data = score_info, aes(x = nlead, y = mean, ymin = mean-sd, ymax = mean+sd), position = position_dodge(width = 0.9))
+  geom_point(aes(y = rmse, x = nlead, colour = model), position = position_dodge(width = 0.9))#+
+  #geom_errorbar(data = score_info, aes(x = nlead, y = mean, ymin = mean-sd, ymax = mean+sd), position = position_dodge(width = 0.9))
 
