@@ -218,28 +218,38 @@ rbind(lasso.out,
   ylab("unemploymnet")+
   facet_wrap(vars(nlead))
 
-rbind(lasso.out,
+load("rawdata_panel.RData")
+unemp.true <- df$UNEMPL_M_SH %>%
+  as.data.frame() %>%
+  rownames_to_column %>%
+  setNames(c("date","y.true")) %>%
+  mutate(date = as.yearmon(date))
+# график в уровнях ----
+p <- rbind(lasso.out,
       lasso.out.lag %>%
         mutate(model = "lasso_lag")) %>%
+  filter(nlead %in% 2:4, lambda %in% 2:4) %>%
   group_by(model, nlead, lambda, date) %>%
-  summarise(y.true = mean(y.true),
-            y.pred = mean(y.true),
-            nonzero = mean(nonzero)) %>%
-  ungroup %>%
+  mutate(y.pred = mean(y.pred),
+         nonzero = mean(nonzero)) %>%
+  ungroup() %>%
+  select(-c(y.true, pred.date)) %>%
+  unique %>%
+  inner_join(unemp.true, by = "date") %>%
   group_by(model, nlead, lambda) %>%
-  mutate(y.true = cumsum(y.true)) %>%
   mutate(y.pred = sapply(seq_along(nlead), function(n,nlead, y.true){
     nlag <- nlead[n]
     lag(y.true,nlag)[n]
-  },nlead = nlead,y.true = y.true) + y.pred) %>% View
-  ggplot(aes(x = date, y = y.true))+
-  geom_line()
-  m %>%
+  },nlead = nlead,y.true = y.true) + y.pred) %>% 
   ggplot() +
-  geom_line(aes(x = date, y = y_true,colour = "true"))+
-  geom_line(aes(x = date, y =y_pred, colour = model)) +
-  facet_grid(rows = vars(horizon), cols = vars(window))
+  geom_line(aes(x = date, y = y.true, colour = "true"), size =0.5) +
+  geom_line(aes(x = date, y = y.pred, colour = model), size = 0.5)+
+  ylab("unemploymnet")+
+  facet_grid(rows =vars(nlead),cols = vars(lambda))
 
+pdf("LASSO_forecast.pdf")
+print(p)
+dev.off()
 
 # Попрбобуем трансформировать данные еще сильнее. Добавим лагированные переменные
 create.lagv <- function(df, nlag){
