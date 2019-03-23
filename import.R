@@ -1,4 +1,6 @@
+rm(list = ls())
 source("lib.R")
+source("fun.R")
 # Data import ----
 
 ## Pre-import ----
@@ -43,7 +45,6 @@ df <- sophisthse(series.name = nonmis[which(!nonmis %in% c("T","UNEMPL_M"))], ou
 df %<>% .[,which(!names(.) %in% nonsa)]
 # сохраним сырые данные
 save(df, file = "rawdata.RData")
-rm(list = ls())
 load("rawdata.RData")
 
 ## Transfrom ----
@@ -117,5 +118,10 @@ df_tf_type <- stat_out$type
 # Пропущенные значения (есть по краям, ничего страшного (крайние данные были нужны только для безработицы))
 missmap(df_tf)
 
-save(df_tf, df_tf_type, file = "tfdata.RData")
+
+# Попрбобуем трансформировать данные еще сильнее. Добавим лагированные переменные
+# все переменные залагованы на 6
+df_tf_lag <- create.lagv(df_tf, nlag = 6L)
+
+save(df_tf, df_tf_type,df_tf_lag, file = "tfdata.RData")
 rm(list=ls())
