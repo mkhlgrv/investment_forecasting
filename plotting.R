@@ -76,6 +76,7 @@ get.score <- function(df, type){
       group_by(horizon, window, lambda, nlead, model) %>%
       summarise(rmspe = RMSPE(y.pred, y.true),
                 rmse = RMSE(y.pred, y.true),
+                rrse = RRSE(y.pred, y.true),
                 mae= MAE(y.pred, y.true),
                 r2 = R2_Score(y.pred, y.true),
                 nonzero = mean(nonzero))
@@ -83,6 +84,7 @@ get.score <- function(df, type){
     df %>% 
       group_by(model, nlead, bestq, bestp, window, horizon) %>%
       summarise(rmspe = RMSPE(y.pred, y.true),
+                rrse = RRSE(y.pred, y.true),
                 rmse = RMSE(y.pred, y.true),
                 mae= MAE(y.pred, y.true),
                 r2 = R2_Score(y.pred, y.true)) 
@@ -91,6 +93,7 @@ get.score <- function(df, type){
       na.omit %>%
       group_by(model, nlead) %>%
       summarise(rmspe = RMSPE(y.pred, y.true),
+                rrse = RRSE(y.pred, y.true),
                 rmse = RMSE(y.pred, y.true),
                 mae= MAE(y.pred, y.true),
                 r2 = R2_Score(y.pred, y.true)) 

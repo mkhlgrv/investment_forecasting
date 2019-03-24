@@ -30,8 +30,14 @@ get.regular.r <- function(df, window, horizon, nlead, model){
     
     # Преобразовываем данные
     # (преобразуем здесь, а не внутри import.R, потому что, возможно, будем исследовать не только unemp)
-    # мы предсказываем следующее значение безработицы
-    df$UNEMPL_M_SH <- lag.xts(df$UNEMPL_M_SH, k = -nleadi)
+    # мы предсказываем сумму изменений беработицы
+    unemp <- df$UNEMPL_M_SH
+    df$UNEMPL_M_SH <- lag.xts(df$UNEMPL_M_SH, k = -1)
+    if(nleadi>=2){
+      for(i in 2:nleadi){
+        df$UNEMPL_M_SH <- df$UNEMPL_M_SH + lag.xts(unemp, k = -i)
+      }
+    }
     # удаляем крайние значения 
     df %<>% na.omit
     dates <- time(df)
@@ -44,8 +50,7 @@ get.regular.r <- function(df, window, horizon, nlead, model){
       split(seq(nrow(.))) %>% map(function(x){
         tc <- trainControl(method = "timeslice", initialWindow = x$window,
                            horizon = x$horizon,
-                           fixedWindow = TRUE,
-                           skip = FALSE)
+                           fixedWindow = TRUE)
         if(grepl("lasso", model)){
           alpha = 1
         } else if(grepl("ridge", model)){
@@ -59,26 +64,27 @@ get.regular.r <- function(df, window, horizon, nlead, model){
                         method = "glmnet",
                         metric = "RMSE",
                         trControl = tc,
-                        tuneGrid = expand.grid(.alpha = alpha,.lambda = seq(0.1,0.00001,length = 1000)))
+                        tuneGrid = expand.grid(.alpha = alpha,.lambda = seq(0.1,0.00001,length = 500)))
         bestlam <- cv.out$bestTune$lambda
         bestal <- cv.out$bestTune$alpha
+        
+        if(bestal %in% c(0,1)& grepl("elnet", model)){
+          message(paste0(model, " for nlead = ", nleadi, " choose alpha = ", bestal))
+          return(NULL)
+        }
         # assign("cv.out", cv.out, envir = globalenv())
         # stop()
         TS <- createTimeSlices(y, 
                                initialWindow = x$window,
                                horizon = x$horizon,
-                               fixedWindow = TRUE,
-                               skip = FALSE)
-        map2(list(bestlam, bestlam/2, bestlam/3, bestlam/4, bestlam/5),
-             as.list(seq(1:5)),
-             function(lambda, ltype){
+                               fixedWindow = TRUE)
                map2(TS$train, TS$test, function(tr, te){
                  # разбиваем выборку
                  X.train <- X[tr, ]
                  X.test <- X[te, ]
                  y.train <- y[tr]
                  y.test <- y[te]
-                 m_glm <- glmnet(X.train, y.train, alpha = bestal, lambda = lambda)
+                 m_glm <- glmnet(X.train, y.train, alpha = bestal, lambda = bestlam)
                  nonzero <- predict(m_glm, type = "nonzero") %>% nrow
                  if(is.null(nonzero)){
                    nonzero <- 0
@@ -102,7 +108,7 @@ get.regular.r <- function(df, window, horizon, nlead, model){
                    } else{
                      message(paste0(model,
                                     ": none of nonzero coeffs for lambda = ",
-                                    bestlam , "/",ltype,
+                                    bestlam , 
                                     " and alpha = ", bestal))
                      y.pred <- predict(m_glm,newx = X.test)
                    }
@@ -111,10 +117,8 @@ get.regular.r <- function(df, window, horizon, nlead, model){
                         nlead = nleadi,
                         bestlam = bestlam,
                         bestal = bestal,
-                        lambda = ltype,
                         window = x$window,
                         horizon = x$horizon,
-                        pred.date = dates[last(tr)],# дата предсказания
                         date = dates[te],
                         nonzero = nonzero,
                         y.true = y.test,
@@ -124,8 +128,6 @@ get.regular.r <- function(df, window, horizon, nlead, model){
         
         
       })%>% do.call.pipe(rbind)
-  })%>% do.call.pipe(rbind)
-  message(paste0(Sys.time(), ": ", model, " trained"))
 }
 
 get.ar <- function(df, window, horizon, nlead, model){
@@ -135,12 +137,15 @@ get.ar <- function(df, window, horizon, nlead, model){
   dates <- time(y)
   if(model == "rw"){
     nlead %>% map(function(nleadi){
+      y.true <- rep(NA, nleadi)
+      for(i in 1:(length(y)-nleadi)){
+        y.true[i] <- sum(y[(i+1):(i+nleadi)])
+      }
       tibble(model = model,
              nlead = nleadi,
-             pred.date =lag.xts(dates, k = nleadi), 
              date  = dates,
              y.true = y %>% as.numeric,
-             y.pred = lag.xts(y, k = nleadi) %>% as.numeric)
+             y.pred = 0)
     }) %>% do.call.pipe(rbind)
   } else if(model == "arp"){
     bestarma <- auto.arima(y,d = 0, max.p = 12, max.q = 12, seasonal = FALSE)
@@ -151,26 +156,32 @@ get.ar <- function(df, window, horizon, nlead, model){
       expand.grid(window = window, horizon = horizon) %>%
         split(seq(nrow(.))) %>%
         map(function(x){
-          TS <- createTimeSlices(y,
+          TS <- createTimeSlices(y[-c((length(y)-nleadi+1):length(y))],
                                  initialWindow = x$window,
                                  horizon = x$horizon,
-                                 fixedWindow = TRUE,
-                                 skip = nleadi-1)
+                                 fixedWindow = TRUE)
           map2(TS$train, TS$test, function(tr, te){
-            # разбиваем выборку  
-            y.train <- y[tr]
-            y.true <- y[te] %>% as.numeric
-            m_arma <- arima0(y,
-                             order = c(bestp, 0 , bestq))
-            y.pred <- predict(m_arma, n.ahead = horizon + nleadi-1, se.fit = FALSE) %>%
-              .[(nleadi): (horizon + nleadi-1)]
+            # разбиваем выборку 
+            y.true <- y.pred <- rep(NA, length(te))
+            for(i in 1:(length(te))){
+              #print(sum(y[(te[i+1]):(te[i+1]+nleadi-1)]))
+              # обучение модели
+              y.train <- y[c(tr[-c(1:i)], (last(tr)+1):(last(tr)+i))]
+              m_arma <- arima0(y.train,
+                               order = c(bestp, 0 , bestq))
+              # сумма изменений
+              y.pred[i] <- predict(m_arma,
+                                n.ahead = nleadi,
+                                se.fit = FALSE) %>% sum
+              y.true[i] <- sum(y[(te[i]+1):(te[i]+nleadi)])
+                
+            }
             tibble(model = model,
                    nlead = nleadi,
                    bestp = bestp,
                    bestq = bestq,
                    window = x$window,
                    horizon = x$horizon,
-                   pred.date = dates[last(tr)],# дата предсказания
                    date = dates[te],
                    y.true = y.true,
                    y.pred= y.pred)
