@@ -99,7 +99,7 @@ get.score <- function(df, type){
 ar.score <- get.score(arlist[[2]], "ar")
 rw.score <- get.score(arlist[[1]], "rw")
 pc_ridge.score <- get.score(pc.ridge.out, "regular")
-pc.ridge.out
+pc_ridge.score %>% View
 score_df <- do.call(rbind, regurarlist) %>%
   get.score(type = "regular")
 score_df %>% 

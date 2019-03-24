@@ -125,7 +125,7 @@ get.regular.r <- function(df, window, horizon, nlead, model){
         
       })%>% do.call.pipe(rbind)
   })%>% do.call.pipe(rbind)
-  
+  message(paste0(Sys.time(), ": ", model, " trained"))
 }
 
 get.ar <- function(df, window, horizon, nlead, model){
