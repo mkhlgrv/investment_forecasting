@@ -43,14 +43,11 @@ get.panel.r <- function(df, window, horizon, nlead, model, niter = NULL){
     dates <- time(df)
     # приводим к матрично-векторному виду
     y <- df$UNEMPL_M_SH %>% as.numeric()
-    X <- as.matrix(model.matrix(UNEMPL_M_SH~., data = df))
+    X <- as.matrix(model.matrix(UNEMPL_M_SH~0+., data = df))
     
     # получаем результаты для каждой комбинации window, horizon
     expand.grid(window = window, horizon = horizon) %>% 
       split(seq(nrow(.))) %>% map(function(x){
-        tc <- trainControl(method = "timeslice", initialWindow = x$window,
-                           horizon = x$horizon,
-                           fixedWindow = TRUE)
         TS <- createTimeSlices(y, 
                                initialWindow = x$window,
                                horizon = x$horizon,
@@ -110,28 +107,27 @@ get.panel.r <- function(df, window, horizon, nlead, model, niter = NULL){
               X.train <- pclist$x
               X.test <- predict(pclist, newdata = X.test)
             }
-            set.seed(2019)
-            cv.out <- train(x=X.train,
-                            y=y.train,
-                            method = "glmnet",
-                            metric = "RMSE",
-                            tuneGrid = expand.grid(.alpha = bestal,.lambda = seq(0.1,0.00001,length = 50)))
             
             if(grepl("adaptive", model)){
               train_ada <- as.data.frame(X.train) %>%
                 mutate(U = y.train)
               test_ada <-  as.data.frame(X.test) %>%
                 mutate(U = y.test)
-              m_ada <- lm(U~., data = train_ada)
-              w3 <- 1/abs(matrix(coef(m_ada)
-                                 [, 1][2:(ncol(X.train)+1)] ))^1 ## Using gamma = 1
-              w3[w3[,1] == Inf] <- 999999999 ## Replacing values estimated as Infinite for 999999999
-              
-              
+              m_ada <- glmnet(X.train, y.train, alpha = 0, lambda = 0)
+              w3 <- 1/abs(as.numeric(coef(m_ada))
+                                 [1:(ncol(X.train))] )^0.5 ## Using gamma = 1
+              w3[which(w3 == Inf)] <- 999999999 ## Replacing values estimated as Infinite for 999999999
             } else {
               w3 <- rep(1, ncol(X.train))
             }
-            bestlam <- cv.out$bestTune$lambda
+            set.seed(2019)
+            glm.out <- train(x=X.train,
+                            y=y.train,
+                            method = "glmnet",
+                            metric = "RMSE",
+                            penalty.factor = w3,
+                            tuneGrid = expand.grid(.alpha = bestal,.lambda = seq(0.1,0.00001,length = niter)))
+            bestlam <- glm.out$bestTune$lambda
             m_glm <- glmnet(X.train, y.train, alpha = bestal, lambda = bestlam, penalty.factor = w3)
             nonzero <- predict(m_glm, type = "nonzero") %>% nrow
             if(is.null(nonzero)){
@@ -160,7 +156,15 @@ get.panel.r <- function(df, window, horizon, nlead, model, niter = NULL){
                                " and alpha = ", bestal))
                 y.pred <- predict(m_glm,newx = X.test)
               }
+              
             } else stop("unknown model")
+            
+            if(nonzero!=0){
+              nzvars <- predict(m_glm, type = "nonzero") %>% .[,1] %>% paste0(collapse = " ")
+            } else {
+              nzvars = ""
+            }
+            
             tibble(model = model,
                    nlead = nleadi,
                    bestlam = bestlam,
@@ -169,6 +173,7 @@ get.panel.r <- function(df, window, horizon, nlead, model, niter = NULL){
                    horizon = x$horizon,
                    date = dates[te],
                    nonzero = nonzero,
+                   nzvars = nzvars,
                    y.true = y.test,
                    y.pred= y.pred)
           }) %>% do.call.pipe(rbind)
@@ -208,7 +213,7 @@ get.panel.r <- function(df, window, horizon, nlead, model, niter = NULL){
             tc <- trainControl(method = "cv", number = 5)
             tune_grid <- expand.grid(nrounds = niter,
                                      max_depth = c(5),
-                                     eta = c(0.05, 0.1),
+                                     eta = c(0.05),
                                      gamma = 1,
                                      colsample_bytree = 0.75,
                                      min_child_weight = 0,
@@ -219,7 +224,6 @@ get.panel.r <- function(df, window, horizon, nlead, model, niter = NULL){
                              method = "xgbTree", 
                              metric = "RMSE",
                              tuneGrid = tune_grid)
-            assign("bst.out", bst.out, envir = global_env())
             y.pred <- predict(bst.out, X.test)
             tibble(model = model,
                    nlead = nleadi,

@@ -8,12 +8,30 @@ arlist <- map(c("rw","arp"),
               function(modeli){get.ar(df = df_tf,
                                       window = 120,
                                       horizon = 12,
-                                      nlead = c(1:24),
+                                      nlead = c(1:18),
                                       model = modeli)})
 save(arlist, file = "arlist.RData")
 
 # Panel regressions ----
 load("tfdata.RData")
+
+system.time({
+  reglist <- map(c("ridge","elnet",
+                   "lasso",
+                   "post_lasso",
+                   "post_lasso_lag",
+                   "lasso_lag",
+                   "lasso_adaptive",
+                   "lasso_adaptive_lag"),
+                   function(modeli){get.panel.r(df_tf,
+                                                120,
+                                                12,
+                                                nlead = c(1:18),
+                                                model = modeli)})
+               })
+
+
+
 
   ## Regression with regularisation ----
   ## Ridge, LASSO, Post-LASSO, and Elastic Network
