@@ -18,16 +18,16 @@ load("tfdata.RData")
 system.time({
   reglist <- map(c("ridge","elnet",
                    "lasso",
+                   "lasso_pc",
                    "post_lasso",
-                   "post_lasso_lag",
                    "lasso_lag",
-                   "lasso_adaptive",
-                   "lasso_adaptive_lag"),
+                   "lasso_pc_lag",
+                   "lasso_adaptive"),
                    function(modeli){get.panel.r(df_tf,
                                                 120,
                                                 12,
                                                 nlead = c(1:18),
-                                                model = modeli)})
+                                                model = modeli, niter = 200)})
                })
 
 
@@ -36,22 +36,6 @@ system.time({
   ## Regression with regularisation ----
   ## Ridge, LASSO, Post-LASSO, and Elastic Network
 
-
-system.time({
-  reglist <- c(map(c("ridge","elnet", "lasso", "post_lasso"),
-                       function(modeli){get.panel.r(df_tf,
-                                                      120,
-                                                      12,
-                                                      nlead = c(1:24),
-                                                      model = modeli)}),
-                   map(c("lasso_lag", "post_lasso_lag"),
-                       function(modeli){get.panel.r(df_tf_lag,
-                                                      120,
-                                                      12,
-                                                      nlead = c(1:24),
-                                                      model = modeli)}))
-  
-})
 save(reglist, file = "reglist.RData")
 
 # Principal Components Analysis ----
