@@ -1,0 +1,535 @@
+%!TEX TS-program = xelatex
+
+% Данный шаблон подготовлен для курса LaTeX в РАНХиГС
+% на основе шаблона 
+% Данила Фёдоровых (danil@fedorovykh.ru),
+%  который использовал его в курсе 
+% <<Документы и презентации в \LaTeX>> НИУ ВШЭ
+% Исходная версия шаблона --- 
+  % https://www.writelatex.com/coursera/latex/5.1
+\documentclass[c, dvipsnames]{beamer}  % [t], [c], или [b] --- вертикальное 
+%\documentclass[handout, dvipsnames, c]{beamer} % Раздаточный материал (на слайдах всё сразу)
+\input{preamble}
+\title[МСР в макроэкономике]{Методы снижения размерности в данных в макроэкономике}
+\subtitle{Отчёт по научно-исследовательской работе}
+
+
+\author[Михаил Гареев]{Михаил Гареев \\ \smallskip \scriptsize ЭО-15-01 \\ \smallskip \scriptsize \href{mailto:mkhlgrv@gmail.com}{\nolinkurl{mkhlgrv@gmail.com} }}
+
+\superviser{к.э.н. Полбин А.В.}
+
+%\author[Имя автора]{Имя автора \\ \smallskip \scriptsize \href{mailto:author@ranepa.ru}{author@ranepa.ru} \\ \smallskip  \href{http://ranepa.ru}{http://ranepa.ru} }
+
+\institute[РАНХиГС]{ \uppercase{
+  Российская Академия Народного Хозяйства и  \\ Государственной Службы при Президенте Российской Федерации}}
+\date{2019}
+
+
+\titlegraphic{\includegraphics[scale=0.5]{logo/logo_ranepa.png}}
+\titlegraphicii{\includegraphics[scale=0.5]{logo/logo_emit.png}}
+
+\begin{document}
+
+\frame[plain]{\titlepage}	% Титульный слайд
+
+
+\begin{frame}[c]{Актуальность исследования} 
+\begin{itemize}
+\item  При оценке моделей из макроэкономики часто можно столкнуться с тем, что параметров относительно много, а наблюдений - мало. Иногда эта проблема решается использованием \alert{методов снижения размерности в данных}.
+\end{itemize}
+\end{frame}
+
+
+% \begin{frame}[c]
+% \frametitle{Анализ предметной области}
+% { \small   % вместо small можно поставить scriptsize чтобы влезло
+% 	\begin{table}[]
+% 		\centering
+% 		\resizebox{\textwidth}{!}{ 
+%   			\begin{tabular}{|p{2.2cm}|p{1.8cm}|p{3.5cm}|p{7cm}|}
+%   				\hline\rowcolor{backgr}
+%   				\textcolor{white}{Авторы} & \textcolor{white}{Выборка, период}  & \textcolor{white}{Метод исследования}& \textcolor{white}{Результат} \\			
+%   				\hline
+%   				(Kuper, 2003)  & США, 998-2008  &  Коинтеграци и VECM & Получились значимые результаты с интересной интерпретацией.\\
+%   				\hline
+%   		\end{tabular} }
+% 	\end{table}
+% }
+% \end{frame}
+
+
+\begin{frame}[shrink=3]
+	\frametitle{Цели и задачи}
+	\begin{block}{Цель:}
+	\begin{itemize}
+		\item Проверка целесообразности использования методов снижения размерности в данных в прогнозировании российских макроэкономических показателей.
+	\end{itemize}
+		
+	\end{block}
+
+	 	\begin{block}{Задачи:}
+			\begin{enumerate}
+	\item Обзор методов снижения размерности (LASSO, Post-LASSO, Ridge, Elastic Net, PCA, Random Forest, Spike-and-Slab variable selection).
+    \item Применение этих методов для прогнозирования макроэкономических
+рядов в России (безработицы), анализ результатов, сравнение с традиционными методами оценивания временных рядов.
+	 \end{enumerate}	
+	\end{block}
+\end{frame}
+
+
+
+\section{Методы снижения размерности}
+\subsection{Разреженная линейная модель с высокой размерностью в данных}
+
+\begin{frame}[shrink=5]
+\frametitle{\insertsection} 
+\framesubtitle{\insertsubsection}
+Модель: 
+  \begin{equation} 
+\beta_0 + \varepsilon_i, \epsilon_i \sim N(0, \sigma^2), \beta_0 \in
+\mathbb{R}^p, i = 1, \dots, n, 
+\end{equation}
+где:
+  \begin{itemize}
+\item $y_i$ --- это значения объясняемой
+переменной, 
+\item $x_i$ --- это значения $p$-размерной объясняющей переменной,
+\item $\varepsilon_i$ --- значения независимых случайных ошибок в каждом наблюдении $i$, 
+\end{itemize}
+при этом возможно, что $p \geq n$, но только $s<n$ компонентов вектора $\beta_0$ не равны $0$.
+
+\item \alert{Можно ли уменьшить размерность модели?}
+\end{frame}
+
+\subsection{Oracle Problem}
+\begin{frame}[shrink=5]
+\frametitle{\insertsection} 
+\framesubtitle{\insertsubsection}
+\begin{block}{Задача (Oracle Problem):}
+\begin{equation}\label{op}
+    \min_{\beta \in
+\mathbb{R}^p} \mathbb{E}_n\left[ (y_i - {x_i}^{'} \beta)^2 \right] + \sigma^2
+\frac{\left\lVert \beta \right\rVert_0}{n}, 
+\end{equation} 
+где $\left\lVert \beta \right\rVert_0$ --- это количество ненулевых компонентов в векторе $\beta$,  обобщение понятия нормы для степени $0$. 
+\end{block}
+\begin{block}{Гёльдерова норма для вектора $x$ степени $p$: }
+\begin{equation}
+    \left\lVert x \right\rVert_p = \sqrt[p]{\sum_i|x_i|^p},
+\end{equation}
+где обычно $p \geq 1$.
+
+\end{block}
+
+Решение \eqref{op} --- это  баланс между ошибкой регрессии и количеством ненулевых коэффициентов из вектора $\beta$. 
+
+Методы снижения размерности оптимизируют эмпирические аналоги задачи \eqref{op}.
+\end{frame}
+
+
+
+\subsection{Регуляризация}
+
+
+
+\begin{frame}
+\frametitle{\insertsection} 
+\framesubtitle{\insertsubsection}
+ \begin{block}{AIC/ BIC}
+  \begin{equation}
+  \hat{\beta}  \in \arg \min_{\beta \in
+\mathbb{R}^p} \sum_{i=1}^n \left[ (y_i - {x_i}^{'} \beta)^2 \right] +  \frac{\lambda}{n} \left\lVert \beta \right\rVert_0, 
+\end{equation}
+где $\lambda$ --- параметр штрафа.
+ \end{block}
+
+ \begin{block}{LASSO}
+  \begin{equation}
+  \hat{\beta}^{\text{LASSO}} \in \arg \min_{\beta \in
+\mathbb{R}^p} \sum_{i=1}^n \left[ (y_i - {x_i}^{'} \beta)^2 \right] +  \frac{\lambda}{n} \left\lVert \beta \right\rVert_1,
+\end{equation}
+где $\lambda$ --- параметр штрафа.
+ \end{block}
+ 
+  \end{frame}
+ \begin{frame}
+ \frametitle{\insertsection} 
+\framesubtitle{\insertsubsection}
+
+ \begin{block}{Ridge Regression}
+  \begin{equation}
+  \hat{\beta}^{\text{Ridge}} \in \arg \min_{\beta \in
+\mathbb{R}^p} \sum_{i=1}^n \left[ (y_i - {x_i}^{'} \beta)^2 \right] +  \frac{\lambda}{n} \left\lVert \beta \right\rVert_2,
+\end{equation}
+где $\lambda$ --- параметр штрафа.
+ \end{block}
+
+ \begin{block}{Elastic Net Regression}
+  \begin{equation}
+  \hat{\beta}^{\text{EN}} \in \arg \min_{\beta \in
+\mathbb{R}^p} \sum_{i=1}^n \left[ (y_i - {x_i}^{'} \beta)^2 \right] +  \frac{\lambda}{n}
+\left( \frac{1 - \alpha}{2} \left\lVert \beta \right\rVert_1 + 
+\alpha \left\lVert \beta \right\rVert_2 \right),
+\end{equation}
+где $\lambda$ --- параметр штрафа,
+$\alpha$ --- параметр регуляризации, равен $1$ для Ridge и
+$2$ для LASSO.
+\end{block}
+ 
+ 
+\end{frame}
+\begin{frame}
+\frametitle{\insertsection} 
+\framesubtitle{\insertsubsection}
+\begin{block}{Post-LASSO}
+\begin{enumerate}
+    \item Использовать метода LASSO, найти $\hat{\beta}^{\text{LASSO}}$.
+    \item Применить МНК-регрессию, оценивая только неисключенные элементы $\hat{\beta}^{\text{LASSO}}$:
+    \begin{equation}
+  \hat{\beta}^{\text{Post-LASSO}} \in \arg \min_{\beta \in
+\mathbb{R}^p} \sum_{i=1}^n \left[ (y_i - {x_i}^{'} \beta)^2 \right] \text{,  где }  \beta_j = 0 \text{, если } \hat{\beta_j} = 0.
+\end{equation}
+\end{enumerate}
+\end{block}
+ 
+ 
+
+
+\end{frame}
+
+
+
+\subsection{Ансамблевые методы}
+\begin{frame}
+\frametitle{\insertsection} 
+\framesubtitle{\insertsubsection}
+\begin{block}{Random Forest}
+    Двухэтапное получение оценок:
+    \begin{enumerate}
+        \item На разных подвыборках данных строится множество решающих деревьев,
+        \item в качестве предсказанного значения $\hat{y_i}$ выбираются усреднённые значения показаний по всем деревьям.
+    \end{enumerate}
+\end{block}
+
+
+\end{frame}
+
+\subsection{Байесовские методы}
+\begin{frame}
+\frametitle{\insertsection} 
+\framesubtitle{\insertsubsection}
+
+\begin{block}{Регрессия пик-плато (Spike-and-slab)}
+
+    \begin{itemize}
+        \item $\beta_j|\tau_j, r^2_j \sim N(0,\tau_j\cdot r^2_j )$
+        \item \begin{equation}
+             \tau_j = 
+ \begin{cases}
+   0 &\text{se $\omega\in A$}\\
+   1 &\text{se $\omega \in A^c$}
+ \end{cases}
+        \end{equation}
+        \item $r^2_j \sim \text{Exp}(\lambda)$ 
+    \end{itemize}
+    
+    
+\end{block}
+
+
+\end{frame}
+
+
+\section{Прогнозирование безработицы}
+\subsection{Описание данных}
+\begin{frame}
+\frametitle{\insertsection} 
+\framesubtitle{\insertsubsection}
+\begin{enumerate}
+    \item Прогнозируемая переменная: уровень безработицы в России (ноябрь 2001 -- декарь 2017),
+    \item Объясняющие переменные: 83 ряда данных, отражающие различные макроэкономические показатели в России, уровень деловой активности и др. (январь 2001 -- декарь 2016).
+\end{enumerate}
+    Обучение моделей ведется на десятилетнем движущемся окне, проверка качества моделей ведется на однолетнем окне для изменения безработицы в период от 1 до 24 месяцев.
+    
+    Все ряды были очищены от сезонных и календарных эффектов и приведены к стационарному виду.
+\end{frame}
+
+\begin{frame}
+\frametitle{\insertsection} 
+\framesubtitle{\insertsubsection}
+\begin{figure*}
+\caption{Безработица в России}
+\includegraphics[width=\linewidth]{unemp_level.pdf}
+\end{figure*}
+\end{frame} 
+
+\subsection{Метод главных компонент}
+\begin{frame}
+\frametitle{\insertsection} 
+\framesubtitle{\insertsubsection}
+PCA: последовательная минимизация суммы квадратов отклонений старых значений от новых или замена матрицы $X_{n \times k}$ на матрицу $\hat{{n \times k}}$ ранга $p < k$, так, чтобы:
+
+\begin{equation}
+    \min \sum_{j = 1}^k \sum_{i = 1}^{n}(x_{ij} - \hat{x_{ij}})^2
+\end{equation}
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{\insertsection} 
+\framesubtitle{\insertsubsection}
+\begin{figure*}
+\caption{Экономика России в двумерном пространстве}
+\includegraphics[width=\linewidth]{pca.pdf}
+\end{figure*}
+\end{frame}  
+
+
+
+\subsection{Базовый бенчмарк}
+\begin{frame}
+\frametitle{\insertsection} 
+\framesubtitle{\insertsubsection}
+    \begin{block}{Модель ARMA(p,q)}
+Для сравнения качества используется модель ARMA(p,q), где p и q выбираются при помощи AIC.
+    \end{block}
+ \end{frame}   
+ 
+
+ \subsection{Метрика качества моделей}
+\begin{frame}
+\frametitle{\insertsection} 
+\framesubtitle{\insertsubsection}
+    \begin{block}{RMSE}
+Для сравнения качества используется метрика RMSE (Root-mean-square error):
+\begin{equation}
+   \text{RMSE} = \sqrt{ \frac{\sum_{t = 1}^{T} (\hat{y_t} - y_t)}{T}} 
+\end{equation}
+
+    \end{block}
+ \end{frame}  
+
+\subsection{Результаты}
+
+
+\begin{frame}
+\frametitle{\insertsection} 
+\framesubtitle{\insertsubsection}
+\begin{figure*}
+\caption{Базовый прогноз}
+\includegraphics[width=\linewidth]{arma.pdf}
+\end{figure*}
+\end{frame}
+
+
+\begin{frame}
+\frametitle{\insertsection} 
+\framesubtitle{\insertsubsection}
+\begin{figure*}
+\caption{Модели с регуляризацией}
+\includegraphics[width=\linewidth]{reg_score.pdf}
+\end{figure*}
+\end{frame}
+
+
+\begin{frame}
+\frametitle{\insertsection} 
+\framesubtitle{\insertsubsection}
+\begin{figure*}
+\caption{Модели с регуляризацией и трансформацией данных с помощью главных компонент}
+\includegraphics[width=\linewidth]{regpc_score.pdf}
+\end{figure*}
+\end{frame}
+
+
+\begin{frame}
+\frametitle{\insertsection} 
+\framesubtitle{\insertsubsection}
+\begin{figure*}
+\caption{Остальные модели}
+\includegraphics[width=\linewidth]{rfss_score.pdf}
+\end{figure*}
+\end{frame}
+
+
+\begin{frame}
+\frametitle{\insertsection} 
+\framesubtitle{\insertsubsection}
+\begin{figure*}
+\caption{Сравнения предсказаний для некоторых моделей (1--9 мес)}
+\includegraphics[width=\linewidth]{bl1.pdf}
+\end{figure*}
+\end{frame}
+
+
+\begin{frame}
+\frametitle{\insertsection} 
+\framesubtitle{\insertsubsection}
+\begin{figure*}
+\caption{Сравнения предсказаний для некоторых моделей (10--18 мес)}
+\includegraphics[width=\linewidth]{bl2.pdf}
+\end{figure*}
+\end{frame}
+ 
+ \frametitle{\insertsection} 
+\framesubtitle{\insertsubsection}
+ \begin{frame}
+\begin{table}[ht]
+\small
+\centering
+\begin{tabular}{lrrrrrr}
+  \hline
+Модель & 1 & 2 & 3 & 4 & 5 & 6 \\ 
+  \hline
+Elastic Net & 0.97 &  & 0.85 &  &  &  \\ 
+  LASSO & 0.97 & 0.85 & 0.85 & 0.86 & 0.84 & 0.83 \\ 
+  LASSO with lag & 0.89 & 0.84 & 0.83 & 0.92 & 0.94 & 1.02 \\ 
+ LASSO with PC & 0.97 & 0.82 & 0.80 & 0.83 & 0.86 & 0.96 \\ 
+ LASSO with PC and lag &0.89 & 0.93 & 1.05 & 1.10 & 1.16 & 1.30 \\ 
+  Post-LASSO & 1.03 & 0.91 & 1.03 & 0.97 & 1.02 & 1.01 \\ 
+ Post-LASSO with lag & 0.95 & 1.02 & 1.09 & 1.15 & 1.32 & 1.59 \\ 
+  Post-LASSO with PC & 1.01 & 0.98 & 0.95 & 1.06 & 1.34 & 1.56 \\ 
+  Post-LASSO with PC  and lag & 1.11 & 0.98 & 1.43 & 1.25 & 1.34 & 1.41 \\ 
+  Random Forest & 1.00 & 0.87 & 0.91 & 0.95 & 0.99 & 1.16 \\ 
+  Ridge & 1.35 & 1.16 & 1.05 & 1.16 & 1.38 & 1.37 \\ 
+  Ridge with PC & 1.43 & 1.31 & 1.27 & 1.18 & 1.17 & 1.17 \\ 
+   Spike-and-Slab & 1.02 & 0.91 & 1.03 & 1.20 & 1.27 & 1.41 \\
+   \hline
+\end{tabular}
+\end{table}
+\end{frame}
+
+ \begin{frame}
+% latex table generated in R 3.5.2 by xtable 1.8-3 package
+% Thu Mar 28 16:06:58 2019
+\begin{table}[ht]
+\small
+\centering
+\begin{tabular}{lrrrrrr}
+  \hline
+  
+Модель & 7 & 8 & 9 & 10 & 11 & 12 \\ 
+  \hline
+Elastic Net &  &  &  &  &  & 1.88 \\ 
+  LASSO & 0.90 & 0.99 & 1.13 & 1.43 & 1.53 & 1.88 \\ 
+  LASSO with lag & 1.12 & 1.15 & 1.20 & 1.40 & 1.54 & 1.88 \\ 
+ LASSO with PC & 1.05 & 1.10 & 1.12 & 1.32 & 1.33 & 1.45 \\ 
+ LASSO with PC and lag &1.50 & 1.58 & 1.55 & 1.78 & 1.85 & 2.04 \\ 
+  Post-LASSO & 1.47 & 1.54 & 1.56 & 1.70 & 1.82 & 2.11 \\ 
+ Post-LASSO with lag & 1.61 & 1.69 & 1.84 & 2.06 & 2.32 & 3.16 \\ 
+  Post-LASSO with PC & 1.61 & 1.53 & 1.52 & 1.82 & 1.85 & 2.05 \\ 
+  Post-LASSO with PC  and lag & 1.94 & 1.94 & 1.91 & 2.15 & 2.07 & 2.45 \\ 
+  Random Forest & 1.06 & 1.05 & 1.02 & 1.16 & 1.34 & 1.26 \\ 
+  Ridge & 1.44 & 1.48 & 1.74 & 2.22 & 2.56 & 3.04 \\ 
+  Ridge with PC & 1.33 & 1.24 & 1.36 & 1.64 & 1.97 & 2.30 \\ 
+  Spike-and-Slab & 1.24 & 1.32 & 1.78 & 2.20 & 2.62 & 3.18 \\
+   \hline
+\end{tabular}
+\end{table}
+\end{frame}
+
+ \begin{frame}
+% latex table generated in R 3.5.2 by xtable 1.8-3 package
+% Thu Mar 28 16:07:55 2019
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{lrrrrrr}
+  \hline
+Модель & 13 & 14 & 15 & 16 & 17 & 18 \\ 
+  \hline
+Elastic Net &  &  &  &  &  &  \\ 
+  LASSO & 1.88 & 1.83 & 1.65 & 1.41 & 1.47 & 1.59 \\ 
+  LASSO with lag & 1.94 & 2.15 & 2.02 & 1.84 & 1.56 & 1.45 \\ 
+ LASSO with PC & 1.53 & 1.59 & 1.50 & 1.44 & 1.47 & 1.61 \\ 
+ LASSO with PC and lag &2.02 & 2.12 & 1.95 & 1.75 & 1.58 & 1.62 \\ 
+  Post-LASSO & 2.34 & 2.48 & 2.70 & 2.47 & 2.60 & 2.79 \\ 
+ Post-LASSO with lag & 3.54 & 3.60 & 3.32 & 3.21 & 2.88 & 2.85 \\ 
+  Post-LASSO with PC & 2.41 & 2.48 & 2.32 & 2.22 & 2.09 & 2.25 \\ 
+  Post-LASSO with PC  and lag & 2.08 & 2.51 & 2.29 & 1.87 & 1.66 & 1.91 \\ 
+  Random Forest & 1.22 & 1.18 & 1.04 & 0.91 & 0.81 & 0.82 \\ 
+  Ridge & 3.27 & 3.50 & 3.37 & 3.10 & 3.00 & 2.94 \\ 
+  Ridge with PC & 2.58 & 2.70 & 2.64 & 2.36 & 2.28 & 2.25 \\ 
+  Spike-and-Slab & 3.47 & 3.51 & 3.49 & 3.16 & 3.18 & 3.07 \\  
+   \hline
+\end{tabular}
+\end{table}
+\end{frame}
+
+
+
+
+\section{Краткий вывод и планы}
+\begin{frame}
+\frametitle{\insertsection} 
+\begin{itemize}
+    \item  Методы снижения размерности (LASSO, Post-LASSO, Ridge, Elastic Net, Random Forest) потенциально представляют собой мощный инструмент для нахождения и проверки макроэкономических зависимостей.
+    \item Из использованных методов лучшие результаты при прогнозировании инфляции в России показывают модели LASSO и Random Forest. На разных горизонтах планирования  (кроме диапазона с 9 до 15 месяцев) хотя бы одна из них показывала лучшие результаты, чем модель-бенчмарк (ARMA).
+\end{itemize}
+   
+    
+\end{frame}
+
+
+
+\begin{frame}[c, plain]
+\begin{center}
+
+{\LARGE Спасибо за внимание}
+
+\bigskip
+
+{\Large \inserttitle}
+
+\bigskip
+
+{\insertauthor} 
+
+\bigskip
+
+\bigskip\bigskip
+
+{\large \insertdate}
+\end{center}
+\end{frame}
+
+
+
+\begin{frame}[c, plain]
+  \frametitle{Источники}    
+  \begin{thebibliography}{8}    
+  \beamertemplatearticlebibitems
+  {\small
+  \bibitem{ch1}
+    Belloni, Alexandre and Chernozhukov, Victor
+    \newblock High dimensional sparse econometric Модельs: An introduction.
+    \newblock Springer, 2011
+   \bibitem{ch2}
+   Belloni, Alexandre, Victor Chernozhukov, and Christian Hansen. 
+   \newblock Lasso methods for gaussian instrumental variables Модельs
+   \newblock 2011
+    \bibitem{bl}
+    Barro, Robert J.  and Lee, Jong-Wha 
+    \newblock Data Set for a Panel of 138 Countries
+    \newblock 1994
+    \bibitem{g}
+     Candes, Emmanuel, and Terence Tao. 
+    \newblock The Dantzig selector: Statistical estimation when p is much larger than n.
+    \newblock The Annals of Statistics 35.6 (2007): 2313-2351.
+    \bibitem{f}
+     Akaike, Hirotugu.
+    \newblock A new look at the statistical Модель identification.
+    \newblock IEEE transactions on automatic control 19.6 (1974): 716-723.
+    \bibitem{s}
+    Единый архив экономических и социологических данных, статистические ряды
+    \newblock http://sophist.hse.ru/hse/nindex.shtml
+    \newblock 
+    }
+  \end{thebibliography}
+\end{frame}
+
+
+
+
+\end{document}

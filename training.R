@@ -21,13 +21,13 @@ load("tfdata.RData")
 
 system.time({
   reglist <- c(map(c("ridge","elnet", "lasso", "post_lasso"),
-                       function(modeli){get.regular.r(df_tf,
+                       function(modeli){get.panel.r(df_tf,
                                                       120,
                                                       12,
                                                       nlead = c(1:24),
                                                       model = modeli)}),
                    map(c("lasso_lag", "post_lasso_lag"),
-                       function(modeli){get.regular.r(df_tf_lag,
+                       function(modeli){get.panel.r(df_tf_lag,
                                                       120,
                                                       12,
                                                       nlead = c(1:24),
@@ -53,13 +53,13 @@ df_pc_lag <- merge.xts(df_tf_lag$UNEMPL_M_SH,xts(pc_list_lag$x, order.by = time(
 
 # теперь посчитаем все регресионные модели для pc
 regpclist <- c(map(c("ridge_pc","elnet_pc", "lasso_pc", "post_lasso_pc"),
-                     function(modeli){get.regular.r(df_pc,
+                     function(modeli){get.panel.r(df_pc,
                                                     120,
                                                     12,
                                                     nlead = c(1:24),
                                                     model = modeli)}),
                  map(c("lasso_pc_lag", "post_lasso_pc_lag"),
-                     function(modeli){get.regular.r(df_pc_lag,
+                     function(modeli){get.panel.r(df_pc_lag,
                                                     120,
                                                     12,
                                                     nlead = c(1:24),
@@ -70,22 +70,22 @@ rm(list = ls())
 
 #### Random Forest ----
 load("tfdata.RData")
-rflist <- list(get.regular.r(df_tf,
+rflist <- list(get.panel.r(df_tf,
                                                   120,
                                                   12,
                                                   nlead = c(1:24),
                                                   model = "rf"))#
-               # get.regular.r(df_tf_lag,
+               # get.panel.r(df_tf_lag,
                #               120,
                #               12,
                #               nlead = c(1:24),
                #               model = "rf_lag"),
-               # get.regular.r(df_pc,
+               # get.panel.r(df_pc,
                #               120,
                #               12,
                #               nlead = c(1:24),
                #               model = "rf_pc"),
-               # get.regular.r(df_pc_lag,
+               # get.panel.r(df_pc_lag,
                #               120,
                #               12,
                #               nlead = c(1:24),
@@ -95,8 +95,8 @@ save(rflist,file= "rflist.RData")
 
 
 # Spike-and-slab ----
-sslist <- list(get.regular.r(df_tf,window = 120, horizon = 12, nlead = c(1:18), model = "ss", niter = 100),
-               get.regular.r(df_pc,window = 120, horizon = 12, nlead = c(1:18), model = "ss_pc", niter = 100))
+sslist <- list(get.panel.r(df_tf,window = 120, horizon = 12, nlead = c(1:18), model = "ss", niter = 100),
+               get.panel.r(df_pc,window = 120, horizon = 12, nlead = c(1:18), model = "ss_pc", niter = 100))
 
 
 save(sslist,file= "sslist.RData")

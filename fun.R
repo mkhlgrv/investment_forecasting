@@ -20,7 +20,7 @@ create.lagv <- function(df, nlag){
 }
 
 
-get.regular.r <- function(df, window, horizon, nlead, model, niter = NULL){
+get.panel.r <- function(df, window, horizon, nlead, model, niter = NULL){
   if(!any(c("zoo", "xts") %in% class(df))){
     stop("df must be 'zoo'")
   }
@@ -58,18 +58,17 @@ get.regular.r <- function(df, window, horizon, nlead, model, niter = NULL){
         if(grepl("rf", model)){
           # Random forest ----
           
-          rf.out <- train(x = X,
-                          y = y,
-                          method = "rf", 
-                          metric = "RMSE",
-                          tuneLength = 5)
-          bestmtry <- rf.out$bestTune[1,1]
           map2(TS$train, TS$test, function(tr, te){
             # разбиваем выборку
             X.train <- X[tr, ]
             X.test <- X[te, ]
             y.train <- y[tr]
             y.test <- y[te]
+            rf.out <- train(x = X.train,
+                            y = y.train,
+                            method = "rf", 
+                            metric = "RMSE")
+            bestmtry <- rf.out$bestTune[1,1]
             m_rf <- randomForest(x = X.train, y = y.train, mtry = bestmtry)
             y.pred <- predict(m_rf, newdata = X.test) %>%
               as.numeric
@@ -84,30 +83,19 @@ get.regular.r <- function(df, window, horizon, nlead, model, niter = NULL){
           }) %>% do.call.pipe(rbind)
           
           
-        } else if(grepl(c("lasso", "ridge", "elnet"),
+        } else if(grepl(c("lasso|ridge|elnet"),
                         model)){
           
           if(grepl("lasso", model)){
-            alpha = 1
+            bestal = 1
           } else if(grepl("ridge", model)){
-            alpha = 0
+            bestal = 0
           } else if(grepl("elnet", model)){
-            alpha = seq(0,1,by = 0.1)
+            bestal = 0.5
           }
-          set.seed(2019)
-          cv.out <- train(x=X,
-                          y=y,
-                          method = "glmnet",
-                          metric = "RMSE",
-                          trControl = tc,
-                          tuneGrid = expand.grid(.alpha = alpha,.lambda = seq(0.1,0.00001,length = 500)))
-          bestlam <- cv.out$bestTune$lambda
-          bestal <- cv.out$bestTune$alpha
           
-          if(bestal %in% c(0,1)& grepl("elnet", model)){
-            message(paste0(model, " for nlead = ", nleadi, " choose alpha = ", bestal))
-            return(NULL)
-          }
+          
+          
           # assign("cv.out", cv.out, envir = globalenv())
           # stop()
           map2(TS$train, TS$test, function(tr, te){
@@ -116,7 +104,35 @@ get.regular.r <- function(df, window, horizon, nlead, model, niter = NULL){
             X.test <- X[te, ]
             y.train <- y[tr]
             y.test <- y[te]
-            m_glm <- glmnet(X.train, y.train, alpha = bestal, lambda = bestlam)
+            
+            if(grepl("pc", model)){
+              pclist <-  prcomp(X.train)
+              X.train <- pclist$x
+              X.test <- predict(pclist, newdata = X.test)
+            }
+            set.seed(2019)
+            cv.out <- train(x=X.train,
+                            y=y.train,
+                            method = "glmnet",
+                            metric = "RMSE",
+                            tuneGrid = expand.grid(.alpha = bestal,.lambda = seq(0.1,0.00001,length = 50)))
+            
+            if(grepl("adaptive", model)){
+              train_ada <- as.data.frame(X.train) %>%
+                mutate(U = y.train)
+              test_ada <-  as.data.frame(X.test) %>%
+                mutate(U = y.test)
+              m_ada <- lm(U~., data = train_ada)
+              w3 <- 1/abs(matrix(coef(m_ada)
+                                 [, 1][2:(ncol(X.train)+1)] ))^1 ## Using gamma = 1
+              w3[w3[,1] == Inf] <- 999999999 ## Replacing values estimated as Infinite for 999999999
+              
+              
+            } else {
+              w3 <- rep(1, ncol(X.train))
+            }
+            bestlam <- cv.out$bestTune$lambda
+            m_glm <- glmnet(X.train, y.train, alpha = bestal, lambda = bestlam, penalty.factor = w3)
             nonzero <- predict(m_glm, type = "nonzero") %>% nrow
             if(is.null(nonzero)){
               nonzero <- 0
@@ -161,7 +177,8 @@ get.regular.r <- function(df, window, horizon, nlead, model, niter = NULL){
           
           
           
-        } else if(grepl("ss", model)){
+        } 
+        else if(grepl("ss", model)){
           
             map2(TS$train, TS$test, function(tr, te){
               set.seed(2019)
@@ -181,7 +198,39 @@ get.regular.r <- function(df, window, horizon, nlead, model, niter = NULL){
                    y.pred= y.pred)
           
           }) %>% do.call.pipe(rbind)
-        } else {stop(paste0(model,": unknown model"))}
+        } else if(grepl("boost", model)){
+          map2(TS$train, TS$test, function(tr, te){
+            # разбиваем выборку
+            X.train <- X[tr, ]
+            X.test <- X[te, ]
+            y.train <- y[tr]
+            y.test <- y[te]
+            tc <- trainControl(method = "cv", number = 5)
+            tune_grid <- expand.grid(nrounds = niter,
+                                     max_depth = c(5),
+                                     eta = c(0.05, 0.1),
+                                     gamma = 1,
+                                     colsample_bytree = 0.75,
+                                     min_child_weight = 0,
+                                     subsample = 0.6)
+            set.seed(2019)
+            bst.out <- train(x = X.train,
+                             y = y.train,
+                             method = "xgbTree", 
+                             metric = "RMSE",
+                             tuneGrid = tune_grid)
+            assign("bst.out", bst.out, envir = global_env())
+            y.pred <- predict(bst.out, X.test)
+            tibble(model = model,
+                   nlead = nleadi,
+                   window = x$window,
+                   horizon = x$horizon,
+                   date = dates[te],
+                   y.true = y.test,
+                   y.pred= y.pred)
+          }) %>% do.call.pipe(rbind) 
+        }
+          else {stop(paste0(model,": unknown model"))}
         
         
       })%>% do.call.pipe(rbind)
