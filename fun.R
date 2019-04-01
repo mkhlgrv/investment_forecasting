@@ -19,7 +19,64 @@ create.lagv <- function(df, nlag){
   df
 }
 
-
+get.stationary.panel <- function(df){
+  dates <- time(df)
+  result <- df %>%
+    as.xts %>%
+    as.list %>%
+    imap(function(x,i){
+      x %<>% na.omit()
+      x_dec <- decompose(x)
+      x <- x_dec$x - x_dec$seasonal
+      # проводим adf test для 
+      # проводим adf test для простой разности
+      d0 <- adf.test(x) %>% .$p.value
+      if(d0<=0.05){
+        type <-  "d0"
+        x_stat <- x
+      } else{
+        d1 <- adf.test(diff.xts(x) %>% na.omit) %>% .$p.value
+        if(d1<=0.05){
+          type <-  "d1"
+          x_stat <- diff.xts(x)
+        } else
+        {
+          log_d1 <- 1
+          try({
+            log_d1 <- adf.test(diff.xts(log(x)) %>% na.omit) %>% .$p.value
+          })
+          if(log_d1<=0.05){
+            type <- "log_d1"
+            x_stat <- diff.xts(log(x))
+          } else{
+            d2 <- adf.test(diff.xts(x, differences = 2) %>% na.omit) %>% .$p.value
+            if(d2<=0.05){
+              type <- "d2"
+              x_stat <- diff.xts(diff.xts(x))
+            } else{
+              # сообщений нет
+              message(i)
+              message(min(c(d0, d1, log_d1, d2)))
+              x_stat = x
+              
+            }
+          }
+        }
+        
+      }
+      x_stat <- as.xts(x_stat)
+      names(x_stat) <- i
+      list(typedf = data.frame(tsname = i, type = type, stringsAsFactors = FALSE),
+           statdf = x_stat)
+    })
+  statdf <- do.call(merge.xts, result %>% map(function(x){
+    x$statdf
+  }))
+  typedf <- result %>% map_dfr(function(x){
+    x$typedf
+  })
+  list(df = statdf, type = typedf)
+}
 get.panel.r <- function(df, window, horizon, nlead, model, niter = NULL){
   if(!any(c("zoo", "xts") %in% class(df))){
     stop("df must be 'zoo'")
@@ -54,18 +111,22 @@ get.panel.r <- function(df, window, horizon, nlead, model, niter = NULL){
                                fixedWindow = TRUE)
         if(grepl("rf", model)){
           # Random forest ----
-          
+            
+          tc <- trainControl(method="repeatedcv", number=5, repeats=3, search="grid")
+          tunegrid <- expand.grid(.mtry=seq(1,20,2))
+          rf.out <- train(x = X[TS$train[[1]], ],
+                          y = y[TS$train[[1]]],
+                          method = "rf", 
+                          metric = "RMSE",
+                          trControl = tc,
+                          tuneGrid = tunegrid)
+          bestmtry <- rf.out$bestTune[1,1]
           map2(TS$train, TS$test, function(tr, te){
             # разбиваем выборку
             X.train <- X[tr, ]
             X.test <- X[te, ]
             y.train <- y[tr]
             y.test <- y[te]
-            rf.out <- train(x = X.train,
-                            y = y.train,
-                            method = "rf", 
-                            metric = "RMSE")
-            bestmtry <- rf.out$bestTune[1,1]
             m_rf <- randomForest(x = X.train, y = y.train, mtry = bestmtry)
             y.pred <- predict(m_rf, newdata = X.test) %>%
               as.numeric
@@ -103,7 +164,7 @@ get.panel.r <- function(df, window, horizon, nlead, model, niter = NULL){
             y.test <- y[te]
             
             if(grepl("pc", model)){
-              pclist <-  prcomp(X.train)
+              pclist <-  prcomp(X.train, scale. = TRUE)
               X.train <- pclist$x
               X.test <- predict(pclist, newdata = X.test)
             }

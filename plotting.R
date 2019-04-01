@@ -1,12 +1,20 @@
 
-load("rawdata_panel.RData")
+rm(list = ls())
+load("reglist.RData")
+load("sslist.RData")
+load("rflist.RData")
+load("bstlist.RData")
+load("arlist.RData")
+load("rawdata.RData")
+load("tfdata.RData")
+source("lib.R")
+source("fun.R")
 unemp.true <- df$UNEMPL_M_SH %>%
   as.data.frame() %>%
   rownames_to_column %>%
   setNames(c("date","y.true")) %>%
   mutate(date = as.yearmon(date))
 # unemp
-load("rawdata.RData")
 unemp_level <-
   ggplot(unemp.true) +
   geom_line(aes(y = y.true, x = date))+
@@ -57,19 +65,20 @@ dev.off()
 
 # LASSO
 
-load("reglist.RData")
+rbind(do.call(rbind, reglist) %>%
+        get.score(type = "regular"))
 ar.score <- get.score(arlist[[2]], "ar")
 reg.score <- 
   rbind(do.call(rbind, reglist) %>%
                     get.score(type = "regular")) %>%
+  filter(model!= "lasso_pc_lag") %>%
   ungroup %>%
-  filter(nlead <=18) %>%
   inner_join(ar.score %>% ungroup %>% select(nlead, rmse), by= "nlead") %>%
   mutate(rmse = rmse.x/rmse.y) %>%
   group_by(model) %>%
   mutate(lasty = rmse[length(rmse)-2]) %>%
   ungroup() %>%
-  filter(model != "elnet") %>%
+  #filter(model != "elnet") %>%
   ggplot()+
   geom_point(aes(x = nlead, y = rmse, colour = model), size = 2)+
   geom_line(aes(x = nlead, y = rmse, colour = model), size = 1)+
@@ -91,7 +100,6 @@ regpc.score <-
 rbind(do.call(rbind, regpclist) %>%
         get.score(type = "regular")) %>%
   ungroup %>%
-  filter(nlead <=18) %>%
   inner_join(ar.score %>% ungroup %>% select(nlead, rmse), by= "nlead") %>%
   mutate(rmse = rmse.x/rmse.y) %>%
   group_by(model) %>%
@@ -117,16 +125,16 @@ load("rflist.RData")
 load("sslist.Rdata")
 ar.score <- get.score(arlist[[2]], "ar")
 rfss.score <- 
-  rbind(get.score(rflist[[1]],type = "rf"),
-        get.score(sslist[[1]],type = "ss")) %>%
+  do.call(rbind, rflist) %>%
+  get.score(type = "rf") %>%
+  rbind(do.call(rbind, sslist) %>%
+          get.score(type = "ss")) %>%
   ungroup %>%
-  filter(nlead <=18) %>%
   inner_join(ar.score %>% ungroup %>% select(nlead, rmse), by= "nlead") %>%
   mutate(rmse = rmse.x/rmse.y) %>%
   group_by(model) %>%
   mutate(lasty = rmse[length(rmse)-2]) %>%
   ungroup() %>%
-  filter(model != "elnet") %>%
   ggplot()+
   geom_point(aes(x = nlead, y = rmse, colour = model), size = 2)+
   geom_line(aes(x = nlead, y = rmse, colour = model), size = 1)+
@@ -145,7 +153,8 @@ dev.off()
 # Best level ----
 
 best_level1 <- 
-  rbind(reglist[[3]] %>% select(-c(bestal, bestlam, nonzero)), sslist[[1]], rflist[[1]] %>% select(-mtry)) %>%
+  rbind(do.call(rbind,map(reglist[c(1,5,4)], function(df) {df%>% select(-c(bestal, bestlam, nonzero, nzvars))})),
+        do.call(rbind,map(rflist, function(df){df %>% select(-mtry) }))) %>%
   filter(nlead <= 9) %>%
   group_by(model, nlead, date) %>%
   mutate(y.pred = mean(y.pred)) %>%
@@ -173,8 +182,9 @@ dev.off()
 
 
 best_level2 <- 
-  rbind(reglist[[3]] %>% select(-c(bestal, bestlam, nonzero)), sslist[[1]], rflist[[1]] %>% select(-mtry)) %>%
-  filter(nlead > 9, nlead <=18) %>%
+  rbind(do.call(rbind,map(reglist[c(1,5,4)], function(df) {df%>% select(-c(bestal, bestlam, nonzero, nzvars))})),
+        do.call(rbind,map(rflist[2], function(df){df %>% select(-mtry) }))) %>%
+  filter(nlead > 9) %>%
   group_by(model, nlead, date) %>%
   mutate(y.pred = mean(y.pred)) %>%
   ungroup() %>%
@@ -189,7 +199,7 @@ best_level2 <-
   na.omit %>%
   ggplot() +
   geom_line(aes(x = date, y = y.true, colour = "Безработица"), size =1) +
-  geom_line(aes(x = date, y = y.pred, colour = model), size = 0.6)+
+  geom_line(aes(x = date, y = y.pred, colour = model), size = 1)+
   labs(y = "Уровень безработицы, %",
        x = "Дата") + theme_bw()+
   guides(colour = guide_legend(title = ""))+
@@ -210,6 +220,50 @@ score_df <- rbind(do.call(rbind, c(regpclist, reglist)) %>%
   select(nlead, model, rmse) %>%
   dcast(model~nlead)
 
+
+
+## nonzero coefs
+# reglist[c(1,4,5)]
+nonzerotime <- rbind(do.call(rbind, reglist)) %>%
+  filter(!model %in% c("lasso_pc_lag","lasso_lag", "ridge")) %>%
+  ungroup %>%
+  group_by(model, nlead, date) %>%
+  summarise(nonzero = mean(nonzero)) %>% 
+  ungroup() %>%
+  ggplot()+
+  geom_line(aes(x = date, y = nonzero, colour = model), size = 1)+
+  facet_wrap(vars(nlead), scales = "free")+
+  labs(y = "Количество ненулевых коэффициентов",
+       x = "Дата") +
+  theme_bw()+
+  guides(colour = guide_legend(title = ""))
+
+cairo_pdf("plot/nonzerotime.pdf", width = 10, height = 5)
+print(nonzerotime)
+dev.off()
+
+
+#nonzeroerror <-
+  rbind(do.call(rbind, reglist)) %>%
+  filter(!model %in% c("lasso_pc_lag","lasso_lag", "ridge")) %>%
+  ungroup %>%
+    mutate(error = (y.true - y.pred)^2) %>%
+    inner_join(arlist[[2]] %>% mutate(ar.error = (y.true - y.pred)^2), by = c("nlead", "date"), suffix = c("", ".y")) %>%
+    #mutate(error = error / ar.error) %>%
+  group_by(model, nlead, date) %>%
+  summarise(nonzero = mean(nonzero),
+            error = mean(error)) %>%
+    ungroup() %>%
+    mutate(nlead = as.numeric(nlead)) %>%
+  ggplot()+
+  geom_point(aes(y = error, x = nonzero, colour = nlead), size = 2, alpha = 0.5)+
+    geom_smooth(aes(y = error, x = nonzero), se = FALSE, method = "lm")+
+  facet_wrap(vars(model), scales = "free")+
+  labs(x = "Количество ненулевых коэффициентов",
+       y = "Относительный квадрат ошибок (логарифмическая шкала)") +
+  theme_bw()+
+    scale_y_continuous(trans='log10')+
+  guides(colour = guide_legend(title = ""))
 
 # #glmneterror <- 
 #   do.call(rbind, reglist) %>%
