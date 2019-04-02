@@ -243,7 +243,7 @@ print(nonzerotime)
 dev.off()
 
 
-#nonzeroerror <-
+nonzeroerror <-
   rbind(do.call(rbind, reglist)) %>%
   filter(!model %in% c("lasso_pc_lag","lasso_lag", "ridge")) %>%
   ungroup %>%
@@ -264,6 +264,47 @@ dev.off()
   theme_bw()+
     scale_y_continuous(trans='log10')+
   guides(colour = guide_legend(title = ""))
+
+cairo_pdf("plot/nonzeroerror.pdf", width = 10, height = 5)
+print(nonzeroerror)
+dev.off()
+
+  
+
+nzmat <- rbind(do.call(rbind, reglist)) %>%
+  select(date, model, nlead, nzvars) %>%
+  arrange(date) %>%
+  unique
+
+for(j in 2:ncol(df_tf)){
+  nzmat[j+3] <- 0
+  for(i in 1:nrow(nzmat)){
+    if(grepl(paste0(" ",j, " "),nzmat$nzvars[i])){
+      nzmat[i,j] <- 1
+    } 
+  }
+}
+colnames(nzmat)[-c(1:4)] <- colnames(df_tf)[-1]
+nzmat %>% 
+  filter(model == "lasso",nlead == 5) %>%
+  select(-nzvars) %>%
+  melt(id.vars = c("date", "model", "nlead")) %>%
+  group_by(date, model, nlead, variable) %>%
+  summarise(value = any(value)) %>%
+  group_by(model, nlead, variable) %>%
+  mutate(nnz = sum(value)) %>%
+  ungroup %>%
+  group_by(model, nlead) %>%
+  filter(nnz != 0, nnz >= quantile(nnz, 0.6)) %>%
+  ggplot() +
+  geom_tile(aes(x = variable, y = date, fill = value))
+  
+  #filter(!model %in% c("lasso_pc_lag","lasso_lag", "ridge")) %>%
+  ungroup %>%
+  mutate(error = (y.true - y.pred)^2) %>%
+  group_by(model, nlead, date) %>%
+  summarise(nonzero = mean(nonzero),
+            error = mean(error))
 
 # #glmneterror <- 
 #   do.call(rbind, reglist) %>%
