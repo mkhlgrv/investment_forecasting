@@ -4,15 +4,36 @@ source("fun.R")
 # Data import ----
 
 ## Pre-import ----
+
+# Индекс реальных инвестиций считается кварртальный только с 2007 года, до этого считался только месячный, поэтому совместим их
+
+#INVFC_Q_DIRI
+#INVFC_M_DIRI
+# эти ряды с одной стороны близки с другой стороны расходятся
+invq <- sophisthse(series.name = c("INVFC_Q_DIRI"), output = "zoo")[,1] 
+invm <- sophisthse(series.name = c("INVFC_M_DIRI"), output = "zoo")[,1]
+
+invm2q <- zoo(x = NA, order.by = zoo::as.yearqtr((time(invm))) %>% unique)
+for(i in seq(1,length(invm),3)){
+  invm2q[(i-1)/3+1] <- sum(invm[i:(i+2)])
+}
+invq-invm2q*87.1/452.6
+invq1 <- rollmean(invm2q*87.1/452.6, 4,fill = list(NA, NULL, NA))
+invq2 <- rollmean(invq, 4,fill = list(NA, NULL, NA))
+ggplot(invq1)+geom_line(aes(y = invq1, x = time(invq1)), color = "blue")+
+  geom_line(data = invq2, aes(x = time(invq2), y = invq2), color = "green")
 # Загрузим дата фрейм (предварительно), что бы было легче определить, какие переменные будем использовать
 series <- series_info %>%
-  filter(freq == 12)
+  filter(freq == 4)
 
-df_raw <- sophisthse(series.name = series$table %>% unique, output = "data.frame")
-df <- df_raw %>%
-  filter(!is.na(UNEMPL_M_SH),
-         `T` >= zoo::as.yearmon("2002-11-01"),
-         `T` <= zoo::as.yearmon("2015-12-01"))
+df_raw <- sophisthse(series.name = series$tsname %>% unique, output = "data.frame")
+
+missmap(df_raw)
+df <- 
+  df_raw %>%
+  filter(!is.na(INVFC_Q), 
+         `T` >= zoo::as.yearqtr("1994-01-01"),
+         `T` <= zoo::as.yearqtr("2019-01-01"))
 
 missmap(df)
 nonmis <- sapply(df, function(y) sum(length(which(is.na(y))))) %>%
@@ -38,11 +59,13 @@ df %<>% select(-nonsa)
 
 # эти ряды будем использовать при скачивании данных формате zoo
 ## Import ----
-df <- sophisthse(series.name = nonmis[which(!nonmis %in% c("T","UNEMPL_M"))], output = "zoo") %>%
-  window(start = zoo::as.yearmon("2001-11-01"),
-       end = zoo::as.yearmon("2017-12-01"))
+df <- sophisthse(series.name = nonmis, output = "zoo") %>%
+  window(start = zoo::as.yearqtr("1994-01-01"),
+       end = zoo::as.yearmon("2018-12-01"))
 # удалим те ряды, у которые есть пара, уже очищенная от сезонности
 df %<>% .[,which(!names(.) %in% nonsa)]
+
+df <- df[,which(names(df) %in% nonmis & ! names(df) %in% nonsa)]
 # сохраним сырые данные
 save(df, file = "rawdata.RData")
 load("rawdata.RData")
