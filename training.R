@@ -1,5 +1,6 @@
 source("lib.R")
 source("fun.R", encoding = "utf8")
+rm(list = ls())
 # Autoregression -----
 # Random Walk and AR(p)
 
@@ -30,7 +31,8 @@ bstlist <- list(get.panel.r(df_tf,
                             model = "boost", niter = 100))
 
 Sys.time()
-  reglist <- c(map(c("ridge","elnet",
+  reglist <- c(map(c("ridge",
+                     "elnet",
                    "lasso",
                    "lasso_pc",
                    "post_lasso",
@@ -73,14 +75,10 @@ rflist <- list(get.panel.r(df_tf,
                            model = "rf"))
 save(rflist,file= "rflist.RData")
 
-
-
 # Spike-and-slab ----
 sslist <- list(get.panel.r(df_tf,window = 120, horizon = 12, nlead = c(1:18), model = "ss", niter = 100))
 
-
 save(sslist,file= "sslist.RData")
-
 
 # boosting ----
 
@@ -90,7 +88,5 @@ bstlist <- list(get.panel.r(df_tf,
                            nlead = c(1:18),
                            model = "boost"))
 save(bstlist,file= "bstlist.RData")
-
-
 
 # важно помнить что результаты 3 и 2 называются одинаково!!!!

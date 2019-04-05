@@ -68,10 +68,11 @@ dev.off()
 rbind(do.call(rbind, reglist) %>%
         get.score(type = "regular"))
 ar.score <- get.score(arlist[[2]], "ar")
-reg.score <- 
+reg.score1 <- 
   rbind(do.call(rbind, reglist) %>%
                     get.score(type = "regular")) %>%
-  filter(model!= "lasso_pc_lag") %>%
+  #filter(model!= "lasso_pc_lag") %>%
+  filter(model %in% c("lasso", "elnet", "ridge")) %>%
   ungroup %>%
   inner_join(ar.score %>% ungroup %>% select(nlead, rmse), by= "nlead") %>%
   mutate(rmse = rmse.x/rmse.y) %>%
@@ -82,41 +83,42 @@ reg.score <-
   ggplot()+
   geom_point(aes(x = nlead, y = rmse, colour = model), size = 2)+
   geom_line(aes(x = nlead, y = rmse, colour = model), size = 1)+
-  geom_label(aes(x = 16, y = lasty, label = model, colour = model)) +
-    labs(y = "RMSE",
-         x = "Горизонт прогноза") +
-    theme_bw()+
-    guides(colour = guide_legend(title = ""))
-
-cairo_pdf("plot/reg_score.pdf", width = 10, height = 5)
-print(reg.score)
-dev.off()
+  labs(y = "RMSE",
+       x = "Горизонт прогноза",
+       title = "Ошибка прогноза для методов с регуляризацией") +
+  theme_bw()+
+  #guides(colour = guide_legend(title = ""))+
+  theme(legend.title = element_blank())
 
 
-# LASSO with PC
-load("regpclist.RData")
-ar.score <- get.score(arlist[[2]], "ar")
-regpc.score <- 
-rbind(do.call(rbind, regpclist) %>%
-        get.score(type = "regular")) %>%
+reg.score2 <- 
+  rbind(do.call(rbind, reglist) %>%
+          get.score(type = "regular")) %>%
+  #filter(model!= "lasso_pc_lag") %>%
+  filter(model %in% c("lasso", "lasso_pc", "lasso_lag", "lasso_adaptive", "post_lasso")) %>%
   ungroup %>%
   inner_join(ar.score %>% ungroup %>% select(nlead, rmse), by= "nlead") %>%
   mutate(rmse = rmse.x/rmse.y) %>%
   group_by(model) %>%
-  mutate(lasty = rmse[length(rmse)-2]) %>%
   ungroup() %>%
-  filter(model != "elnet") %>%
+  #filter(model != "elnet") %>%
   ggplot()+
   geom_point(aes(x = nlead, y = rmse, colour = model), size = 2)+
   geom_line(aes(x = nlead, y = rmse, colour = model), size = 1)+
-  geom_label(aes(x = 16, y = lasty, label = model, colour = model)) +
   labs(y = "RMSE",
-       x = "Горизонт прогноза") +
+        x = "Горизонт прогноза",
+        title = "Ошибка прогноза для методов с регуляризацией") +
   theme_bw()+
-  theme(legend.position = "none")
+  #guides(colour = guide_legend(title = ""))+
+  theme(legend.title = element_blank())
 
-cairo_pdf("plot/regpc_score.pdf", width = 10, height = 5)
-print(regpc.score)
+
+cairo_pdf("plot/reg_score1.pdf", width = 10, height = 5)
+print(reg.score1)
+dev.off()
+
+cairo_pdf("plot/reg_score2.pdf", width = 10, height = 5)
+print(reg.score2)
 dev.off()
 
 
@@ -129,6 +131,8 @@ rfss.score <-
   get.score(type = "rf") %>%
   rbind(do.call(rbind, sslist) %>%
           get.score(type = "ss")) %>%
+  rbind(do.call(rbind, bstlist) %>%
+          get.score(type = "rw")) %>%
   ungroup %>%
   inner_join(ar.score %>% ungroup %>% select(nlead, rmse), by= "nlead") %>%
   mutate(rmse = rmse.x/rmse.y) %>%
@@ -138,11 +142,14 @@ rfss.score <-
   ggplot()+
   geom_point(aes(x = nlead, y = rmse, colour = model), size = 2)+
   geom_line(aes(x = nlead, y = rmse, colour = model), size = 1)+
-  geom_label(aes(x = 16, y = lasty, label = model, colour = model)) +
+  geom_point(aes(x = nlead, y = rmse, colour = model), size = 2)+
+  geom_line(aes(x = nlead, y = rmse, colour = model), size = 1)+
   labs(y = "RMSE",
-       x = "Горизонт прогноза") +
+       x = "Горизонт прогноза",
+       title = "Ошибка прогноза для ансамблевых и байесовских методов") +
   theme_bw()+
-  theme(legend.position = "none")
+  #guides(colour = guide_legend(title = ""))+
+  theme(legend.title = element_blank())
 
 cairo_pdf("plot/rfss_score.pdf", width = 10, height = 5)
 print(rfss.score)
@@ -154,7 +161,7 @@ dev.off()
 
 best_level1 <- 
   rbind(do.call(rbind,map(reglist[c(1,5,4)], function(df) {df%>% select(-c(bestal, bestlam, nonzero, nzvars))})),
-        do.call(rbind,map(rflist, function(df){df %>% select(-mtry) }))) %>%
+        do.call(rbind,map(rflist[2], function(df){df %>% select(-mtry) }))) %>%
   filter(nlead <= 9) %>%
   group_by(model, nlead, date) %>%
   mutate(y.pred = mean(y.pred)) %>%
@@ -169,11 +176,12 @@ best_level1 <-
   },nlead = nlead,y.true = y.true) + y.pred) %>% 
   na.omit %>%
   ggplot() +
-  geom_line(aes(x = date, y = y.true, colour = "Безработица"), size =1) +
-  geom_line(aes(x = date, y = y.pred, colour = model), size = 0.6)+
-  labs(y = "Уровень безработицы, %",
+  geom_line(aes(x = date, y = y.true, colour = "Безработица"), size =1.5) +
+  geom_line(aes(x = date, y = y.pred, colour = model), size = 0.8)+
+  labs(title = "Предсказания безработицы (1-9 мес.)",y = "Уровень безработицы, %",
        x = "Дата") + theme_bw()+
-  guides(colour = guide_legend(title = ""))+
+  #guides(colour = guide_legend(title = ""))+
+  theme(legend.title = element_blank())+
   facet_wrap(vars(nlead), scales = "free")
 
 cairo_pdf("plot/bl1.pdf", width = 10, height = 5)
@@ -198,11 +206,12 @@ best_level2 <-
   },nlead = nlead,y.true = y.true) + y.pred) %>% 
   na.omit %>%
   ggplot() +
-  geom_line(aes(x = date, y = y.true, colour = "Безработица"), size =1) +
-  geom_line(aes(x = date, y = y.pred, colour = model), size = 1)+
-  labs(y = "Уровень безработицы, %",
-       x = "Дата") + theme_bw()+
-  guides(colour = guide_legend(title = ""))+
+  geom_line(aes(x = date, y = y.true, colour = "Безработица"), size =1.5) +
+  geom_line(aes(x = date, y = y.pred, colour = model), size = 0.8)+
+  labs(title = "Предсказания безработицы (10-18 мес.)",y = "Уровень безработицы, %",
+     x = "Дата") + theme_bw()+
+  #guides(colour = guide_legend(title = ""))+
+  theme(legend.title = element_blank())+
   facet_wrap(vars(nlead), scales = "free")
 
 cairo_pdf("plot/bl2.pdf", width = 10, height = 5)
@@ -210,30 +219,36 @@ print(best_level2)
 dev.off()
 
 
-score_df <- rbind(do.call(rbind, c(regpclist, reglist)) %>%
+score_df <- rbind(do.call(rbind, c( reglist)) %>%
                       get.score(type = "regular"),
-                      get.score(rflist[[1]], type = "rf"),
-                  get.score(sslist[[1]], type = "ss")) %>%
+                  do.call(rbind, c( rflist)) %>%
+                    get.score(type = "rf"),
+                  do.call(rbind, c( bstlist)) %>%
+                    get.score(type = "rw"),
+                  do.call(rbind, c( sslist)) %>%
+                    get.score(type = "ss")) %>%
                       ungroup %>%
+  filter(model != "lasso_pc_lag") %>%
                       inner_join(ar.score %>% ungroup %>% select(nlead, rmse), by= "nlead") %>%
                       mutate(rmse = rmse.x/rmse.y) %>%
   select(nlead, model, rmse) %>%
-  dcast(model~nlead)
+  dcast(model~nlead) %>% print(digits = 2)
 
 
 
 ## nonzero coefs
 # reglist[c(1,4,5)]
 nonzerotime <- rbind(do.call(rbind, reglist)) %>%
-  filter(!model %in% c("lasso_pc_lag","lasso_lag", "ridge")) %>%
+  filter(!model %in% c("lasso_pc_lag","lasso_lag", "ridge", "post_lasso")) %>%
+  #filter(model == "lasso") %>%
   ungroup %>%
   group_by(model, nlead, date) %>%
   summarise(nonzero = mean(nonzero)) %>% 
   ungroup() %>%
   ggplot()+
-  geom_line(aes(x = date, y = nonzero, colour = model), size = 1)+
+  geom_line(aes(x = date, y = nonzero, colour = model), size = 0.8)+
   facet_wrap(vars(nlead), scales = "free")+
-  labs(y = "Количество ненулевых коэффициентов",
+  labs(title = "Количество ненулевых коэффициентов \nдля моделей с регуляризацией",y = "Количество ненулевых коэффициентов",
        x = "Дата") +
   theme_bw()+
   guides(colour = guide_legend(title = ""))
@@ -246,6 +261,7 @@ dev.off()
 nonzeroerror <-
   rbind(do.call(rbind, reglist)) %>%
   filter(!model %in% c("lasso_pc_lag","lasso_lag", "ridge")) %>%
+ #filter(model == "lasso") %>%
   ungroup %>%
     mutate(error = (y.true - y.pred)^2) %>%
     inner_join(arlist[[2]] %>% mutate(ar.error = (y.true - y.pred)^2), by = c("nlead", "date"), suffix = c("", ".y")) %>%
@@ -256,20 +272,20 @@ nonzeroerror <-
     ungroup() %>%
     mutate(nlead = as.numeric(nlead)) %>%
   ggplot()+
-  geom_point(aes(y = error, x = nonzero, colour = nlead), size = 2, alpha = 0.5)+
-    geom_smooth(aes(y = error, x = nonzero), se = FALSE, method = "lm")+
-  facet_wrap(vars(model), scales = "free")+
-  labs(x = "Количество ненулевых коэффициентов",
-       y = "Относительный квадрат ошибок (логарифмическая шкала)") +
+  geom_point(aes(y = error, x = nonzero, colour = model), size = 1, alpha = 0.5)+
+    geom_smooth(aes(y = error, x = nonzero,colour = model), se = FALSE, method = "lm")+
+  facet_wrap(vars(nlead), scales = "free")+
+  labs(title = "Распределение ошибок в зависимости от количества включенных \nпеременных для моделей с регуляризацией",x = "Количество ненулевых коэффициентов",
+       y = "Квадрат ошибки (логарифмическая шкала)") +
   theme_bw()+
     scale_y_continuous(trans='log10')+
   guides(colour = guide_legend(title = ""))
 
-cairo_pdf("plot/nonzeroerror.pdf", width = 10, height = 5)
+cairo_pdf("plot/nonzeroerror.pdf", width = 14, height = 7)
 print(nonzeroerror)
 dev.off()
 
-  
+
 
 nzmat <- rbind(do.call(rbind, reglist)) %>%
   select(date, model, nlead, nzvars) %>%
@@ -279,32 +295,57 @@ nzmat <- rbind(do.call(rbind, reglist)) %>%
 for(j in 2:ncol(df_tf)){
   nzmat[j+3] <- 0
   for(i in 1:nrow(nzmat)){
-    if(grepl(paste0(" ",j, " "),nzmat$nzvars[i])){
-      nzmat[i,j] <- 1
+    if(grepl(paste0(" ",j-1, " "),nzmat$nzvars[i])){
+      nzmat[i,j+3] <- 1
     } 
   }
 }
 colnames(nzmat)[-c(1:4)] <- colnames(df_tf)[-1]
-nzmat %>% 
-  filter(model == "lasso",nlead == 5) %>%
+nzheatmap1 <- nzmat %>% 
+  filter(model == "lasso",nlead %in% c(1:6)) %>%
   select(-nzvars) %>%
   melt(id.vars = c("date", "model", "nlead")) %>%
   group_by(date, model, nlead, variable) %>%
   summarise(value = any(value)) %>%
   group_by(model, nlead, variable) %>%
-  mutate(nnz = sum(value)) %>%
+  mutate(nnz = sum(value)) %>% 
   ungroup %>%
   group_by(model, nlead) %>%
-  filter(nnz != 0, nnz >= quantile(nnz, 0.6)) %>%
+  filter(nnz != 0 & nnz >= quantile(nnz, 0.6)) %>%
   ggplot() +
-  geom_tile(aes(x = variable, y = date, fill = value))
-  
+  geom_tile(aes(y = variable, x = date, fill = value),colour = "grey") +
+  scale_fill_manual(values = c("white", "steelblue")) +
+  facet_wrap(vars(nlead), scales = "free_y")  +
+  labs(x = "Дата", y = "Переменная", title = "Включение переменных в модель LASSO для горизонта прогноза от 1 до 6 мес.")
+
+cairo_pdf("plot/nzheatmap1.pdf", width = 12, height = 7)
+print(nzheatmap1)
+dev.off()
+
+# error histogram
+#errordens <-
+  do.call(rbind, rflist) %>%
+    select(model, nlead, date, y.true, y.pred) %>%
+  rbind(do.call(rbind, sslist) %>%
+    select(model, nlead, date, y.true, y.pred)) %>%
+  rbind(do.call(rbind, bstlist) %>%
+    select(model, nlead, date, y.true, y.pred) )%>%
+  rbind(do.call(rbind, reglist) %>%
+    select(model, nlead, date, y.true, y.pred)) %>%
   #filter(!model %in% c("lasso_pc_lag","lasso_lag", "ridge")) %>%
+    #filter(model %in% c("lasso","lasso_lag", "lasso_adaptive", "post_lasso")) %>%
+    #filter(model %in% c("lasso", "ridge", "elnet")) %>%
+    filter(model %in% c("rf", "rf_unt", "boost")) %>%
+    
+  #filter(model == "lasso") %>%
   ungroup %>%
-  mutate(error = (y.true - y.pred)^2) %>%
-  group_by(model, nlead, date) %>%
-  summarise(nonzero = mean(nonzero),
-            error = mean(error))
+  mutate(error = abs(y.pred - y.true)) %>% 
+  ggplot() +
+  stat_summary(fun.y = "median",aes(y = error, x = date, colour = model), geom = "line", size = 0.9)+
+  #geom_smooth(aes(y = error, x = date, colour = model)) +
+  facet_wrap(vars(nlead), scales = "free")
+
+print(errordens)
 
 # #glmneterror <- 
 #   do.call(rbind, reglist) %>%
