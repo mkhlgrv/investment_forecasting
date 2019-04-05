@@ -45,35 +45,51 @@ tsnames <- series_info$table %>%
   mutate(minf = min(freq), maxf = max(freq), meaf = median(freq)) %>%
   filter(!(minf == 1& maxf == 1)) %>%
   #filter(minf == 12) %>%
-  filter(!grepl("20", unit),
+  filter(
          !grepl("SA", tsname)) %>%
   #filter(!grepl(pattern = "_Y_|_Y$", table)) %>%
   unique()
-tsnames4 <- tsnames %>% filter(freq == 4)
-tsnames12 <-tsnames %>% filter(minf == 12) 
+tsnames4 <- tsnames %>% filter(!grepl("20", unit),freq == 4)
+tsnames12 <- tsnames %>% filter(minf == 12,!grepl("19", unit))
 tsnames4 %>% group_by(tabname) %>% filter(n()>1) %>% View
-df_raw <- sophisthse(series.name = series$tsname %>% unique, output = "zoo")%>% as.xts()
-missmap(df_raw)
-df_raw %>% as.xts %>% .['1995-01/2018-04'] %>% missmap
+# список квартальных переменных, которые надо исключить из рассмотрения
+# c("UNEMPL_Q","GDP_Q_C", "IND_Q", "CNSTR_Q_M", "CONSTR_C_Q", "TRP_Q_CARG", "RTRD_Q", "WAG_C_Q", "HHI_Q", "	INVFC_Q", "INVFC_Q_DIRI")
+# такой же список для месячных переменных
+tsnames12 %>% View
+# "OILREF_C" в названии ошибка поэтому надо использовать "OILREF_C_SA"
 
-nonmis <- sapply(df, function(y) sum(length(which(is.na(y))))) %>%
+df_raw4 <- sophisthse(series.name = tsnames4$tsname %>% unique, output = "zoo")%>% as.xts()
+df4 <- df_raw4[,which(colnames(df_raw4) %in% (tsnames4$tsname %>% unique)&
+                 !colnames(df_raw4) %in% c("UNEMPL_Q","GDP_Q_C", "IND_Q", "CNSTR_Q_M",
+                                           "CONSTR_C_Q", "TRP_Q_CARG", "RTRD_Q", "WAG_C_Q",
+                                           "HHI_Q", "INVFC_Q", "INVFC_Q_DIRI"))] %>%
+  as.xts %>% .['1994-01/2019-01']
+
+nonmis <- sapply(df4, function(y) sum(length(which(is.na(y))))) %>%
   data.frame %>%
   rownames_to_column("tname") %>%
-  filter(`.` == 0) %>%
+  filter(`.` <2) %>%
   pull(tname)
+df_long <- df4
+df4_20 <- df4 %>% .['2000-01/2019-01']
+# работа в двух вариантах с использованием рядов с 2000 и без использования
 
 
-df[,nonmis] %>% missmap
-# пропущенных значений нет
-missmap(df)
-# теперь определим ряды, у которых уже есть пара в виде очищенного от сезонности ряда
-nonsa <- expand.grid(cn1 = colnames(df[,-1]), cn2 = colnames(df[,-1]), stringsAsFactors = FALSE) %>%
-  as_tibble %>%
-  mutate(remove = ifelse(cn1 == paste0(cn2, "_SA"),cn2, ifelse(cn2 == paste0(cn1, "_SA"),cn1, NA))) %>%
-  na.omit %>%
-  pull(remove) %>%
-  unique # добавим время и UNEMPL_M
-df <- df[,which(colnames(df) %in% nonmis &! colnames(df) %in% c(nonsa,"INVFC_Q_DIRI_SA"))]
+# возможно стоит  пересмотреть подход к nonmis data и быть более толерантным к пропускам
+df_raw12 <- sophisthse(series.name = tsnames12$tsname %>% unique, output = "zoo")%>% as.xts()
+df12 <- df_raw12[,which(colnames(df_raw12) %in% c(tsnames12$tsname %>% unique))] %>%
+  as.xts %>% .['2000-01/2019-01']
+df_short <- merge.xts(df4_20, df12 %>%
+  as.list() %>%
+  imap(function(y, namei){
+  out <- zoo(x = NA, order.by = zoo::as.yearqtr((time(df4_20))))
+  for(i in seq(1,length(y),3)){
+    out[(i-1)/3+1] <- sum(y[i:(i+2)])
+  } 
+  out %<>% xts()
+  names(out) <- namei
+  out
+}) %>% do.call.pipe(merge.xts))
 
 # получим 35 рядов
 
