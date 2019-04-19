@@ -1,12 +1,12 @@
-# Dimensionality Reduction in Macroeconomics
+# Investment Forecasting Using Dimensionality Reduction
 ## Mikhail Gareev
 
-- Models: Ridge, LASSO, Post-LASSO, Elastic Network, Random forest, Spike-and-Slab,
+- Models: Ridge, LASSO, Post-LASSO, Adaptive-LASSO, PCA, Elastic Network, Random forest, Spike-and-Slab, Boosting;
 
-- Benchmark: AR(p),
+- Benchmark: AR(p);
 
-- Target: Net Investment,
+- Target: Net Investment;
 
-- Data: Russia macroeconomics statistics (1994.I- 2017.IV),
+- Data: Russia macroeconomics statistics (1994.I- 2017.IV);
 
 - Data sourse: [HSE](http://sophist.hse.ru).
