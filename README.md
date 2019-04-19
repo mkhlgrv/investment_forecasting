@@ -5,7 +5,7 @@
 
 - Benchmark: AR(p);
 
-- Target: Net Investment;
+- Target: Investment;
 
 - Data: Russia macroeconomics statistics (1994.I- 2017.IV);
 
