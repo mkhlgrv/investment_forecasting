@@ -5,8 +5,8 @@
 
 - Benchmark: AR(p);
 
-- Target: Investment;
+- Target: Russian quarterly investment;
 
-- Data: Russia macroeconomics statistics (1994.I- 2017.IV);
+- Data: Russian macroeconomics statistics (1994.I- 2017.IV);
 
 - Data sourse: [HSE](http://sophist.hse.ru).
