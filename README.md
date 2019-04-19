@@ -1,12 +1,12 @@
-# High Dimensional Sparce Economentric Models in Macroeconomics
+# Dimensionality Reduction in Macroeconomics
 ## Mikhail Gareev
 
 - Models: Ridge, LASSO, Post-LASSO, Elastic Network, Random forest, Spike-and-Slab,
 
 - Benchmark: AR(p),
 
-- Target: Russia uneployment rate,
+- Target: Net Investment,
 
-- Data: Russia macroeconomics statistics (Nov 2001- Dec 2017),
+- Data: Russia macroeconomics statistics (1994.I- 2017.IV),
 
 - Data sourse: [HSE](http://sophist.hse.ru).
