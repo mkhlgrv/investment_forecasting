@@ -1,12 +1,10 @@
-# High Dimensional Sparce Economentric Models in Macroeconomics
+# Investment Forecasting Using Dimensionality Reduction
 ## Mikhail Gareev
 
-- Models: Ridge, LASSO, Post-LASSO, Elastic Network, Random forest, Spike-and-Slab,
+- Models: Ridge, LASSO, Post-LASSO, Adaptive-LASSO, PCA, Elastic Network, Random forest, Spike-and-Slab;
 
-- Benchmark: AR(p),
+- Traditional benchmarks: Accelerator, Neoclaassical model, Tobin q model, AR model;
 
-- Target: Russia uneployment rate,
+- Data: Russian macroeconomics statistics (2000.I- 2018.IV);
 
-- Data: Russia macroeconomics statistics (Nov 2001- Dec 2017),
-
-- Data sourse: [HSE](http://sophist.hse.ru).
+- Data sourse: [HSE](http://sophist.hse.ru), [Rosstat](http://www.gks.ru), [CBR](https://www.cbr.ru).
