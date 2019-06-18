@@ -219,21 +219,25 @@ df_short <- merge.xts(df_short,bankrate)
 df_short$bankrate["2000-01/2000-06"] <- c(20,15)
 
 
+# oil -----
 
+library(readxl)
+oil <- read_excel("data/oil.xlsx", col_types = c("date", 
+                                                 "numeric")) %>% as.list() %>%
+  map_dfc(function(x){rev(x)})
+oil <- xts(oil$`oil brent`, order.by = oil$date %>% as.yearqtr) %>% set_colnames("oil")
 
+df_short <- merge.xts(df_short, oil)
 save(df_long, df_short, file = "rawdata.RData")
 load("rawdata.RData")
 rm(list=ls())
 
-
-
-# 
 # 
 # todel <- c()
-# for(i in 1:nrow(df_long)){
-#   if(all(is.na(df_long[i,]))){
+# for(i in 1:nrow(df_short)){
+#   if(all(is.na(df_short[i,]))){
 #     todel <- c(todel,i)
 #   }
 # }
-# df_long <- df_long[-todel,]
-
+# df_short <- df_short[-todel,]
+# 
