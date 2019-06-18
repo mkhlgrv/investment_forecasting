@@ -515,7 +515,7 @@ ertab2 <- check.normal(outall %>% filter(model != "Accelerator")) %>%
   print(include.rownames = FALSE)
 
 
-df_long %>%
+df_short %>%
   as.data.frame() %>%
   melt %>%
 inner_join(series_info %>% select(tsname, fullname), by = c("variable" ="tsname")) %>%
