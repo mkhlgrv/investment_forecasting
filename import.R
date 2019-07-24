@@ -71,12 +71,12 @@ nonmis_long <- sapply(df4, function(y) sum(length(which(is.na(y))))) %>%
   filter(`.` <2) %>%
   pull(tname)
 df_long <- df4[,nonmis_long]
-df4_20 <- df4 %>% .['2000-01/2019-01']
+df4_20 <- df4 %>% .['1994-01/2019-01']
 # работа в двух вариантах с использованием рядов с 2000 (df_short) и без использования (df_long)
 
 df_raw12 <- sophisthse(series.name = tsnames12$tsname %>% unique, output = "zoo")
 df12 <- df_raw12[,which(colnames(df_raw12) %in% c(tsnames12$tsname %>% unique))] %>%
-  as.xts %>% .['2000-01/2019-01']
+  as.xts %>% .['1994-01/2019-01']
 df_short <- merge.xts(df4_20, df12 %>%
   as.list() %>%
   imap(function(y, namei){
@@ -107,19 +107,19 @@ gdp <-gdp_raw%>% as.xts %>% .[,"GDPEA_Q_DIRI"]
 
 # merge with gdp
 df_long <- merge.xts(df_long, gdp) 
-df_short <- merge.xts( df_short, gdp['2000-01/2019-01'])
+df_short <- merge.xts( df_short, gdp['1994-01/2019-01'])
 
 
 # merge with investment
 df_long <- merge.xts(investment_raw, df_long) 
-df_short <- merge.xts(investment_raw['2000-01/2019-01'], df_short)
+df_short <- merge.xts(investment_raw['1994-01/2019-01'], df_short)
 
 # rts
-
-rts <- read_csv("RTSI-dailyhistory.csv") %>%
-  mutate(Date = as.Date(Date, format = "%d.%m.%Y") %>% as.yearqtr()) %>%
-  group_by(Date) %>% filter(row_number()==1) %>% select(1,4) %>% set_names(c("date", "rts"))
-df_short <- merge.xts(df_short, xts(rts[,2], order.by = rts$date))
+# 
+# rts <- read_csv("RTSI-dailyhistory.csv") %>%
+#   mutate(Date = as.Date(Date, format = "%d.%m.%Y") %>% as.yearqtr()) %>%
+#   group_by(Date) %>% filter(row_number()==1) %>% select(1,4) %>% set_names(c("date", "rts"))
+# df_short <- merge.xts(df_short, xts(rts[,2], order.by = rts$date))
 
 # russian 3 month bills
 
@@ -209,35 +209,20 @@ time(gko) %<>% yearqtr()
 df_short$gov["2000-01/2001-01"] <- gko$GKO_M["2000-01/2001-01"]
 
 
-# bank rate
-bankrate <- read_delim("data/bankrate.csv", 
-                       ";", escape_double = FALSE, col_types = cols(`Дата` = col_date(format = "%d.%m.%Y")), 
-                       trim_ws = TRUE) %>% set_names(c("date", "bankrate")) %>% arrange(date)
-bankrate %<>% mutate(date = as.yearqtr(date)) %>% group_by(date) %>% filter(row_number()==max(row_number()))
-bankrate <- xts(bankrate[,2], order.by = bankrate$date)
-df_short <- merge.xts(df_short,bankrate)
-df_short$bankrate["2000-01/2000-06"] <- c(20,15)
+# # bank rate
+# bankrate <- read_delim("data/bankrate.csv", 
+#                        ";", escape_double = FALSE, col_types = cols(`Дата` = col_date(format = "%d.%m.%Y")), 
+#                        trim_ws = TRUE) %>% set_names(c("date", "bankrate")) %>% arrange(date)
+# bankrate %<>% mutate(date = as.yearqtr(date)) %>% group_by(date) %>% filter(row_number()==max(row_number()))
+# bankrate <- xts(bankrate[,2], order.by = bankrate$date)
+# df_short <- merge.xts(df_short,bankrate)
+# df_short$bankrate["2000-01/2000-06"] <- c(20,15)
+# 
+# 
+# 
 
 
-# oil -----
-
-library(readxl)
-oil <- read_excel("data/oil.xlsx", col_types = c("date", 
-                                                 "numeric")) %>% as.list() %>%
-  map_dfc(function(x){rev(x)})
-oil <- xts(oil$`oil brent`, order.by = oil$date %>% as.yearqtr) %>% set_colnames("oil")
-
-df_short <- merge.xts(df_short, oil)
 save(df_long, df_short, file = "rawdata.RData")
 load("rawdata.RData")
 rm(list=ls())
 
-# 
-# todel <- c()
-# for(i in 1:nrow(df_short)){
-#   if(all(is.na(df_short[i,]))){
-#     todel <- c(todel,i)
-#   }
-# }
-# df_short <- df_short[-todel,]
-# 
