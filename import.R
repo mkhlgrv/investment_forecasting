@@ -164,3 +164,14 @@ mkr$`1d_old` <- mkr$`2-7_old` <- NULL
 
 # необходимо перевести дневные данные в квартальные
 
+mkr %<>%
+  as.data.frame %>%
+  rownames_to_column('date') %>%
+  group_by(date %>% as.Date %>% as.yearqtr) %>%
+  summarise(mkr_1d = mean(`1d`, na.rm=TRUE),
+            mkr_7d = mean(`7d`, na.rm=TRUE)) %>%
+  as.data.frame %>%
+  xts(x=.[,-1],order.by=.[,1])
+
+# загрузка данных по гособлигациям
+
