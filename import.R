@@ -5,13 +5,6 @@ source("lib.R")
 # доходность ртс, процентные ставки на межбанковском рынке, спреды по облигациям,
 # темпы роста номинального эффективного курса, реального эффективного курса, прирост цен на нефть,
 # 4 разность логарифма ВВП и ИПЦ, отношение номинальных инвестиций к номинальному ввп + лаги
-# rts начинается с 1995 Q3
-# bankrate с 2000 Q1
-# спреды по облигацяим? пока нет
-# темпы роста номинального эффективного курса пока нет
-# реального эффективного курса тоже пока нет
-# цены на нефть
-# df_short$oil начинается с 1995Q3 (точно)
 
 # загрузка данных sophisthse ----
 sophist_series <- c('UNEMPL_Q_SH',# безработица
@@ -59,7 +52,7 @@ sophist_series <- c('UNEMPL_Q_SH',# безработица
                     'PPI_EA_Q' # (после 2004-01)
 )
 sophistdata <- sophisthse(series.name = sophist_series,
-                          output = 'zoo')
+                          output = 'zoo') %>% as.xts
 sophistdata <- sophistdata[, which(colnames(sophistdata) %in% sophist_series)]
 # заменяем значения в колонках для индекса реального ввп и для номинального ввп
 sophistdata$GDPEA_Q_DIRI[which(is.na(sophistdata$GDPEA_Q_DIRI))] <-
@@ -76,8 +69,87 @@ sophistdata$PPI_EA_Q[which(is.na(sophistdata$PPI_EA_Q))] <-
 sophistdata$PPI_Q_CHI <- NULL
 
 
-# не достает: квартальный дефлятор, сами инвестиции, банковские ставки, эффективный курс, спреды по облигациям (?)
-# амортизация
+# загрузка индекса реальных инвестиций ----
+
+
+# первая часть данных -- с 1995-01 по 2008-12
+url <- 'http://www.gks.ru/free_doc/new_site/vvp/kv/tab29arh.xls'
+
+GET(url, write_disk(tf <- tempfile(fileext = ".xls")))
+
+inv1 <- read_excel(tf, 1L,skip=14, col_names = FALSE) %>%
+  .[1,-1] %>%
+  t %>%
+  as.numeric %>%
+  xts(x = .,
+      order.by = seq(as.Date('1995-01-01'),
+                     by = 'quarter',
+                     length.out = length(.)) %>% as.yearqtr) %>%
+  set_colnames('investment')
+
+# вторая часть данных -- с 2003-01 по 2011-12
+# внутри есть примечания вида 2)
+# их надо удалить
+url <- 'http://www.gks.ru/free_doc/new_site/vvp/kv/tab29.xls'
+
+GET(url, write_disk(tf <- tempfile(fileext = ".xls")))
+
+inv2 <- read_excel(tf, 1L,skip=13, col_names = FALSE) %>%
+  .[1,-1] %>%
+  t %>%
+  gsub(pattern = "2)",
+       replacement = "",
+       x = .) %>%
+  gsub(pattern = ",",
+       replacement = ".",
+       x = .) %>%
+  as.numeric %>%
+  xts(x = .,
+      order.by = seq(as.Date('2003-01-01'),
+                     by = 'quarter',
+                     length.out = length(.)) %>% as.yearqtr) %>%
+  set_colnames('investment')
+
+# 3 часть данных -- с 2011-01 по 2016-12
+url <- 'http://www.gks.ru/free_doc/new_site/vvp/kv/tab29a.xls'
+
+GET(url, write_disk(tf <- tempfile(fileext = ".xls")))
+
+inv3 <- read_excel(tf, 1L,skip=12, col_names = FALSE) %>%
+  .[1,-1] %>%
+  t %>%
+  as.numeric %>%
+  xts(x = .,
+      order.by = seq(as.Date('2011-01-01'),
+                     by = 'quarter',
+                     length.out = length(.)) %>% as.yearqtr) %>%
+  set_colnames('investment')
+
+# 4 часть данных -- с 2014-01
+
+url <- 'http://www.gks.ru/free_doc/new_site/vvp/kv/tab29b.xls'
+
+GET(url, write_disk(tf <- tempfile(fileext = ".xls")))
+
+inv4 <- read_excel(tf, 1L,skip=12, col_names = FALSE) %>%
+  .[1,-1] %>%
+  t %>%
+  as.numeric %>%
+  xts(x = .,
+      order.by = seq(as.Date('2014-01-01'),
+                     by = 'quarter',
+                     length.out = length(.)) %>% as.yearqtr) %>%
+  set_colnames('investment')
+
+# привести в соответствие со последующим индексом
+inv3[,1] <- (inv3[,1])*(inv4['2014-01',1] %>% as.numeric)/(inv3['2014-01',1] %>% as.numeric)
+inv2[,1] <- (inv2[,1])*(inv3['2011-01',1] %>% as.numeric)/(inv2['2011-01',1] %>% as.numeric)
+inv1[,1] <- (inv1[,1])*(inv2['2003-01',1] %>% as.numeric)/(inv1['2003-01',1] %>% as.numeric)
+
+inv <- rbind(inv1['1995-01/2002-12'], inv2['2003-01/2010-12'],inv3['2011-01/2013-12'],
+             inv4['2014-01/2020-1'])
+
+inv <- inv*100/(inv %>% first %>% as.numeric)
 
 # загрузка квартального дефлятора ----
 # росстат представляет данные в % по отношению к соответствующему кварталу прошлого года
@@ -103,10 +175,11 @@ def2 <- read_excel(tf2, 1L, skip = 5, col_names = FALSE)%>%
   as.numeric
 
 # склеиваем дефлятор
-xts(c(def1, def2),
+def <- xts(c(def1, def2),
     order.by = seq(as.Date('1996-01-01'),
                    by = 'quarter',
-                   length.out = length(c(def1, def2))) %>% as.yearqtr)
+                   length.out = length(c(def1, def2))) %>% as.yearqtr) %>%
+  set_colnames("deflator")
 
 # Загрузка ставок мбр ----
 
@@ -163,6 +236,8 @@ mkr$`7d`[which(is.na(mkr$`7d`))] <- mkr$`2-7_old`[which(is.na(mkr$`7d`))]
 mkr$`1d_old` <- mkr$`2-7_old` <- NULL
 
 # необходимо перевести дневные данные в квартальные
+# первый вариант - средние за квартал (реализован)
+# второй вариант - на последнюю дату квартала
 
 mkr %<>%
   as.data.frame %>%
@@ -173,5 +248,104 @@ mkr %<>%
   as.data.frame %>%
   xts(x=.[,-1],order.by=.[,1])
 
-# загрузка данных по гособлигациям
+# загрузка данных по гособлигациям ----
+# данные не по всем облигациям есть с 1995
+# зато для того времени есть данные по ГКО (месячные)
 
+gko <- sophisthse('GKO_M', 'zoo')[,'GKO_M'] %>%
+  as.xts %>%
+  na.locf
+
+gko %>% .[mod(month(time(.)), 3)==0,]
+
+time(gko) <- as.yearqtr(time(gko))
+
+# с 2004 года вместо ГКО в ряду используется доходность ОБР (можно удалить)
+gko['2004-01/2019-12'] <- NA
+
+# данные по доходности 6-месячных облигаций есть с 1995-03
+# https://ru.investing.com/rates-bonds/russia-6-month-bond-yield-historical-data
+# (скачать недельные (из-за дат). Порядок изменения файлов csv (через блокнот):
+# 1. "," -> ;
+# 2. , -> .
+# 3. ; -> ,
+# 4. " -> 
+# 5. % -> 
+
+gov_6m <- import('data/gov_6m.csv') %>%
+  set_colnames(c("date", 'close', 'open', 'max','min', 'change')) %>%
+  mutate(date = as.Date(date, format = "%d.%m.%Y")) %>%
+  as.data.frame %>%
+  group_by(as.yearqtr(date)) %>%
+  filter(row_number() == min(row_number())) %>%
+  as.data.frame %>%
+  xts(x=.[,2],order.by=.[,1] %>% as.yearqtr) %>%
+  set_colnames('gov_6m')
+
+
+# данные по доходности годовых облигаций --- с 2001-08
+# https://ru.investing.com/rates-bonds/russia-1-year-bond-yield-historical-data
+# изменить файл аналогично предыдущей инструкции
+# 1. "," -> ;
+# 2. , -> .
+# 3. ; -> ,
+# 4. " -> 
+# 5. % -> 
+gov_1y <- import('data/gov_1y.csv') %>%
+  set_colnames(c("date", 'close', 'open', 'max','min', 'change')) %>%
+  mutate(date = as.Date(date, format = "%d.%m.%Y")) %>%
+  as.data.frame %>%
+  group_by(as.yearqtr(date)) %>%
+  filter(row_number() == min(row_number())) %>%
+  as.data.frame %>%
+  xts(x=.[,2],order.by=.[,1] %>% as.yearqtr) %>%
+  set_colnames('gov_1y')
+
+
+
+# 3-летних --- с 2001-03
+# https://ru.investing.com/rates-bonds/russia-3-year-bond-yield-historical-data
+# изменить файл аналогично предыдущей инструкции
+# 1. "," -> ;
+# 2. , -> .
+# 3. ; -> ,
+# 4. " -> 
+# 5. % -> 
+
+gov_3y <- import('data/gov_3y.csv') %>%
+  set_colnames(c("date", 'close', 'open', 'max','min', 'change')) %>%
+  mutate(date = as.Date(date, format = "%d.%m.%Y")) %>%
+  as.data.frame %>%
+  group_by(as.yearqtr(date)) %>%
+  filter(row_number() == min(row_number())) %>%
+  as.data.frame %>%
+  xts(x=.[,2],order.by=.[,1] %>% as.yearqtr) %>%
+  set_colnames('gov_3y')
+gov <- merge.xts(gov_6m, gov_1y, gov_3y)
+
+
+# загрузка данных из bloomberg (цена нефти, эффективный обменный курс и индекс RTS) ----
+# Квартальные данные
+# файл bloomberg.csv 
+
+# Russia Real Effective Exchange Rate Broad (BISBUR)
+# Russia Nominal Effecive Exchange Rate (BISBRUN)
+# CO1 Comdty (Oil Brent) last price
+# RTS last price
+
+# сохранить excel как csv
+# действия:
+# 1. , -> .
+# 2. ; -> ,
+bloomberg <- import('data/bloomberg.csv') %>%
+  set_colnames(c("date", 'reer', 'neer', 'oil','rts')) %>%
+  mutate(date = as.Date(date, format = "%d.%m.%Y") %>% as.yearqtr) %>%
+  xts(x=.[,-1],order.by=.[,1])
+
+
+# конечная склейка данных ----
+
+rawdata <- merge.xts(inv,sophistdata, def, mkr, gov, bloomberg)
+save(rawdata, file = "data/raw.RData")
+export(rawdata, 'data/raw.csv', 'csv', row.names = TRUE)
+rm(list=ls())
