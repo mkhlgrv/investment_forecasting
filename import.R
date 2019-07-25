@@ -205,7 +205,6 @@ mkr1 <- import('data/mkr_old.csv') %>%
   # в данных за 1996--2000 есть повторы
   .[!duplicated(time(.))]
 
-mkr1 %>% autoplot
 # без серьезных пропусков есть только данные:
 # 1d, 7d, 14d, 30d
 
@@ -221,7 +220,7 @@ mkr2 <- import('data/mkr.csv') %>%
   mutate(date=as.Date(date,format = '%d.%m.%Y')) %>%
   xts(x = .[,-1],order.by =  .[,1])
 
-mkr2 %>% autoplot
+
 # без серьезных пропусков есть только данные:
 # 1d, 2-7d,
 # от 8 до 365 данные обновляются очень редко (или почти никогда)
@@ -254,9 +253,10 @@ mkr %<>%
 
 gko <- sophisthse('GKO_M', 'zoo')[,'GKO_M'] %>%
   as.xts %>%
-  na.locf
+  na.locf %>%
+  set_colnames('GKO')
 
-gko %>% .[mod(month(time(.)), 3)==0,]
+gko %<>% .[mod(month(time(.)), 3)==0,]
 
 time(gko) <- as.yearqtr(time(gko))
 
@@ -345,7 +345,7 @@ bloomberg <- import('data/bloomberg.csv') %>%
 
 # конечная склейка данных ----
 
-rawdata <- merge.xts(inv,sophistdata, def, mkr, gov, bloomberg)
+rawdata <- merge.xts(inv,sophistdata, def, mkr, gov,gko, bloomberg)
 save(rawdata, file = "data/raw.RData")
 export(rawdata, 'data/raw.csv', 'csv', row.names = TRUE)
 rm(list=ls())
