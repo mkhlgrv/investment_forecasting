@@ -1,228 +1,166 @@
-rm(list = ls())
+# Исследование 
 source("lib.R")
-source("fun.R")
-# Data import ----
+# 1. нужен набор данных для 1995 - 2019 и для 1999 - 2019
 
-## Pre-import ----
-# Росстат - ВВП по использованию - в постоянных ценах + поквартальный цепной индекс валовые инвестиции в основной капитал
-investment_raw <- xts(read.csv("investment.csv", dec = ","),
-                      order.by = seq(as.Date("1995-01-01"), as.Date("2018-12-31"), by = "quarter") %>% as.yearqtr()) 
-# Индекс реальных инвестиций считается квартальный только с 2007 года, до этого считался только месячный, поэтому совместим их
-# plot(stl(investment_raw, s.window = 4))
-# 
-# 
-# #INVFC_Q_DIRIAW
-# invy <- sophisthse(series.name = c("INVFC_Y_DIRI"), output = "zoo")[,1]
-# invq <- sophisthse(series.name = c("INVFC_Q_DIRI"), output = "zoo")[,1]
-# invm <- sophisthse(series.name = c("INVFC_M_DIRI"), output = "zoo")[,1]
-# autoplot(invq)
-# autoplot(invm)
-# invm2q <- zoo(x = NA, order.by = zoo::as.yearqtr((time(invm))) %>% unique)
-# for(i in seq(1,length(invm),3)){
-#   invm2q[(i-1)/3+1] <- sum(invm[i:(i+2)])
-# }
-# 
-# invest <- c(as.xts(invm2q*87.1/452.6) %>%
-#   window(start = as.yearqtr("1994-01"),
-#          end = as.yearqtr("2006-04")),
-# as.xts(invq))
-# 
-# plot(stl(df$invest, s.window = 4))
-# Загрузим дата фрейм (предварительно), что бы было легче определить, какие переменные будем использовать
-tsnames <- series_info$table %>%
-  split(seq(length(series_info$table))) %>%
-  map_dfr(function(x){
-    tn <- strsplit(x, "_")[[1]]
-    if(length(which(tn %in% c("M", "Q", "Y"))) != 0){
-      place <- which(tn %in% c("M", "Q", "Y"))[1] -1 
-    } else{
-      place <- 1
-    }
-    tibble(table = x, tabname = paste0(tn[1:place], collapse = "_"))
-  }) %>% inner_join(series_info) %>%
-  group_by(tabname) %>%
-  #group_by(table) %>%
-  mutate(minf = min(freq), maxf = max(freq), meaf = median(freq)) %>%
-  filter(!(minf == 1& maxf == 1)) %>%
-  #filter(minf == 12) %>%
-  filter(
-         !grepl("SA", tsname)) %>%
-  #filter(!grepl(pattern = "_Y_|_Y$", table)) %>%
-  unique()
-tsnames4 <- tsnames %>% filter(!grepl("20", unit),freq == 4)
-tsnames12 <- tsnames %>% filter(minf == 12,!grepl("19", unit))
-# tsnames4 %>% group_by(tabname) %>% filter(n()>1) %>% View
-# список квартальных переменных, которые надо исключить из рассмотрения
-# c("UNEMPL_Q","GDP_Q_C", "IND_Q", "CNSTR_Q_M", "CONSTR_C_Q", "TRP_Q_CARG", "RTRD_Q", "WAG_C_Q", "HHI_Q", "	INVFC_Q", "INVFC_Q_DIRI")
-# такой же список для месячных переменных
-# tsnames12 %>% View
-# "OILREF_C" в названии ошибка поэтому надо использовать "OILREF_C_SA"
+# доходность ртс, процентные ставки на межбанковском рынке, спреды по облигациям,
+# темпы роста номинального эффективного курса, реального эффективного курса, прирост цен на нефть,
+# 4 разность логарифма ВВП и ИПЦ, отношение номинальных инвестиций к номинальному ввп + лаги
+# rts начинается с 1995 Q3
+# bankrate с 2000 Q1
+# спреды по облигацяим? пока нет
+# темпы роста номинального эффективного курса пока нет
+# реального эффективного курса тоже пока нет
+# цены на нефть
+# df_short$oil начинается с 1995Q3 (точно)
 
-df_raw4 <- sophisthse(series.name = tsnames4$tsname %>% unique, output = "zoo")
-df4 <- df_raw4[,which(colnames(df_raw4) %in% (tsnames4$tsname %>% unique)&
-                 !colnames(df_raw4) %in% c("UNEMPL_Q","GDP_Q_C", "IND_Q", "CNSTR_Q_M",
-                                           "CONSTR_C_Q", "TRP_Q_CARG", "RTRD_Q", "WAG_C_Q",
-                                           "HHI_Q", "INVFC_Q", "INVFC_Q_DIRI"))] %>%
-  as.xts %>% .['1994-01/2019-01'] 
+# загрузка данных sophisthse ----
+sophist_series <- c('UNEMPL_Q_SH',# безработица
+                    'EMPLDEC_Q', # заявленная потребность в работниках
+                    'CONSTR_Q_NAT', # индекс строительно-монтажных работ
+                    'TRP_Q_PASS_DIRI', # индекс пассажирских перевозок
+                    'WAG_Q', # зарплата
+                    'CPI_Q_CHI',# ипц
+                    'CONI_Q_CHI', # индекс цен на строительно-монтажные работы
+                    'CTI_Q_CHI', # индекс тарифов на грузовые перевозки
+                    'AGR_Q_DIRI', # индекс сельхоз производства
+                    'CNSTR_Q_DIRI',# индекс работ в строительстве
+                    'RTRD_Q_DIRI', # оборот розничной торговли
+                    'HHI_Q_DIRI',# индекс реальных денежных доходов населения
+                    'M0_Q', # M0
+                    'M2_Q',# М2
+                    'IR_Q',# прямые иностранные инвестиции
+                    'ICR_Q',# валютные резервы ЦБР
+                    'CBREV_Q',# доходы конс. бюджета 
+                    'CBEX_Q',# расходы конс. бюджета
+                    'FBREV_Q',# доходы фед. бюджета
+                    'FBEX_Q',# расходы фед. бюджета
+                    'RDEXRO_Q',# официальный курс доллара
+                    'RDEXRM_Q',# курс доллара на ммвб
+                    'RDEXRMA_Q',# средний за период курс доллара на ммвб
+                    'LIAB_T_Q',# кредиторская задолженность в среднем за период
+                    'LIAB_UNP_Q',# просроченная кредиторская задолженность в среднем за период
+                    'LIAB_S_Q',# кредиторская задолженность поставщикам в среднем за период
+                    'LIAB_B_Q',# кредиторская задолженность в бюджет в среднем за период
+                    'DBT_T_Q',#дебиторская задолженность в среднем за период
+                    'DBT_UNP_Q',#просроченная дебиторская задолженность в среднем за период
+                    'DBT_P_Q',# дебиторская задолженность покупателей в среднем за период
+                    'EX_T_Q',# экспорт
+                    'EX_NON.CIS_Q',# экспорт в не-снг страны
+                    'IM_T_Q',# импорт
+                    'IM_NON.CIS_Q', # импорт не из стран снг
+                    'INVFC_Q', # номинальные инвестиции
+                    # методика расчета ввп поменялась в 2004, поэтому два разных ряда не соответствуют друг другу
+                    'GDPEA_Q_DIRI',# индексы реального ввп (после 2004)
+                    'GDP_Q_DIRI',# (до 2004)
+                    'GDPEA_C_Q',# номинальный ввп (после 2004)
+                    'GDP_Q_C',# (до 2004)
+                    # методика расчета индекса цен производителей промтоваров тоже поменялась
+                    'PPI_Q_CHI', # индекс цен производителей промтоваров (до 2004)
+                    'PPI_EA_Q' # (после 2004-01)
+)
+sophistdata <- sophisthse(series.name = sophist_series,
+                          output = 'zoo')
+sophistdata <- sophistdata[, which(colnames(sophistdata) %in% sophist_series)]
+# заменяем значения в колонках для индекса реального ввп и для номинального ввп
+sophistdata$GDPEA_Q_DIRI[which(is.na(sophistdata$GDPEA_Q_DIRI))] <-
+  sophistdata$GDP_Q_DIRI[which(is.na(sophistdata$GDPEA_Q_DIRI))]/1.1515
+sophistdata$GDPEA_C_Q[which(is.na(sophistdata$GDPEA_C_Q))] <-
+  sophistdata$GDP_Q_C[which(is.na(sophistdata$GDPEA_C_Q))]
+# удаляем лишние столбцы с ввп
+sophistdata$GDP_Q_C <- sophistdata$GDP_Q_DIRI <- NULL
 
-nonmis_long <- sapply(df4, function(y) sum(length(which(is.na(y))))) %>%
-  data.frame %>%
-  rownames_to_column("tname") %>%
-  filter(`.` <2) %>%
-  pull(tname)
-df_long <- df4[,nonmis_long]
-df4_20 <- df4 %>% .['1994-01/2019-01']
-# работа в двух вариантах с использованием рядов с 2000 (df_short) и без использования (df_long)
-
-df_raw12 <- sophisthse(series.name = tsnames12$tsname %>% unique, output = "zoo")
-df12 <- df_raw12[,which(colnames(df_raw12) %in% c(tsnames12$tsname %>% unique))] %>%
-  as.xts %>% .['1994-01/2019-01']
-df_short <- merge.xts(df4_20, df12 %>%
-  as.list() %>%
-  imap(function(y, namei){
-  out <- zoo(x = NA, order.by = zoo::as.yearqtr((time(df4_20))))
-  for(i in seq(1,length(y),3)){
-    out[(i-1)/3+1] <- sum(y[i:(i+2)])
-  } 
-  out %<>% xts()
-  names(out) <- namei
-  out
-}) %>% do.call.pipe(merge.xts))
-nonmis_short <- sapply(df_short['2005-01/2018-12'], function(y) sum(length(which(is.na(y))))) %>%
-  data.frame %>%
-  rownames_to_column("tname") %>%
-  filter(`.` <8) %>%
-  pull(tname)
-
-df_short <- df_short[, nonmis_short]
-
-df_res <- df_short
+# заменяем значения для индекса цен производителей промтоваров
+sophistdata$PPI_EA_Q[which(is.na(sophistdata$PPI_EA_Q))] <-
+  sophistdata$PPI_Q_CHI[which(is.na(sophistdata$PPI_EA_Q))]
+# удаляем лишний столбец (данные до 2004)
+sophistdata$PPI_Q_CHI <- NULL
 
 
-# gdp
-gdp_raw <- sophisthse(c("GDP_Q_DIRI", "GDPEA_Q"), output = 'zoo') 
-gdp_raw$GDPEA_Q_DIRI[which(is.na(gdp_raw$GDPEA_Q_DIRI))] <-
-  gdp_raw$GDP_Q_DIRI[which(is.na(gdp_raw$GDPEA_Q_DIRI))]/1.1515
-gdp <-gdp_raw%>% as.xts %>% .[,"GDPEA_Q_DIRI"]
+# не достает: квартальный дефлятор, сами инвестиции, банковские ставки, эффективный курс, спреды по облигациям (?)
+# амортизация
 
-# merge with gdp
-df_long <- merge.xts(df_long, gdp) 
-df_short <- merge.xts( df_short, gdp['1994-01/2019-01'])
+# загрузка квартального дефлятора ----
+# росстат представляет данные в % по отношению к соответствующему кварталу прошлого года
+# первая часть данных -- с 1996-01 по 2011-12
+url1 <- 'http://www.gks.ru/free_doc/new_site/vvp/kv/tab9.xls'
 
+GET(url1, write_disk(tf1 <- tempfile(fileext = ".xls")))
 
-# merge with investment
-df_long <- merge.xts(investment_raw, df_long) 
-df_short <- merge.xts(investment_raw['1994-01/2019-01'], df_short)
+def1 <- read_excel(tf1, 1L, skip = 5, col_names = FALSE) %>%
+  .[1,] %>%
+  t %>%
+  as.numeric
 
-# rts
-# 
-# rts <- read_csv("RTSI-dailyhistory.csv") %>%
-#   mutate(Date = as.Date(Date, format = "%d.%m.%Y") %>% as.yearqtr()) %>%
-#   group_by(Date) %>% filter(row_number()==1) %>% select(1,4) %>% set_names(c("date", "rts"))
-# df_short <- merge.xts(df_short, xts(rts[,2], order.by = rts$date))
+# вторая часть данных -- с 2012-01 по последний день
 
-# russian 3 month bills
+url2 <- 'http://www.gks.ru/free_doc/new_site/vvp/kv/tab9a.xls'
 
-gov <- read_delim("gov.csv", ";", quote = "'", 
-                  escape_double = FALSE, trim_ws = TRUE) %>%
-  mutate(`"Дата` = seq.Date(from = as.Date("2001-04-01"),
-                         to = as.Date("2019-06-01"),
-                         by = "month")%>%
-           as.yearqtr()) %>%
-  group_by(`"Дата`) %>% filter(row_number()==1) %>% select(1,2) %>% ungroup %>% set_names(c("date", "gov"))
-df_short <- merge.xts(df_short, xts(gov[,2], order.by = gov$date))
+GET(url2, write_disk(tf2 <- tempfile(fileext = ".xls")))
+
+def2 <- read_excel(tf2, 1L, skip = 5, col_names = FALSE)%>%
+  .[1,] %>%
+  t %>%
+  as.numeric
+
+# склеиваем дефлятор
+xts(c(def1, def2),
+    order.by = seq(as.Date('1996-01-01'),
+                   by = 'quarter',
+                   length.out = length(c(def1, def2))) %>% as.yearqtr)
+
+# Загрузка ставок мбр ----
+
+# Показатели ставок межбанковского рынка (статистика ЦБ РФ)
+
+# 03.01.1996 - 01.08.2000:
+
+# http://www.cbr.ru/hd_base/mkr/mkr_base_old/
+
+# уточнение: после загрузки в csv файлах ','->'.' and ';'->',' and '-'>''
 
 
 
+# Фактические ставки по предоставленным кредитам 
+# (MIACR - Moscow InterBank Actual Credit Rate)
+# (в процентах годовых для рублевых кредитов)
+# -Средневзвешанные фактические 
 
-# quarterly data
-# ВВП в текущих ценах, Инвестиции в основные фонды в текущих ценах, Дефлтор ВВП в текущих ценах
+mkr1 <- import('data/mkr_old.csv') %>%
+  set_colnames(c("date", '1d', '3d', '7d','14d', '21d', '30d', '60d', '90d')) %>%
+  mutate(date=as.Date(date,format = '%d.%m.%Y')) %>%
+  xts(x = .[,-1],order.by =  .[,1]) %>%
+  # в данных за 1996--2000 есть повторы
+  .[!duplicated(time(.))]
 
-rosstatq <- read_delim("data/rosstatq.csv", 
-                       ";", escape_double = FALSE, col_types = cols(X4 = col_skip(), 
-                                                                    X5 = col_skip(), X6 = col_skip()), 
-                       trim_ws = TRUE) %>%
-  set_names(c('gdp_current', "investment_current", "deflator", "belief1", "belief2", "belief3"))
-df_short <- merge.xts(df_short, xts(rosstatq, order.by = seq(as.Date("1994-01-01"), by = "quarter", length.out = 100)))
+mkr1 %>% autoplot
+# без серьезных пропусков есть только данные:
+# 1d, 7d, 14d, 30d
 
-deflat <- df_full$deflator %>% na.omit() %>% as.numeric
-deflat[1:4] <- 100
-for(i in 5:length(deflat)){
-  deflat[i] <- deflat[i]*deflat[i-4]/100
-}
-df_full$deflator['1996-01/2018-12'] <- deflat
+# c  01.08.2000
 
-# yearly data
-# норма выбытия основных средств, полная стоимость основных средств на конец периода (млрд руб)
+# https://www.cbr.ru/hd_base/mkr/mkr_base/
 
-rosstaty <- read_delim("data/rosstaty.csv", 
-                       ";")[,1:6] %>%
-  set_names(c("date", 'delta', "capital", "depreciation", "deflator_y", "amortisation"))
+# Средневзвешенные фактические ставки по кредитам,
+# предоставленным московскими банками (MIACR) с 01.08.2000
 
+mkr2 <- import('data/mkr.csv') %>%
+  set_colnames(c("date", '1d', '2-7d', '8-30d','31-90d', '91-180d', '181-365d')) %>%
+  mutate(date=as.Date(date,format = '%d.%m.%Y')) %>%
+  xts(x = .[,-1],order.by =  .[,1])
 
-df_short <- merge.xts(df_short,
-                     xts(rosstaty[,-1], order.by = seq(as.Date("1990-01-01"), by = "year", length.out = 29) %>% as.yearqtr))
+mkr2 %>% autoplot
+# без серьезных пропусков есть только данные:
+# 1d, 2-7d,
+# от 8 до 365 данные обновляются очень редко (или почти никогда)
 
+# совмещать имеет смысл только по 1d -- 1d и 7d -- 2-7d
+mkr <- merge(mkr1[,c('1d', '7d')],mkr2[,c('1d', '2-7d')]) %>%
+  set_colnames(c('1d', '7d', '1d_old', '2-7_old'))
+# склейка
+mkr$`1d`[which(is.na(mkr$`1d`))] <- mkr$`1d_old`[which(is.na(mkr$`1d`))]
+mkr$`7d`[which(is.na(mkr$`7d`))] <- mkr$`2-7_old`[which(is.na(mkr$`7d`))]
+# удаление лишних колонок
+mkr$`1d_old` <- mkr$`2-7_old` <- NULL
 
-df_short$delta <- na.locf(df_short$delta)
-df_short$capital <- na.locf(df_short$capital)
-df_short$depreciation <- na.locf(df_short$depreciation)
-df_short$deflator_y <- na.locf(df_short$deflator_y)
-df_short$amortisation <- na.locf(df_short$amortisation)
-
-
-
-# monthly data
-# Индексы цен производителей промышленных товаров, % к предыдущему месяцу
-
-rosstatm <- read_delim("data/rosstatm.csv", 
-                       ";") %>%
-  set_names(c("price_capital")) %>%
-xts(order.by = seq(as.Date("1998-01-01"), by = "month", length.out = 252))
-rosstatm$price_capital <- cumprod(rosstatm$price_capital/100)*100
-rosstatm <- rosstatm[which(mod(1:252,3) == 0),]
-time(rosstatm) %<>% as.yearqtr()
-
-
-
-
-df_short <- merge.xts(df_short, rosstatm)
-#df_short$amortisation <- df_short$balance_capital <- df_short$delta <- df_short$capital <- df_short$depreciation <- df_short$deflator_y <- NULL
-# moex
-
-moex <- read_csv("data/moex.csv") 
-moex$moex %<>% rev
-moex$date <- seq(as.Date("2002-10-01"), by = "month", length.out = 201) %>% as.yearqtr()
-moex %<>% group_by(date) %>% filter(row_number()==max(row_number()))
-moex <- xts(moex[,1], moex$date)
-
-df_short <- merge.xts(df_short, moex)
-df_short$moex["1999-01/2002-09"] <- df_short$rts["1999-01/2002-09"]
-
-
-# gko rate
-
-gko <- sophisthse("GKO_M", output = 'zoo') %>% as.xts
-gko <- gko[mod(month(time(gko)),3)==0,"GKO_M"]
-time(gko) %<>% yearqtr()
-
-df_short$gov["2000-01/2001-01"] <- gko$GKO_M["2000-01/2001-01"]
-
-
-# # bank rate
-# bankrate <- read_delim("data/bankrate.csv", 
-#                        ";", escape_double = FALSE, col_types = cols(`Дата` = col_date(format = "%d.%m.%Y")), 
-#                        trim_ws = TRUE) %>% set_names(c("date", "bankrate")) %>% arrange(date)
-# bankrate %<>% mutate(date = as.yearqtr(date)) %>% group_by(date) %>% filter(row_number()==max(row_number()))
-# bankrate <- xts(bankrate[,2], order.by = bankrate$date)
-# df_short <- merge.xts(df_short,bankrate)
-# df_short$bankrate["2000-01/2000-06"] <- c(20,15)
-# 
-# 
-# 
-
-
-save(df_long, df_short, file = "rawdata.RData")
-load("rawdata.RData")
-rm(list=ls())
+# необходимо перевести дневные данные в квартальные
 
