@@ -226,7 +226,7 @@ train.model <- function(startdt, enddt, model,
 }
 
 out <- expand.grid(startdt = seq(as.Date('1992-01-01'), as.Date('1999-01-01'), by = 'quarter'),
-            enddt = '2011-12-01', model = c('lasso',
+            enddt = as.Date('2011-12-01'), model = c('lasso',
                                                                     'ridge',
                                                                     'adalasso',
                                                                     'postlasso',
