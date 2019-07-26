@@ -157,7 +157,8 @@ auto.arima(diff.xts(df$investment_current['2000-01/2014-12'],4, log = TRUE))
   
 
 
-lag_m <- Arima(diff.xts(df$investment_current['2000-01/2014-12'],4, log = TRUE), order = c(2,1,2),seasonal = c(0,0,1), include.mean = TRUE)
+lag_m <- Arima(diff.xts(df$investment_current['2000-01/2014-12'],4, log = TRUE),
+               order = c(2,1,2),seasonal = c(0,0,1), include.mean = TRUE)
 lag_m %>% summary
 forecast(lag_m, 12) %>% autoplot
 
@@ -207,7 +208,8 @@ for(i in 1:ncol(df.mat_full)){
 # очистка от экзогенности
 df.mat_full$gdp_net <- NA
 
-df.mat_full$gdp_net['2000-09/2018-12'] <- lm(gdp_current~oil+deflator,df.mat_full['2000-09/2018-12'] )$fitted.values %>% as.numeric
+df.mat_full$gdp_net['2000-09/2018-12'] <-
+  lm(gdp_current~oil+deflator,df.mat_full['2000-09/2018-12'] )$fitted.values %>% as.numeric
 
 
 # only for accelerator:-----

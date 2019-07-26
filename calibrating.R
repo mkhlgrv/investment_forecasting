@@ -1,4 +1,6 @@
+source('lib.R')
 load('data/raw.Rdata')
+
 # # доходность ртс, процентные ставки на межбанковском рынке, спреды по облигациям,
 # темпы роста номинального эффективного курса, реального эффективного курса, прирост цен на нефть,
 # 4 разность логарифма ВВП и ИПЦ, отношение номинальных инвестиций к номинальному ввп + лаги
@@ -39,7 +41,6 @@ create_lag <- function(df, lag){
     colnames(x) <- paste0(colnames(x), "_lag", i)
     out %<>% merge.zoo(x)
   }
-  return(out)
+  return(out %>% as.xts)
 }
-out <- create_lag(df, 2)
-lm(investment~., out) %>% summary
+df_lag <- create_lag(df)
