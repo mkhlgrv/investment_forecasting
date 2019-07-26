@@ -7,10 +7,20 @@ df_lag %<>% na.omit
 X.mat_full <- model.matrix(y~0+., data = df_lag)
 
 
-X.train <- X.mat_full[1:60,]
+X.train <- X.mat_full[1:68,]
+X.test <- X.mat_full[69:88,]
+y.train <- df_lag$y["1997-01/2013-12"] %>% as.numeric
+y.test <- df_lag$y["2014-01/2018-12"]%>% as.numeric
+
+
+# тренировка на малом массиве данных (с 1999)
+X.train <- X.mat_full[9:60,]
 X.test <- X.mat_full[61:88,]
-y.train <- df_lag$y["1997-01/2011-12"] %>% as.numeric
+X.mat_full <- X.mat_full[9:88,]
+y.train <- df_lag$y["1999-01/2011-12"] %>% as.numeric
 y.test <- df_lag$y["2012-01/2018-12"]%>% as.numeric
+
+
 
 # lasso----
 tc <- trainControl(method = "timeslice", initialWindow = 40,horizon = 10,fixedWindow = TRUE)
@@ -26,8 +36,8 @@ plot(glm.out)
 best_lam <- glm.out$bestTune[1,2]
 
 lasso_best <- glmnet(X.train,y.train, alpha = 1, lambda = c(best_lam))
-pred_lasso <- predict(lasso_best,newx = X.test) #%>% melt
-lasso_p <- ggplot()+geom_line(aes(x = row.names(X.mat_full) %>% as.yearqtr, y = c(y.train, y.test)))+
+pred_lasso <- predict(lasso_best,newx = X.test)
+ggplot()+geom_line(aes(x = row.names(X.mat_full) %>% as.yearqtr, y = c(y.train, y.test)))+
 
   geom_line(aes(x = row.names(X.mat_full) %>% as.yearqtr,
                 y =predict(lasso_best, newx = X.mat_full)[,1],
@@ -39,7 +49,7 @@ lasso_p <- ggplot()+geom_line(aes(x = row.names(X.mat_full) %>% as.yearqtr, y = 
   theme_bw()+
   guides(colour = guide_legend(title = "Модель"))
 
-lasso_p
+
 
 RMSE(pred_lasso[,i], y.test %>% as.numeric)
 
@@ -55,9 +65,7 @@ train.ridge <- train(x=X.train,
 m_ridge <- glmnet(X.train, y.train, alpha = 0, lambda = train.ridge$bestTune[1,2])
 
 ridge_p <- ggplot()+geom_line(aes(x = row.names(X.mat_full) %>% as.yearqtr, y = c(y.train, y.test)))+
-  # geom_line(aes(x = row.names(acc_df) %>% as.yearqtr,
-  #                             y =predict(lasso_neoc_m, newdata = acc_df),
-  #                             color = "lasso"))+
+
   geom_line(aes(x = row.names(X.mat_full) %>% as.yearqtr,
                 y =predict(m_ridge, newx = X.mat_full)[,1],
                 color = "Ridge"))+
@@ -101,6 +109,7 @@ for (i in 1:ncol(pred_ada)){
 # post-lasso ----
 nzvars <- predict(lasso_best, type = "nonzero") %>% .[[1]]
 
+nzvars
 train_post <- as.data.frame(X.train) %>%
   select(nzvars) %>%
   mutate(y = y.train)
@@ -127,13 +136,17 @@ post_p
 
 
 # random forest ----
-tunegrid <- expand.grid(.mtry=seq(1,30))
+tunegrid <- expand.grid(.mtry=seq(5,10))
+tc_rf <- trainControl(method='repeatedcv', 
+             number=10, 
+             repeats=3, 
+             search='grid')
 
 rf.out <- train(x = X.train,
                 y = y.train,
                 method = "rf", 
                 metric = "RMSE",
-                trControl = tc,
+                trControl = tc_rf,
                 tuneGrid = tunegrid)
 
 bestmtry <- rf.out$bestTune[1,1]
@@ -167,7 +180,8 @@ pred_ss <- predict(m_ss, newdata = X.test)$yhat.gnet
 RMSE(pred_ss,y.test)
 
 
-ggplot()+geom_line(aes(x = row.names(X.mat_full) %>% as.yearqtr, y = c(y.train, y.test)))+
+ggplot()+
+  geom_line(aes(x = row.names(X.mat_full) %>% as.yearqtr, y = c(y.train, y.test)))+
   geom_line(aes(x = row.names(X.mat_full) %>% as.yearqtr,
                 y =predict(m_ss, newdata = X.mat_full)$yhat.gnet,
                 color = "Пик-плато"))+
@@ -181,15 +195,16 @@ ggplot()+geom_line(aes(x = row.names(X.mat_full) %>% as.yearqtr, y = c(y.train, 
 
 
 # arima ----
-arima_m <- Arima(df_lag$y["1997-01/2010-12"],order = c(4, 0, 4), fixed = c(0, NA, NA, NA, NA, 0, NA, NA, NA))
-arima_pred <- Arima(df_lag$y["1997-01/2018-12"], model=arima_m) %>% fitted() %>% as.numeric()
+arima_m <- Arima(y.train,order = c(3, 1, 3), fixed = c(NA, NA, NA, NA, NA, NA))
+ggtsdisplay(y.train)
+arima_pred <- Arima(c(y.train, y.test), model=arima_m) %>% fitted() %>% as.numeric()
 
 ggplot()+
   geom_line(aes(x = row.names(X.mat_full) %>% as.yearqtr, y = c(y.train, y.test)))+
   geom_line(aes(x = row.names(X.mat_full) %>% as.yearqtr,
                 y =arima_pred,
                 color = "ARMA"))+
-  geom_vline(aes(xintercept  = as.yearqtr("2011-01-01")), color = "red",linetype="dashed")+
+  geom_vline(aes(xintercept  = as.yearqtr("2012-01-01")), color = "red",linetype="dashed")+
   labs(title = "",
        y = "Изменение инвестиций (log)",
        x = "Дата") +
@@ -200,7 +215,7 @@ ggplot()+
 # Результаты ----
 
 # Arima
-RMSE(arima_pred[61:88],y.test)
+RMSE(arima_pred[-(1:length(y.train))],y.test)
 
 # LASSO
 RMSE(pred_lasso[,i], y.test)
@@ -221,3 +236,45 @@ RMSE(pred_rf,y.test)
 
 # Spike-and-Slab
 RMSE(pred_ss,y.test)
+
+
+
+# plot ----
+
+p <- ggplot()+
+  geom_line(aes(x = row.names(X.mat_full) %>% as.yearqtr%>% as.Date, y = c(y.train, y.test)))+
+  geom_vline(aes(xintercept  = as.Date("2014-01-01")), color = "red",linetype="dashed")+
+  labs(title = "",
+       y = "Изменение инвестиций (log)",
+       x = "Дата") +
+  theme_bw()+
+  guides(colour = guide_legend(title = "Модель"))+
+  
+  geom_line(aes(x = row.names(X.mat_full)%>% as.yearqtr %>% as.Date,
+                y =predict(lasso_best, newx = X.mat_full)[,1],
+                color = "LASSO"))+
+  geom_line(aes(x = row.names(X.mat_full) %>% as.yearqtr  %>% as.Date,
+                y =predict(m_ridge, newx = X.mat_full)[,1],
+                color = "Ridge"))+
+  geom_line(aes(x = row.names(X.mat_full) %>% as.yearqtr %>% as.Date,
+                y =predict(m_ada, newx = X.mat_full)[,1],
+                color = "Adpative LASSO"))+
+  geom_line(aes(x = row.names(X.mat_full) %>% as.yearqtr %>% as.Date,
+                y =predict(m_post, newdata = rbind(train_post, test_post)),
+                color = "Post-LASSO"))+
+  geom_line(aes(x = row.names(X.mat_full) %>% as.yearqtr %>% as.Date,
+                y =predict(m_rf, newdata = X.mat_full),
+                color = "Случайный лес"))+
+  geom_line(aes(x = row.names(X.mat_full) %>% as.yearqtr %>% as.Date,
+                y =predict(m_ss, newdata = X.mat_full)$yhat.gnet,
+                color = "Пик-плато"))
+
+p2 <- p +scale_x_date(date_breaks = "1 year", 
+                labels=date_format("%Y"),
+                limits = as.Date(c("2014-01-01", '2019-01-31')))+
+  ylim(c(-.15, .12))+
+  ylab('')
+ggarrange(p, p2,  common.legend = TRUE, legend="right")
+
+# добавить прогнозирование на несколько кварталов
+# 
