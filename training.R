@@ -1,13 +1,5 @@
 
-
-list1 <- train.model('1996-01-01', '2014-01-01', 'lasso', lag = 4, h = 4L)
-list2 <- train.model('1996-01-01', '2014-01-01', 'ridge', lag = 3, h = 4L)
-list3 <- train.model('1996-01-01', '2014-01-01', 'adalasso', lag = 3, h = 4L)
-list4 <- train.model('1996-01-01', '2014-01-01', 'postlasso', lag = 3, h = 4L)
-list5 <- train.model('1996-01-01', '2014-01-01', 'rf', lag = 3, h = 4L)
-list6 <- train.model('1996-01-01', '2014-01-01', 'ss', lag = 3, h = 4L)
-list7 <- train.model('1996-01-01', '2014-01-01', 'arima', lag = 3, h = 4L)
-
+# функция для вызовы
 map_dfr(list(list1, list2, list3, list4, list5, list6),
         function(x){
           print(x)
