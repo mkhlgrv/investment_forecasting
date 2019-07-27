@@ -1,24 +1,14 @@
 %!TEX TS-program = xelatex
 
-% Данный шаблон подготовлен для курса LaTeX в РАНХиГС
-% на основе шаблона 
-% Данила Фёдоровых (danil@fedorovykh.ru),
-%  который использовал его в курсе 
-% <<Документы и презентации в \LaTeX>> НИУ ВШЭ
-% Исходная версия шаблона --- 
-  % https://www.writelatex.com/coursera/latex/5.1
 \documentclass[c, dvipsnames]{beamer}  % [t], [c], или [b] --- вертикальное 
 %\documentclass[handout, dvipsnames, c]{beamer} % Раздаточный материал (на слайдах всё сразу)
 \input{preamble}
-\title[МСР в макроэкономике]{Методы снижения размерности в данных в макроэкономике}
-\subtitle{Отчёт по научно-исследовательской работе}
+\title[]{Прогнозирование и оценка макроэкономических зависимостей при помощи методов снижения размерности в данных на примере инвестиций в России}
 
 
 \author[Михаил Гареев]{Михаил Гареев \\ \smallskip \scriptsize ЭО-15-01 \\ \smallskip \scriptsize \href{mailto:mkhlgrv@gmail.com}{\nolinkurl{mkhlgrv@gmail.com} }}
 
 \superviser{к.э.н. Полбин А.В.}
-
-%\author[Имя автора]{Имя автора \\ \smallskip \scriptsize \href{mailto:author@ranepa.ru}{author@ranepa.ru} \\ \smallskip  \href{http://ranepa.ru}{http://ranepa.ru} }
 
 \institute[РАНХиГС]{ \uppercase{
   Российская Академия Народного Хозяйства и  \\ Государственной Службы при Президенте Российской Федерации}}
@@ -35,97 +25,130 @@
 
 \begin{frame}[c]{Актуальность исследования} 
 \begin{itemize}
-\item  При оценке моделей из макроэкономики часто можно столкнуться с тем, что параметров относительно много, а наблюдений - мало. Иногда эта проблема решается использованием \alert{методов снижения размерности в данных}.
+\item  В последнее время методы снижения размерности активно исследуются на возможность прогнозирования макроэкономических данных в России. 
+\item Основная идея таких методов --- это некоторый автоматический отбор объясняющих переменных из обширного списка предикторов. 
+\item Интересно применить такой подход к оцениванию и прогнозированию уровня инвестиций в России и сравнить его с обычными моделями.
 \end{itemize}
 \end{frame}
 
 
-% \begin{frame}[c]
-% \frametitle{Анализ предметной области}
-% { \small   % вместо small можно поставить scriptsize чтобы влезло
-% 	\begin{table}[]
-% 		\centering
-% 		\resizebox{\textwidth}{!}{ 
-%   			\begin{tabular}{|p{2.2cm}|p{1.8cm}|p{3.5cm}|p{7cm}|}
-%   				\hline\rowcolor{backgr}
-%   				\textcolor{white}{Авторы} & \textcolor{white}{Выборка, период}  & \textcolor{white}{Метод исследования}& \textcolor{white}{Результат} \\			
-%   				\hline
-%   				(Kuper, 2003)  & США, 998-2008  &  Коинтеграци и VECM & Получились значимые результаты с интересной интерпретацией.\\
-%   				\hline
-%   		\end{tabular} }
-% 	\end{table}
-% }
-% \end{frame}
 
+
+
+\section{Анализ предметной области}
+\begin{frame}[shrink = 40]
+ \frametitle{\insertsection} 
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{llll}
+  \hline
+Авторы, год & Название & Источник & Результат  \\ 
+  \hline
+Clark J. M. & Business acceleration & Journal of & Оптимальный уровень капитала прямо \\
+(1917) & and  the law of demand: & political&   пропорционален выпуску, и при\\
+& A technical factor  & economy  & изменении последнего фирмы мгновенно \\
+&in economic cycles  & &  подстраивают уровень капитала \\
+& & & под оптимальный через инвестиции\\
+\hline
+Koyck, L. M.  & Distributed lags  & North-Holland & Подстройка под оптимальный уровень\\
+(1954)& and investment analysis & Publishing  &  происходит не мгновенно, а с лагами\\
+& &   Company & \\
+\hline
+Jorgenson &  Capital theory & The American & Уровень инвестиций определяется\\
+D.W. (1963)  & and investment behavior  &Economic Review  & издержками использования капитала\\
+\hline
+
+Tobin, J. &  A general equilibrium & Journal of money & Чистые инвестиции определяются отношением \\
+(1969) &  approach  & credit and banking& рыночной стоимости фирм\\
+&
+to monetary theory
+&
+&
+и ее амортизационной стоимостью
+\\
+\hline 
+&
+&
+&
+\\
+\hline
+Belloni, A., & High dimensional  & Bernoulli & Методы регуляризации применены \\
+Chernozhukov, V.&  sparse econometric & &для проверки гипотезы конвергенции \\
+(2013)
+&  models: An introduction
+& 
+&
+\\
+
+\hline
+
+Байбуза, И.  & Прогнозирование  & Деньги и кредит & Методы снижения размерности \\
+(2018)
+&
+инфляции помощью
+&
+&
+и машинного обучения при некоторых условиях\\
+&
+методов машинного
+&
+&
+превосходят традиционные бенчмарки \\
+& обучения
+&
+& в предсказании месячной \\
+&
+&
+&
+инфляции в России \\
+
+
+
+   
+\end{tabular}
+\end{table}
+\end{frame}
 
 \begin{frame}[shrink=3]
 	\frametitle{Цели и задачи}
 	\begin{block}{Цель:}
 	\begin{itemize}
-		\item Проверка целесообразности использования методов снижения размерности в данных в прогнозировании российских макроэкономических показателей.
+		\item Проверка целесообразности использования методов снижения размерности в данных при оценке и прогнозировании российских макроэкономических показателей на примере инвестиций.
 	\end{itemize}
 		
 	\end{block}
 
 	 	\begin{block}{Задачи:}
 			\begin{enumerate}
-	\item Обзор методов снижения размерности (LASSO, Post-LASSO, Ridge, Elastic Net, PCA, Random Forest, Spike-and-Slab variable selection).
-    \item Применение этих методов для прогнозирования макроэкономических
-рядов в России (безработицы), анализ результатов, сравнение с традиционными методами оценивания временных рядов.
+			\item Обзор традиционных методов оценки и прогнозирования инвестиций (акселераторная модель, неоклассическая модель, модель $q$ Тобина, модель авторегрессии);
+	\item Обзор методов снижения размерности и машинного обучения (LASSO, Post-LASSO, Ridge, Elastic Net, Random Forest, Spike-and-Slab);
+    \item Применение этих методов для прогнозирования уровня инвестиций в России, анализ результатов, сравнение с традиционными методами прогнозирования инвестиций и с результатами использования этих методов.
 	 \end{enumerate}	
 	\end{block}
 \end{frame}
 
 
+\section{Гипотезы}
+\begin{frame}[с, shrink=5]
+\frametitle{\insertsection} 
+
+\begin{enumerate}
+	\item Использование методов снижения размерности и машинного обучения позволит улучшить качество прогнозов инвестиций в России;
+	\item При помощи методов снижения размеhности можно выявить опережающие индикаторы уровня инвестиций.
+	 \end{enumerate}
+
+\begin{center}
+
+\end{center}
+
+
+\end{frame}
+
+\section{Традиционные модели}
+
 
 \section{Методы снижения размерности}
-\subsection{Разреженная линейная модель с высокой размерностью в данных}
-
-\begin{frame}[shrink=5]
-\frametitle{\insertsection} 
-\framesubtitle{\insertsubsection}
-Модель: 
-  \begin{equation} 
-\beta_0 + \varepsilon_i, \epsilon_i \sim N(0, \sigma^2), \beta_0 \in
-\mathbb{R}^p, i = 1, \dots, n, 
-\end{equation}
-где:
-  \begin{itemize}
-\item $y_i$ --- это значения объясняемой
-переменной, 
-\item $x_i$ --- это значения $p$-размерной объясняющей переменной,
-\item $\varepsilon_i$ --- значения независимых случайных ошибок в каждом наблюдении $i$, 
-\end{itemize}
-при этом возможно, что $p \geq n$, но только $s<n$ компонентов вектора $\beta_0$ не равны $0$.
-
-\item \alert{Можно ли уменьшить размерность модели?}
-\end{frame}
-
-\subsection{Oracle Problem}
-\begin{frame}[shrink=5]
-\frametitle{\insertsection} 
-\framesubtitle{\insertsubsection}
-\begin{block}{Задача (Oracle Problem):}
-\begin{equation}\label{op}
-    \min_{\beta \in
-\mathbb{R}^p} \mathbb{E}_n\left[ (y_i - {x_i}^{'} \beta)^2 \right] + \sigma^2
-\frac{\left\lVert \beta \right\rVert_0}{n}, 
-\end{equation} 
-где $\left\lVert \beta \right\rVert_0$ --- это количество ненулевых компонентов в векторе $\beta$,  обобщение понятия нормы для степени $0$. 
-\end{block}
-\begin{block}{Гёльдерова норма для вектора $x$ степени $p$: }
-\begin{equation}
-    \left\lVert x \right\rVert_p = \sqrt[p]{\sum_i|x_i|^p},
-\end{equation}
-где обычно $p \geq 1$.
-
-\end{block}
-
-Решение \eqref{op} --- это  баланс между ошибкой регрессии и количеством ненулевых коэффициентов из вектора $\beta$. 
-
-Методы снижения размерности оптимизируют эмпирические аналоги задачи \eqref{op}.
-\end{frame}
-
 
 
 \subsection{Регуляризация}
@@ -135,13 +158,6 @@
 \begin{frame}
 \frametitle{\insertsection} 
 \framesubtitle{\insertsubsection}
- \begin{block}{AIC/ BIC}
-  \begin{equation}
-  \hat{\beta}  \in \arg \min_{\beta \in
-\mathbb{R}^p} \sum_{i=1}^n \left[ (y_i - {x_i}^{'} \beta)^2 \right] +  \frac{\lambda}{n} \left\lVert \beta \right\rVert_0, 
-\end{equation}
-где $\lambda$ --- параметр штрафа.
- \end{block}
 
  \begin{block}{LASSO}
   \begin{equation}
@@ -150,40 +166,22 @@
 \end{equation}
 где $\lambda$ --- параметр штрафа.
  \end{block}
- 
-  \end{frame}
- \begin{frame}
- \frametitle{\insertsection} 
-\framesubtitle{\insertsubsection}
-
- \begin{block}{Ridge Regression}
+  \begin{block}{Ridge}
   \begin{equation}
   \hat{\beta}^{\text{Ridge}} \in \arg \min_{\beta \in
 \mathbb{R}^p} \sum_{i=1}^n \left[ (y_i - {x_i}^{'} \beta)^2 \right] +  \frac{\lambda}{n} \left\lVert \beta \right\rVert_2,
 \end{equation}
 где $\lambda$ --- параметр штрафа.
  \end{block}
+ 
+  \end{frame}
 
- \begin{block}{Elastic Net Regression}
-  \begin{equation}
-  \hat{\beta}^{\text{EN}} \in \arg \min_{\beta \in
-\mathbb{R}^p} \sum_{i=1}^n \left[ (y_i - {x_i}^{'} \beta)^2 \right] +  \frac{\lambda}{n}
-\left( \frac{1 - \alpha}{2} \left\lVert \beta \right\rVert_1 + 
-\alpha \left\lVert \beta \right\rVert_2 \right),
-\end{equation}
-где $\lambda$ --- параметр штрафа,
-$\alpha$ --- параметр регуляризации, равен $1$ для Ridge и
-$2$ для LASSO.
-\end{block}
- 
- 
-\end{frame}
-\begin{frame}
+\begin{frame}[shink=20]
 \frametitle{\insertsection} 
 \framesubtitle{\insertsubsection}
 \begin{block}{Post-LASSO}
 \begin{enumerate}
-    \item Использовать метода LASSO, найти $\hat{\beta}^{\text{LASSO}}$.
+    \item Используя метод LASSO, найти $\hat{\beta}^{\text{LASSO}}$,
     \item Применить МНК-регрессию, оценивая только неисключенные элементы $\hat{\beta}^{\text{LASSO}}$:
     \begin{equation}
   \hat{\beta}^{\text{Post-LASSO}} \in \arg \min_{\beta \in
@@ -191,33 +189,32 @@ $2$ для LASSO.
 \end{equation}
 \end{enumerate}
 \end{block}
- 
- 
 
 
+\begin{block}{Adaptive LASSO}
+\begin{itemize}
+    \item Функция штрафа умножается на веса $w$:
+     \begin{equation}
+  \hat{\beta}^{\text{LASSO}} \in \arg \min_{\beta \in
+\mathbb{R}^p} \sum_{i=1}^n \left[ (y_i - {x_i}^{'} \beta)^2 \right] +  \frac{\lambda}{n} w \left\lVert \beta \right\rVert_1,
+\end{equation}
+\item Веса могут определяться, например, через коэффиценты $\hat{\beta}^{Ridge}$ в Ridge-регрессии:
+\begin{equation}
+    w_i = \frac{1}{\left(|\hat{\beta}^{Ridge}|\right)^{\gamma}},
+\end{equation}
+\end{itemize}
+\end{block}
 \end{frame}
 
-
-
-\subsection{Ансамблевые методы}
 \begin{frame}
 \frametitle{\insertsection} 
-\framesubtitle{\insertsubsection}
-\begin{block}{Random Forest}
+\begin{block}{Случайный лес}
     Двухэтапное получение оценок:
     \begin{enumerate}
         \item На разных подвыборках данных строится множество решающих деревьев,
-        \item в качестве предсказанного значения $\hat{y_i}$ выбираются усреднённые значения показаний по всем деревьям.
+        \item В качестве предсказанного значения $\hat{y_i}$ выбираются усреднённые значения показаний по всем деревьям.
     \end{enumerate}
 \end{block}
-
-
-\end{frame}
-
-\subsection{Байесовские методы}
-\begin{frame}
-\frametitle{\insertsection} 
-\framesubtitle{\insertsubsection}
 
 \begin{block}{Регрессия пик-плато (Spike-and-slab)}
 
@@ -239,237 +236,149 @@ $2$ для LASSO.
 
 \end{frame}
 
-
-\section{Прогнозирование безработицы}
-\subsection{Описание данных}
-\begin{frame}
+\section{Прогнозирование инвестиций}
+\subsection{Описание данных и методология}
+\begin{frame}[shrink=10]
 \frametitle{\insertsection} 
 \framesubtitle{\insertsubsection}
-\begin{enumerate}
-    \item Прогнозируемая переменная: уровень безработицы в России (ноябрь 2001 -- декарь 2017),
-    \item Объясняющие переменные: 83 ряда данных, отражающие различные макроэкономические показатели в России, уровень деловой активности и др. (январь 2001 -- декарь 2016).
-\end{enumerate}
-    Обучение моделей ведется на десятилетнем движущемся окне, проверка качества моделей ведется на однолетнем окне для изменения безработицы в период от 1 до 24 месяцев.
-    
-    Все ряды были очищены от сезонных и календарных эффектов и приведены к стационарному виду.
+\begin{block}{Данные}
+\begin{itemize}
+        \item Прогнозируемая переменная: валовые инвестиции в основной капитал в России в постоянных ценах, индекс (квартальные данные, 2001.I -- 2018.IV),
+    \item Объясняющие переменные: ряды данных, отражающих различные макроэкономические показатели в России (квартальные данные, 2001.I -- 2018.IV).
+\end{itemize}
+\end{block}
+\begin{block}{Схема прогноза}
+Модели обучаются на тренировочной выборке (2000.I -- 2014.IV), после чего строится статический прогноз на тестовой выборке (2015.I -- 2018.IV).
+\end{block}
+
+
+
+
+\begin{block}{Метрика качества}
+Основная метрика качества моделей --- RMSE (root-mean-square error):
+\begin{equation}
+   \text{RMSE} = \sqrt{ \frac{\sum_{t = 1}^{n} (\hat{y_t} - y_t)}{n}} 
+\end{equation}
+\end{block}
+
 \end{frame}
 
-\begin{frame}
+ \begin{frame}
 \frametitle{\insertsection} 
-\framesubtitle{\insertsubsection}
 \begin{figure*}
-\caption{Безработица в России}
-\includegraphics[width=\linewidth]{unemp_level.pdf}
+\caption{Реальные инвестиции в России}
+\includegraphics[width=\linewidth]{lineplot2.pdf}
 \end{figure*}
 \end{frame} 
 
-\subsection{Метод главных компонент}
-\begin{frame}
-\frametitle{\insertsection} 
-\framesubtitle{\insertsubsection}
-PCA: последовательная минимизация суммы квадратов отклонений старых значений от новых или замена матрицы $X_{n \times k}$ на матрицу $\hat{{n \times k}}$ ранга $p < k$, так, чтобы:
-
-\begin{equation}
-    \min \sum_{j = 1}^k \sum_{i = 1}^{n}(x_{ij} - \hat{x_{ij}})^2
-\end{equation}
-
-\end{frame}
-
-
-\begin{frame}
-\frametitle{\insertsection} 
-\framesubtitle{\insertsubsection}
-\begin{figure*}
-\caption{Экономика России в двумерном пространстве}
-\includegraphics[width=\linewidth]{pca.pdf}
-\end{figure*}
-\end{frame}  
-
-
-
-\subsection{Базовый бенчмарк}
-\begin{frame}
-\frametitle{\insertsection} 
-\framesubtitle{\insertsubsection}
-    \begin{block}{Модель ARMA(p,q)}
-Для сравнения качества используется модель ARMA(p,q), где p и q выбираются при помощи AIC.
-    \end{block}
- \end{frame}   
- 
-
- \subsection{Метрика качества моделей}
-\begin{frame}
-\frametitle{\insertsection} 
-\framesubtitle{\insertsubsection}
-    \begin{block}{RMSE}
-Для сравнения качества используется метрика RMSE (Root-mean-square error):
-\begin{equation}
-   \text{RMSE} = \sqrt{ \frac{\sum_{t = 1}^{T} (\hat{y_t} - y_t)}{T}} 
-\end{equation}
-
-    \end{block}
- \end{frame}  
-
 \subsection{Результаты}
-
-
-\begin{frame}
-\frametitle{\insertsection} 
-\framesubtitle{\insertsubsection}
-\begin{figure*}
-\caption{Базовый прогноз}
-\includegraphics[width=\linewidth]{arma.pdf}
-\end{figure*}
-\end{frame}
-
-
-\begin{frame}
-\frametitle{\insertsection} 
-\framesubtitle{\insertsubsection}
-\begin{figure*}
-\caption{Модели с регуляризацией}
-\includegraphics[width=\linewidth]{reg_score.pdf}
-\end{figure*}
-\end{frame}
-
-
-\begin{frame}
-\frametitle{\insertsection} 
-\framesubtitle{\insertsubsection}
-\begin{figure*}
-\caption{Модели с регуляризацией и трансформацией данных с помощью главных компонент}
-\includegraphics[width=\linewidth]{regpc_score.pdf}
-\end{figure*}
-\end{frame}
-
-
-\begin{frame}
-\frametitle{\insertsection} 
-\framesubtitle{\insertsubsection}
-\begin{figure*}
-\caption{Остальные модели}
-\includegraphics[width=\linewidth]{rfss_score.pdf}
-\end{figure*}
-\end{frame}
-
-
-\begin{frame}
-\frametitle{\insertsection} 
-\framesubtitle{\insertsubsection}
-\begin{figure*}
-\caption{Сравнения предсказаний для некоторых моделей (1--9 мес)}
-\includegraphics[width=\linewidth]{bl1.pdf}
-\end{figure*}
-\end{frame}
-
-
-\begin{frame}
-\frametitle{\insertsection} 
-\framesubtitle{\insertsubsection}
-\begin{figure*}
-\caption{Сравнения предсказаний для некоторых моделей (10--18 мес)}
-\includegraphics[width=\linewidth]{bl2.pdf}
-\end{figure*}
-\end{frame}
  
+ \begin{frame}
  \frametitle{\insertsection} 
 \framesubtitle{\insertsubsection}
- \begin{frame}
 \begin{table}[ht]
-\small
 \centering
-\begin{tabular}{lrrrrrr}
+\begin{tabular}{lrr}
   \hline
-Модель & 1 & 2 & 3 & 4 & 5 & 6 \\ 
+Модель & RMSE & R^2  \\ 
   \hline
-Elastic Net & 0.97 &  & 0.85 &  &  &  \\ 
-  LASSO & 0.97 & 0.85 & 0.85 & 0.86 & 0.84 & 0.83 \\ 
-  LASSO with lag & 0.89 & 0.84 & 0.83 & 0.92 & 0.94 & 1.02 \\ 
- LASSO with PC & 0.97 & 0.82 & 0.80 & 0.83 & 0.86 & 0.96 \\ 
- LASSO with PC and lag &0.89 & 0.93 & 1.05 & 1.10 & 1.16 & 1.30 \\ 
-  Post-LASSO & 1.03 & 0.91 & 1.03 & 0.97 & 1.02 & 1.01 \\ 
- Post-LASSO with lag & 0.95 & 1.02 & 1.09 & 1.15 & 1.32 & 1.59 \\ 
-  Post-LASSO with PC & 1.01 & 0.98 & 0.95 & 1.06 & 1.34 & 1.56 \\ 
-  Post-LASSO with PC  and lag & 1.11 & 0.98 & 1.43 & 1.25 & 1.34 & 1.41 \\ 
-  Random Forest & 1.00 & 0.87 & 0.91 & 0.95 & 0.99 & 1.16 \\ 
-  Ridge & 1.35 & 1.16 & 1.05 & 1.16 & 1.38 & 1.37 \\ 
-  Ridge with PC & 1.43 & 1.31 & 1.27 & 1.18 & 1.17 & 1.17 \\ 
-   Spike-and-Slab & 1.02 & 0.91 & 1.03 & 1.20 & 1.27 & 1.41 \\
-   \hline
+  Акселератор & 0.057 & 0.44 \\
+  Неоклассическая & 0.058 & 0.44 \\
+  q Тобина & 0.049 & 0.60 \\
+  AR(p) & \alert{0.038} & \alert{0.65} \\
+  \hline
+  LASSO & 0.044 & 0.67 \\
+  Ridge & 0.056 & 0.46 \\
+  Adaptive LASSO & 0.088 & -0.32 \\
+  Post-LASSO & 0.045 &  0.65 \\
+  \hline
+  LASSO + неоклассическая & 0.051 & 0.56 \\
+  LASSO + q Тобина & 0.043 &0.65 \\
+  LASSO + AR(p) & 0.040 & 0.65 \\
+   \hline 
+   Случайный лес & 0.041 & 0.65 \\
+   Пик-плато &0.045 & 0.66 \\
+   \hline 
 \end{tabular}
 \end{table}
 \end{frame}
 
  \begin{frame}
-% latex table generated in R 3.5.2 by xtable 1.8-3 package
-% Thu Mar 28 16:06:58 2019
-\begin{table}[ht]
-\small
-\centering
-\begin{tabular}{lrrrrrr}
-  \hline
-  
-Модель & 7 & 8 & 9 & 10 & 11 & 12 \\ 
-  \hline
-Elastic Net &  &  &  &  &  & 1.88 \\ 
-  LASSO & 0.90 & 0.99 & 1.13 & 1.43 & 1.53 & 1.88 \\ 
-  LASSO with lag & 1.12 & 1.15 & 1.20 & 1.40 & 1.54 & 1.88 \\ 
- LASSO with PC & 1.05 & 1.10 & 1.12 & 1.32 & 1.33 & 1.45 \\ 
- LASSO with PC and lag &1.50 & 1.58 & 1.55 & 1.78 & 1.85 & 2.04 \\ 
-  Post-LASSO & 1.47 & 1.54 & 1.56 & 1.70 & 1.82 & 2.11 \\ 
- Post-LASSO with lag & 1.61 & 1.69 & 1.84 & 2.06 & 2.32 & 3.16 \\ 
-  Post-LASSO with PC & 1.61 & 1.53 & 1.52 & 1.82 & 1.85 & 2.05 \\ 
-  Post-LASSO with PC  and lag & 1.94 & 1.94 & 1.91 & 2.15 & 2.07 & 2.45 \\ 
-  Random Forest & 1.06 & 1.05 & 1.02 & 1.16 & 1.34 & 1.26 \\ 
-  Ridge & 1.44 & 1.48 & 1.74 & 2.22 & 2.56 & 3.04 \\ 
-  Ridge with PC & 1.33 & 1.24 & 1.36 & 1.64 & 1.97 & 2.30 \\ 
-  Spike-and-Slab & 1.24 & 1.32 & 1.78 & 2.20 & 2.62 & 3.18 \\
-   \hline
-\end{tabular}
-\end{table}
-\end{frame}
+\frametitle{\insertsection} 
+\framesubtitle{\insertsubsection}
+\begin{figure*}
+\includegraphics[width=\linewidth]{lineplot1.pdf}
+\end{figure*}
+\end{frame} 
 
  \begin{frame}
-% latex table generated in R 3.5.2 by xtable 1.8-3 package
-% Thu Mar 28 16:07:55 2019
-\begin{table}[ht]
-\centering
-\small
-\begin{tabular}{lrrrrrr}
-  \hline
-Модель & 13 & 14 & 15 & 16 & 17 & 18 \\ 
-  \hline
-Elastic Net &  &  &  &  &  &  \\ 
-  LASSO & 1.88 & 1.83 & 1.65 & 1.41 & 1.47 & 1.59 \\ 
-  LASSO with lag & 1.94 & 2.15 & 2.02 & 1.84 & 1.56 & 1.45 \\ 
- LASSO with PC & 1.53 & 1.59 & 1.50 & 1.44 & 1.47 & 1.61 \\ 
- LASSO with PC and lag &2.02 & 2.12 & 1.95 & 1.75 & 1.58 & 1.62 \\ 
-  Post-LASSO & 2.34 & 2.48 & 2.70 & 2.47 & 2.60 & 2.79 \\ 
- Post-LASSO with lag & 3.54 & 3.60 & 3.32 & 3.21 & 2.88 & 2.85 \\ 
-  Post-LASSO with PC & 2.41 & 2.48 & 2.32 & 2.22 & 2.09 & 2.25 \\ 
-  Post-LASSO with PC  and lag & 2.08 & 2.51 & 2.29 & 1.87 & 1.66 & 1.91 \\ 
-  Random Forest & 1.22 & 1.18 & 1.04 & 0.91 & 0.81 & 0.82 \\ 
-  Ridge & 3.27 & 3.50 & 3.37 & 3.10 & 3.00 & 2.94 \\ 
-  Ridge with PC & 2.58 & 2.70 & 2.64 & 2.36 & 2.28 & 2.25 \\ 
-  Spike-and-Slab & 3.47 & 3.51 & 3.49 & 3.16 & 3.18 & 3.07 \\  
-   \hline
-\end{tabular}
-\end{table}
-\end{frame}
+\frametitle{\insertsection} 
+\framesubtitle{\insertsubsection}
+\begin{figure*}
+\includegraphics[width=\linewidth]{regular_plot.pdf}
+\end{figure*}
+\end{frame} 
 
 
+ \begin{frame}
+\frametitle{\insertsection} 
+\framesubtitle{\insertsubsection}
+\begin{figure*}
+\includegraphics[width=\linewidth]{add_plot.pdf}
+\end{figure*}
+\end{frame} 
 
 
-\section{Краткий вывод и планы}
+ \begin{frame}
+\frametitle{\insertsection} 
+\framesubtitle{\insertsubsection}
+\begin{figure*}
+\includegraphics[width=\linewidth]{lq_plot.pdf}
+\end{figure*}
+\end{frame} 
+
+
+ \begin{frame}
+\frametitle{\insertsection} 
+\framesubtitle{\insertsubsection}
+\begin{figure*}
+\includegraphics[width=\linewidth]{lnc_plot.pdf}
+\end{figure*}
+\end{frame} 
+
 \begin{frame}
 \frametitle{\insertsection} 
+\framesubtitle{\insertsubsection} 
+\begin{figure*}
+\caption{Апостериорная вероятность значимости регрессоров}
+\includegraphics[width=\linewidth]{nzlollipop.pdf}
+\end{figure*}
+\end{frame} 
+
+\begin{frame}
+\frametitle{\insertsection} 
+\framesubtitle{\insertsubsection}
+\begin{figure*}
+\caption{Значение коэффициентов LASSO для разных обучающих выборок}
+\includegraphics[width=\linewidth]{coef_plot.pdf}
+\end{figure*}
+\end{frame} 
+
+\section{Итоги}
+\begin{frame}
+\frametitle{\insertsection} 
+\framesubtitle{\insertsubsection} 
 \begin{itemize}
-    \item  Методы снижения размерности (LASSO, Post-LASSO, Ridge, Elastic Net, Random Forest) потенциально представляют собой мощный инструмент для нахождения и проверки макроэкономических зависимостей.
-    \item Из использованных методов лучшие результаты при прогнозировании инфляции в России показывают модели LASSO и Random Forest. На разных горизонтах планирования  (кроме диапазона с 9 до 15 месяцев) хотя бы одна из них показывала лучшие результаты, чем модель-бенчмарк (ARMA).
+    \item  Использование методов снижения размерности (LASSO, Post-LASSO, Ridge, случайный лес, пик-плато) позволяет в некоторых случаях достичь более высокого качество прогноза уровня инвестиций в России, чем использование традиционных моделей;
+    \item Отбор дополнительных предикторов для традиционных моделей с помощью методов регуляризации тоже приводит к улучшению прогноза в случае модели q Тобина и неоклассической модели;
+    \item Модель Adaptive LASSO, теоретически дающая состоятельные оценки коэффициентов, показала на практике худшие среди всех моделей результаты;
+    \item Благодаря методам снижения размерности потенциально можно отбирать опережающие индикаторы уровня инвестиций в России (например, индекс объема строительства, заявленная потребность в работниках). 
 \end{itemize}
    
     
 \end{frame}
+
+
 
 
 
@@ -496,18 +405,18 @@ Elastic Net &  &  &  &  &  &  \\
 
 
 
-\begin{frame}[c, plain]
+\begin{frame}[c, plain, shrink = 30]
   \frametitle{Источники}    
   \begin{thebibliography}{8}    
   \beamertemplatearticlebibitems
-  {\small
+
   \bibitem{ch1}
     Belloni, Alexandre and Chernozhukov, Victor
-    \newblock High dimensional sparse econometric Модельs: An introduction.
+    \newblock High dimensional sparse econometric Моделs: An introduction.
     \newblock Springer, 2011
    \bibitem{ch2}
    Belloni, Alexandre, Victor Chernozhukov, and Christian Hansen. 
-   \newblock Lasso methods for gaussian instrumental variables Модельs
+   \newblock Lasso methods for gaussian instrumental variables Модеls
    \newblock 2011
     \bibitem{bl}
     Barro, Robert J.  and Lee, Jong-Wha 
@@ -516,20 +425,180 @@ Elastic Net &  &  &  &  &  &  \\
     \bibitem{g}
      Candes, Emmanuel, and Terence Tao. 
     \newblock The Dantzig selector: Statistical estimation when p is much larger than n.
-    \newblock The Annals of Statistics 35.6 (2007): 2313-2351.
+    \newblock The Annals of Statistics 35.6 (2007): 2313--2351.
     \bibitem{f}
      Akaike, Hirotugu.
     \newblock A new look at the statistical Модель identification.
-    \newblock IEEE transactions on automatic control 19.6 (1974): 716-723.
+    \newblock IEEE transactions on automatic control 19.6 (1974): 716--723.
     \bibitem{s}
     Единый архив экономических и социологических данных, статистические ряды
     \newblock http://sophist.hse.ru/hse/nindex.shtml
-    \newblock 
-    }
+    \bibitem{z}
+    Zou, Hui
+    \newblock The adaptive lasso and its oracle properties
+    \newblock Journal of the American statistical association (2006): 1418--1429
   \end{thebibliography}
 \end{frame}
 
+\section{Приложение}
+ \begin{frame}
+ \frametitle{\insertsection} 
+\framesubtitle{\insertsubsection}
+\begin{table}[ht]
+\centering
+\begin{tabular}{lrrrrrr}
+  \hline
+Модель & 1 & 2 & 3 & 4 & 5 & 6 \\ 
+  \hline
+Adaptive LASSO & 0.45 & 0.60 & 0.73 & 0.63 & 0.82 & 0.97 \\ 
+  Boosting & 0.60 & 0.75 & \alert{0.63} & 0.60 & 0.77 & 0.86 \\ 
+  Elastic Net & 0.42 & 0.57 & 0.67 & 0.59 & 0.76 & 0.92 \\ 
+  LASSO & \alert{0.41} & \alert{0.54} & 0.65 & \alert{0.55} & \alert{0.71} & \alert{0.85} \\ 
+  LASSO+PC & 0.70 & 0.99 & 1.14 & 1.19 & 1.49 & 1.79 \\ 
+  LASSO+VAR & 1.20 & 1.38 & 1.28 & 1.14 & 1.25 & 1.40 \\ 
+  Post LASSO & 0.49 & 0.74 & 0.79 & 0.77 & 0.90 & 1.18 \\ 
+  Random Forest & 0.75 & 0.93 & 0.80 & 0.73 & 0.91 & 1.00 \\ 
+  Ridge & 0.44 & 0.60 & 0.69 & 0.64 & 0.82 & 0.99 \\ 
+  Spike and Slab & 0.56 & 0.65 & 0.72 & 0.61 & 0.76 & 0.83 \\ 
+   \hline
+\end{tabular}
+\end{table}
+\end{frame}
+
+ \begin{frame}
+ \frametitle{\insertsection} 
+\framesubtitle{\insertsubsection}
+\begin{table}[ht]
+\centering
+\begin{tabular}{lrrrrrr}
+  \hline
+Модель & 7 & 8 & 9 & 10 & 11 & 12 \\ 
+  \hline
+Adaptive LASSO & 1.05 & 0.93 & 1.08 & 1.18 & 1.27 & 1.15 \\ 
+  Boosting & \alert{0.72} &\alert{ 0.73} & \alert{0.81} & \alert{0.84} & \alert{0.72} & \alert{0.74} \\ 
+  Elastic Net & 0.96 & 0.86 & 0.97 & 1.09 & 1.13 & 1.02 \\ 
+  LASSO & 0.90 & 0.79 & 0.90 & 1.00 & 1.06 & 0.95 \\ 
+  LASSO+PC & 1.86 & 1.94 & 2.13 & 2.31 & 2.35 & 2.47 \\ 
+  LASSO+VAR & 1.41 & 1.34 & 1.50 & 1.67 & 1.78 & 1.78 \\ 
+  Post LASSO & 1.15 & 1.14 & 1.21 & 1.42 & 1.40 & 1.39 \\ 
+  Random Forest & 0.85 & 0.83 & 0.94 & 0.94 & 0.81 & 0.82 \\ 
+  Ridge & 1.02 & 0.94 & 1.06 & 1.18 & 1.20 & 1.11 \\ 
+  Spike and Slab & 0.88 & 0.77 & 0.89 & 0.92 & 0.97 & 0.85 \\ 
+   \hline
+\end{tabular}
+\end{table}
+\end{frame}
+
+\begin{frame}
+\frametitle{\insertsection} 
+\framesubtitle{\insertsubsection}
+\begin{figure*}
+\includegraphics[width=\linewidth]{bad_outall.pdf}
+\end{figure*}
+\end{frame} 
+ 
+ 
+ \begin{frame}
+\frametitle{\insertsection} 
+\framesubtitle{\insertsubsection}
+\begin{figure*}
+\includegraphics[width=\linewidth]{smooth1.pdf}
+\end{figure*}
+\end{frame} 
 
 
+ \begin{frame}
+\frametitle{\insertsection} 
+\framesubtitle{\insertsubsection} 
+\begin{figure*}
+\includegraphics[width=\linewidth]{smooth2.pdf}
+\end{figure*}
+\end{frame} 
+
+ \begin{frame}
+\frametitle{\insertsection} 
+\framesubtitle{\insertsubsection}
+\begin{figure*}
+\includegraphics[width=\linewidth]{smooth3.pdf}
+\end{figure*}
+\end{frame} 
+
+ \begin{frame}
+\frametitle{\insertsection} 
+\framesubtitle{\insertsubsection}
+\begin{figure*}
+\includegraphics[width=\linewidth]{smooth4.pdf}
+\end{figure*}
+\end{frame} 
+
+
+ \begin{frame}
+\frametitle{\insertsection} 
+\framesubtitle{\insertsubsection}
+\begin{figure*}
+\includegraphics[width=\linewidth]{rmse1.pdf}
+\end{figure*}
+\end{frame} 
+
+
+ \begin{frame}
+\frametitle{\insertsection} 
+\framesubtitle{\insertsubsection}
+\begin{figure*}
+\includegraphics[width=\linewidth]{rmse2.pdf}
+\end{figure*}
+\end{frame} 
+
+
+ \begin{frame}
+\frametitle{\insertsection} 
+\framesubtitle{\insertsubsection}
+\begin{figure*}
+\includegraphics[width=\linewidth]{rmse3.pdf}
+\end{figure*}
+\end{frame} 
+
+
+ \begin{frame}
+\frametitle{\insertsection} 
+\framesubtitle{\insertsubsection}
+\begin{figure*}
+\includegraphics[width=\linewidth]{rmse4.pdf}
+\end{figure*}
+\end{frame} 
+
+
+ \begin{frame}
+\frametitle{\insertsection} 
+\framesubtitle{\insertsubsection}
+\begin{figure*}
+\includegraphics[width=\linewidth]{nonzerotime.pdf}
+\end{figure*}
+\end{frame} 
+
+
+ \begin{frame}
+\frametitle{\insertsection} 
+\framesubtitle{\insertsubsection}
+\begin{figure*}
+\includegraphics[width=\linewidth]{nonzeroerror.pdf}
+\end{figure*}
+\end{frame} 
+
+ \begin{frame}
+\frametitle{\insertsection} 
+\framesubtitle{\insertsubsection} 
+\begin{figure*}
+\includegraphics[width=\linewidth]{nzlollipop1.pdf}
+\end{figure*}
+\end{frame} 
+
+ \begin{frame}
+\frametitle{\insertsection} 
+\framesubtitle{\insertsubsection}
+\begin{figure*}
+\includegraphics[width=\linewidth]{nzlollipop2.pdf}
+\end{figure*}
+\end{frame} 
 
 \end{document}
