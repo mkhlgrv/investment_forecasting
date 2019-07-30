@@ -200,7 +200,7 @@ train.model <- function(startdt, enddt, model,
     if(h == 1){
       train.out <- model_fit <- Arima(y.train,order = c(3, 1, 3), fixed = c(NA, NA, NA, NA, NA, NA))
     } else if (h == 2){
-      train.out <- model_fit <- Arima(y.train,order = c(4, 1, 4), fixed = c(0, NA, NA, NA, 0, NA, NA, NA,))
+      train.out <- model_fit <- Arima(y.train,order = c(4, 1, 4), fixed = c(0, NA, NA, NA, 0, NA, NA, NA))
     } else if (h == 3){
       train.out <- model_fit <- Arima(y.train,order = c(5, 1, 5), fixed = c(0, 0, NA, NA, NA, 0, 0, NA, NA, NA))
     } else if (h == 4){
@@ -225,7 +225,7 @@ train.model <- function(startdt, enddt, model,
   
 }
 
-out <- expand.grid(startdt = seq(as.Date('1992-01-01'), as.Date('1999-01-01'), by = 'quarter'),
+out <- expand.grid(startdt = seq(as.Date('1997-04-01'), as.Date('1999-01-01'), by = 'quarter'),
             enddt = as.Date('2011-12-01'), model = c('lasso',
                                                                     'ridge',
                                                                     'adalasso',
@@ -236,6 +236,7 @@ out <- expand.grid(startdt = seq(as.Date('1992-01-01'), as.Date('1999-01-01'), b
             lag = c(1:4),
             h=c(1L:4L)
             ) %>%
+  filter(model!='arima' | lag == 0) %>%
   split(seq(1:nrow(.))) %>%
   map(function(x){
     train.model(startdt=x$startdt,
