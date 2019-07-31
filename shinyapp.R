@@ -158,5 +158,21 @@ out_true %>%
   facet_grid(vars(lag), vars(h))
 
 # проблема: модель lasso показывает плохие результаты (прогноз по среднему) на горизонте прогнозирования 3-4 квартала
-  
 
+
+# вторая проблема при h = 0 в качестве регрессора участвует investment
+get.score(out_true %>%
+            na.omit)%>% 
+  filter(
+         type == 'test',
+         h != 0) %>%
+  select(-c(startdt, enddt, type))  %>%
+  melt(id.vars = c('model', 'lag', 'h')) %>%
+  filter(variable == 'rmse') %>%
+  mutate(value = round(value*100, 2),
+         h = as.factor(h)) %>%
+  # dcast(model~h+lag+variable) %>% print
+  ggplot() +
+  geom_boxplot(aes(x = h, y = value, fill = model))+
+  facet_grid(vars(lag))
+  
