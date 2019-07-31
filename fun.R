@@ -246,13 +246,13 @@ transform_to_score <- function(df){
 get.score <- function(df){
   df %<>%
     group_by(model, startdt, enddt, lag, h)
-  df %>% filter(date <= enddt) %>%
+  rbind(df %>% filter(date <= enddt) %>%
     summarise(rmspe = RMSPE(pred, true),
               rmse = RMSE(pred, true),
               rrse = RRSE(pred, true),
               mae= MAE(pred, true),
               r2 = R2_Score(pred, true),
-              type = 'train')
+              type = 'train'),
   df %>% filter(date > enddt) %>%
     summarise(rmspe = RMSPE(pred, true),
               rmse = RMSE(pred, true),
@@ -260,6 +260,7 @@ get.score <- function(df){
               mae= MAE(pred, true),
               r2 = R2_Score(pred, true),
               type = 'test')
+  ) %>% ungroup
 }
 
 
