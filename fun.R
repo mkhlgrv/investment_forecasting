@@ -33,30 +33,38 @@ train.model <- function(startdt, enddt, model,
     df %<>% create_lag(lag)
   }
   
+  if(!is.integer(h)){
+    message('h must be integer')
+    return(NULL)
+  }
+
+  df$y <- lag.xts(df$investment, k = -h)
+  
   df %<>% na.omit 
+  
   # проверка на start и end
   
   if(startdt >= enddt){
     message('start must be greater then end')
-    break()
+    return(NULL)
   }
+  
   startdt <- max(startdt %>% as.yearqtr,
-                 first(time(df) %>% .[-(1:(1+h))]) %>% as.yearqtr)%>% as.Date
+                 first(time(df)) %>% as.yearqtr) %>%
+    as.Date
+  
   
   enddt <- min(enddt %>% as.yearqtr,
-               last(time(df) %>% .[-((nrow(df)-h+1):nrow(df))]) %>% as.yearqtr)%>% as.Date
+               last(time(df)) %>% as.yearqtr) %>%
+                 as.Date
   
-  if(df[paste0(startdt, "/", enddt)] %>% nrow < 50){
-    message('train set length must be greater then 50')
+  
+  if(df[paste0(startdt, "/", enddt)] %>% nrow < 48){
+    message('train set length must be greater then 48 quarters')
+    return(NULL)
   }
   
-  if(!is.integer(h)){
-    message('h must be integer')
-    break()
-  }
-  
-  df$y <- lag.xts(df$investment, k = -h)
-  df %<>% na.omit
+ 
   
   train_n <- which(time(df) %>% as.Date()==(startdt %>% as.yearqtr %>% as.Date)):
     which((time(df) %>% as.Date())== 
@@ -75,7 +83,7 @@ train.model <- function(startdt, enddt, model,
   
   y.test <- df$y[test_n] %>% as.numeric
   
-  tc <- trainControl(method = "timeslice", initialWindow = 40,horizon = 10,fixedWindow = TRUE)
+  tc <- trainControl(method = "timeslice", initialWindow = 40,horizon = 8,fixedWindow = TRUE)
   
   if(model == 'lasso'){
     train.out <- train(x=X.train,
@@ -197,7 +205,7 @@ train.model <- function(startdt, enddt, model,
     pred <- predict(model_fit, newdata = rbind(X.train, X.test))$yhat.gnet
     
   } else if (model == 'arima'){
-    if(h == 1){
+    if(h %in% c(0,1)){
       train.out <- model_fit <- Arima(y.train,order = c(3, 1, 3), fixed = c(NA, NA, NA, NA, NA, NA))
     } else if (h == 2){
       train.out <- model_fit <- Arima(y.train,order = c(4, 1, 4), fixed = c(0, NA, NA, NA, 0, NA, NA, NA))

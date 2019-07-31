@@ -1,10 +1,10 @@
 source('lib.R')
 source('fun.R')
 
-out1 <- expand.grid(startdt = seq(as.Date('1997-04-01'), as.Date('1998-01-01'), by = 'quarter'),
-                   enddt = as.Date('2011-12-01'),
-                   lag = c(0:4),
-                   h=c(1L:4L), 
+out1 <- expand.grid(startdt = seq(as.Date('1997-01-01'), as.Date('2000-01-01'), by = 'quarter'),
+                    enddt = as.Date('2011-10-01'),
+                    lag = c(0L:4L),
+                    h=c(0L:4L), 
                    model = c('lasso', 'postlasso', 'adalasso')
 ) %>%
   filter(model!='arima' | lag == 0) %>%
