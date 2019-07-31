@@ -1,20 +1,5 @@
-
-trainout <- expand.grid(startdt = seq(as.Date('2000-01-01'), as.Date('2000-01-01'), by = 'quarter'),
-                        enddt = as.Date('2011-10-01'),
-                        lag = c(0L:4L),
-                        h=c(0L:4L), 
-                        model = c('lasso', 'postlasso', 'adalasso')
-) %>%
-  filter(model!='arima' | lag == 0) %>%
-  split(seq(1:nrow(.))) %>%
-  map(function(x){
-    train.model(startdt=x$startdt,
-                enddt=x$enddt,
-                model = x$model,
-                lag=x$lag,
-                h=x$h
-    )
-  })
+rm(list=ls())
+trainout <- c(out1, out2)
 
 
 train2 <- trainout %>% 
@@ -71,7 +56,6 @@ server <- function(input, output){
 
   
   output$mainplot <- renderPlot({
-    print(train3()$date %>% min)
 
     ggplot()+
       geom_line(data = train3(),
@@ -85,8 +69,10 @@ server <- function(input, output){
                     y = ytrue %>%
                       as.numeric %>%
                       diff.xts(lag = 4, log=TRUE), color = 'true'))+
-      ylim(c(train3()$date %>% min,
-             train3()$date %>% max))
+      scale_x_date(date_breaks = "5 year", 
+                   labels=date_format("%Y"),
+                   limits = as.Date(c(train3()$date %>% min,
+                                      train3()$date %>% max)))
   })
 }
 
