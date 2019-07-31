@@ -4,7 +4,7 @@ source('fun.R')
 
 out <- expand.grid(startdt = seq(as.Date('1997-04-01'), as.Date('1998-01-01'), by = 'quarter'),
             enddt = as.Date('2011-12-01'),
-            lag = c(1:4),
+            lag = c(0:4),
             h=c(1L:4L), model = c('lasso',
                                                                     'ridge',
                                                                     'adalasso',

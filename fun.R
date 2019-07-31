@@ -138,7 +138,8 @@ train.model <- function(startdt, enddt, model,
                         lambda = train.out$bestTune[1,2],
                         penalty.factor = w3)
     
-    pred <- predict(model_fit,newx = rbind(X.train, X.test))
+    pred <- predict(model_fit,newx = rbind(X.train, X.test)) %>%
+      as.numeric
     
   } else if (model == 'postlasso'){
     
