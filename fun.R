@@ -244,13 +244,22 @@ transform_to_score <- function(df){
 }
 
 get.score <- function(df){
-  df %>%
-    group_by(horizon, window, model) %>%
-    summarise(rmspe = RMSPE(y.pred.ts, y.true.ts),
-              rmse = RMSE(y.pred.ts, y.true.ts),
-              rrse = RRSE(y.pred.ts, y.true.ts),
-              mae= MAE(y.pred.ts, y.true.ts),
-              r2 = R2_Score(y.pred.ts, y.true.ts))
+  df %<>%
+    group_by(model, startdt, enddt, lag, h)
+  df %>% filter(date <= enddt) %>%
+    summarise(rmspe = RMSPE(pred, true),
+              rmse = RMSE(pred, true),
+              rrse = RRSE(pred, true),
+              mae= MAE(pred, true),
+              r2 = R2_Score(pred, true),
+              type = 'train')
+  df %>% filter(date > enddt) %>%
+    summarise(rmspe = RMSPE(pred, true),
+              rmse = RMSE(pred, true),
+              rrse = RRSE(pred, true),
+              mae= MAE(pred, true),
+              r2 = R2_Score(pred, true),
+              type = 'test')
 }
 
 

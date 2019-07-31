@@ -1,20 +1,20 @@
 rm(list=ls())
 trainout <- c(out1, out2, out3)
 
-out1 %>% 
-  walk(function(x){
-    if(x$model == 'lasso' &
-       x$h == 3 &
-       x$lag == 3){
-      print(x$startdt)
-      x$model_fit %>% predict(type='coefficients') %>% print
-      readline()
-    } else {
-      NULL
-    }
-
-    
-  })
+# out1 %>% 
+#   walk(function(x){
+#     if(x$model == 'lasso' &
+#        x$h == 3 &
+#        x$lag == 3){
+#       print(x$startdt)
+#       x$model_fit %>% predict(type='coefficients') %>% print
+#       readline()
+#     } else {
+#       NULL
+#     }
+# 
+#     
+#   })
 
 
 
@@ -146,16 +146,17 @@ for(modeli in out_true$model %>% unique){
 }
 
 out_true %>%
-  filter(
-         startdt == max(startdt),
+  mutate(sdm = paste0(model, startdt)) %>%
+  filter(!model %in% c('lasso', 'postlasso'),
          lag != 0,
          h != 0) %>%
   ggplot()+
-  geom_line(aes(x = date, y = pred, color = model))+
-  geom_line(aes(x = date, y = true), color = 'black')+
+  geom_line(aes(x = date, y = pred, group = sdm),color='darkgreen', alpha = 0.1)+
+  geom_line(aes(x = date, y = true), color = 'black', size = 0.6)+
   geom_vline(aes(xintercept  = min(enddt)),
              color = "red",linetype="dashed")+
-  labs(title = modeli) +
   facet_grid(vars(lag), vars(h))
 
+# проблема: модель lasso показывает плохие результаты (прогноз по среднему) на горизонте прогнозирования 3-4 квартала
   
+
