@@ -145,6 +145,7 @@ for(modeli in out_true$model %>% unique){
   dev.off()
 }
 
+# 
 out_true %>%
   mutate(sdm = paste0(model, startdt)) %>%
   filter(!model %in% c('lasso', 'postlasso'),
@@ -157,7 +158,8 @@ out_true %>%
              color = "red",linetype="dashed")+
   facet_grid(vars(lag), vars(h))
 
-# проблема: модель lasso показывает плохие результаты (прогноз по среднему) на горизонте прогнозирования 3-4 квартала
+# проблема: модель lasso показывает плохие результаты (прогноз по среднему) 
+# на горизонте прогнозирования 3-4 квартала
 
 
 # вторая проблема при h = 0 в качестве регрессора участвует investment
@@ -175,4 +177,16 @@ get.score(out_true %>%
   ggplot() +
   geom_boxplot(aes(x = h, y = value, fill = model))+
   facet_grid(vars(lag))
+
+# волосы 
+out_true %>%
+  filter(startdt == max(startdt),
+         date >= enddt,
+         lag == 1) %>%
+  mutate(forecastdate = as.Date(as.yearqtr(date) -h/4)) %>%
+  filter(forecastdate== '2017-01-01') %>%
+  ggplot(aes(x = date, y = pred, color = model))+
+  geom_line()+
+  geom_line(aes(x = date, y = true), color = 'black')+
+  facet_wrap(vars(lag))
   
