@@ -152,20 +152,32 @@ out_true %>%
 meanroundpercent <- function(x){
   (x %>% mean %>% round(4))*100
 }
-get.score(out_true %>%
+scoredf <- get.score(out_true %>%
             na.omit)%>% 
   filter() %>%
   select(-c(startdt, enddt))  %>%
   melt(id.vars = c('model', 'lag', 'h', 'type')) %>%
-  filter(variable == 'rmse') %>%
+  filter(variable == 'rmse', type=='test') %>%
   mutate(
          h = as.factor(h)) %>%
- dcast(model+h~variable+lag,
-       fun.aggregate = meanroundpercent) %>%
-  View
+  dcast(model+h+lag~variable,
+        fun.aggregate = meanroundpercent)
+  
+benchmarkscore <- scoredf %>% filter(model == 'rw')
+
+scoredf2bench <- scoredf %>% 
+  filter(h !=0) %>%
+  split(.$h) %>%
+  imap_dfr(function(x, i){
+    x$rmse <- x$rmse/(benchmarkscore$rmse[which(benchmarkscore$h==as.numeric(i))] %>% first)
+    x
+  }) #%>%
   ggplot() +
-  geom_boxplot(aes(x = model, y = value, fill = type == 'test'))+
+  geom_boxplot(aes(x = model, y = rmse))+
   facet_grid( vars(h),vars(lag))
+
+scoredf2bench %>%
+  dcast(model+lag~h) %>% View
 
 # усредненные по горизонту прогнозирования значения
 out_true %>%
