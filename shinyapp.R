@@ -1,24 +1,11 @@
 rm(list=ls())
-trainout <- c(out1, out2, out3)
-
-# out1 %>% 
-#   walk(function(x){
-#     if(x$model == 'lasso' &
-#        x$h == 3 &
-#        x$lag == 3){
-#       print(x$startdt)
-#       x$model_fit %>% predict(type='coefficients') %>% print
-#       readline()
-#     } else {
-#       NULL
-#     }
-# 
-#     
-#   })
+trainout <- c(out1, out2, out3, out4)
 
 
 
-out_short <- trainout %>% 
+
+out_short <-
+  trainout %>% 
   map_dfr(function(x){
       data.frame(model=x$model,
                  lag = x$lag,
@@ -31,6 +18,7 @@ out_short <- trainout %>%
   })
 
 # save(out_short, file='data/out_short.RData')
+rm(list=ls())
 load('data/out_short.RData')
 load('data/raw.RData')
 ytrue <- rawdata$investment
@@ -161,32 +149,32 @@ out_true %>%
 # проблема: модель lasso показывает плохие результаты (прогноз по среднему) 
 # на горизонте прогнозирования 3-4 квартала
 
-
-# вторая проблема при h = 0 в качестве регрессора участвует investment
+meanroundpercent <- function(x){
+  (x %>% mean %>% round(4))*100
+}
 get.score(out_true %>%
             na.omit)%>% 
-  filter(
-         type == 'test',
-         h != 0) %>%
-  select(-c(startdt, enddt, type))  %>%
-  melt(id.vars = c('model', 'lag', 'h')) %>%
+  filter() %>%
+  select(-c(startdt, enddt))  %>%
+  melt(id.vars = c('model', 'lag', 'h', 'type')) %>%
   filter(variable == 'rmse') %>%
-  mutate(value = round(value*100, 2),
+  mutate(
          h = as.factor(h)) %>%
-  # dcast(model~h+lag+variable) %>% print
+ dcast(model+h~variable+lag,
+       fun.aggregate = meanroundpercent) %>%
+  View
   ggplot() +
-  geom_boxplot(aes(x = h, y = value, fill = model))+
-  facet_grid(vars(lag))
+  geom_boxplot(aes(x = model, y = value, fill = type == 'test'))+
+  facet_grid( vars(h),vars(lag))
 
-# волосы 
+# усредненные по горизонту прогнозирования значения
 out_true %>%
-  filter(startdt == max(startdt),
-         date >= enddt,
-         lag == 1) %>%
-  mutate(forecastdate = as.Date(as.yearqtr(date) -h/4)) %>%
-  filter(forecastdate== '2017-01-01') %>%
+  filter(startdt == max(startdt)) %>%
+  mutate(forecastdate = as.Date(as.yearqtr(date) -h/4) %>% as.factor()
+         ) %>%
+  #filter(model == 'ss') %>%
   ggplot(aes(x = date, y = pred, color = model))+
-  geom_line()+
+  stat_summary(fun.y = 'mean', geom="line")+
   geom_line(aes(x = date, y = true), color = 'black')+
   facet_wrap(vars(lag))
   

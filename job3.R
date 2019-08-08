@@ -1,10 +1,10 @@
 source('lib.R')
 source('fun.R')
 
-out3 <- expand.grid(startdt = seq(as.Date('1997-01-01'), as.Date('2000-01-01'), by = 'quarter'),
+out_zero3 <- expand.grid(startdt = seq(as.Date('1997-01-01'), as.Date('2000-01-01'), by = 'quarter'),
                     enddt = as.Date('2011-10-01'),
                     lag = c(0L:4L),
-                    h=c(0L:4L), 
+                    h=c(0L), 
                     model = c(
                                          'ss')
 ) %>%
@@ -19,4 +19,4 @@ out3 <- expand.grid(startdt = seq(as.Date('1997-01-01'), as.Date('2000-01-01'), 
     )
   })
 
-save(out3, file = 'data/out3.RData')
+save(out_zero3, file = 'data/out_zero3.RData')
