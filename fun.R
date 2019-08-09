@@ -204,7 +204,9 @@ train.model <- function(startdt, enddt, model,
       
     } else if (model =='ss'){
       
-      train.out <- model_fit <- spikeslab(x = X.train, y = y.train, n.iter2 = 10000)
+      train.out <- NULL
+      
+      model_fit <- spikeslab(x = X.train, y = y.train, n.iter2 = 10000)
       
       pred <- predict(model_fit, newdata = rbind(X.train, X.test))$yhat.gnet
       
@@ -258,7 +260,9 @@ train.model <- function(startdt, enddt, model,
       y.full <- c(y.train, y.test)
       
       if (model == 'arima'){
-      train.out <- model_fit <- auto.arima(y.train,seasonal = FALSE, stationary = TRUE) 
+      train.out <- NULL
+      model_fit <- auto.arima(y.train,seasonal = FALSE, stationary = TRUE) 
+      
       
       maxord <- arimaorder(model_fit) %>% sum
       
