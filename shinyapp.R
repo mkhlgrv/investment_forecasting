@@ -242,8 +242,8 @@ ssprob <- out3 %>% map_dfr(function(x){
   x$startdt
   x$enddt
   
-  prednames <- x$train.out$x %>% colnames
-  melted <- x$train.out$model %>%
+  prednames <- x$model.fit$x %>% colnames
+  melted <- x$model.fit$model %>%
     melt
   n <- nrow(melted)
   prob <- (melted %>%
@@ -258,8 +258,14 @@ ssprob <- out3 %>% map_dfr(function(x){
              predictor = prednames,
              prob = prob)
 })
-rm(out3)
 
+
+ssprob %>%
+  mutate(h = as.factor(h),
+         lag = as.factor(lag)) %>%
+  ggplot()+
+  geom_line(aes(startdt, prob, color=predictor), show.legend = FALSE)+
+  facet_grid(vars(lag), vars(h))
 save(ssprob, file='data/ssprob.Rda')
 
 
