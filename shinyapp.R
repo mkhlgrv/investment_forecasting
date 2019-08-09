@@ -261,11 +261,14 @@ ssprob <- out3 %>% map_dfr(function(x){
 
 
 ssprob %>%
+  filter(h !=0, lag == 1) %>%
   mutate(h = as.factor(h),
          lag = as.factor(lag)) %>%
+  group_by(h, lag, predictor) %>%
+  filter(mean(prob)>0.05) %>%
   ggplot()+
-  geom_line(aes(startdt, prob, color=predictor), show.legend = FALSE)+
-  facet_grid(vars(lag), vars(h))
+  geom_line(aes(startdt, prob))+
+  facet_grid(vars(predictor), vars(h))
 save(ssprob, file='data/ssprob.Rda')
 
 
