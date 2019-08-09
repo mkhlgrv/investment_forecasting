@@ -229,4 +229,37 @@ scoredf %>%
   facet_grid( vars(h),vars(lag))
 
 
+# вычислим значимость коэффициентов в модели spike and slab ----
+rm(list=ls())
+source('fun.R')
+# ss data
+load('data/out3.RData')
+
+ssprob <- out3 %>% map_dfr(function(x){
+  series <- x$series
+  h <- x$h
+  lag <- x$lag
+  x$startdt
+  x$enddt
   
+  prednames <- x$train.out$x %>% colnames
+  melted <- x$train.out$model %>%
+    melt
+  n <- nrow(melted)
+  prob <- (melted %>%
+    dcast(`L1`~value, fun.aggregate = length) %>%
+    .[,-1] %>%
+    colSums())/n %>% as.numeric
+  data.frame(series = x$series,
+             h = x$h,
+             lag = x$lag,
+             startdt = x$startdt,
+             enddt = x$enddt,
+             predictor = prednames,
+             prob = prob)
+})
+rm(out3)
+
+save(ssprob, file='data/ssprob.Rda')
+
+
