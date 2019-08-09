@@ -136,7 +136,7 @@ for(modeli in out_true$model %>% unique){
 # 
 out_true %>%
   mutate(sdm = paste0(model, startdt)) %>%
-  filter(!model %in% c('lasso', 'postlasso'),
+  filter(!model %in% c('lasso', 'postlasso', 'rw'),
          lag != 0,
          h != 0) %>%
   ggplot()+
@@ -144,6 +144,7 @@ out_true %>%
   geom_line(aes(x = date, y = true), color = 'black', size = 0.6)+
   geom_vline(aes(xintercept  = min(enddt)),
              color = "red",linetype="dashed")+
+  scale_x_date(limits = c(min(enddt), max(date)))
   facet_grid(vars(lag), vars(h))
 
 # проблема: модель lasso показывает плохие результаты (прогноз по среднему) 
@@ -154,39 +155,78 @@ meanroundpercent <- function(x){
 }
 scoredf <- get.score(out_true %>%
             na.omit)%>% 
-  filter() %>%
   select(-c(startdt, enddt))  %>%
   melt(id.vars = c('model', 'lag', 'h', 'type')) %>%
   filter(variable == 'rmse', type=='test') %>%
   mutate(
          h = as.factor(h)) %>%
   dcast(model+h+lag~variable,
-        fun.aggregate = meanroundpercent)
+        fun.aggregate = mean)
   
-benchmarkscore <- scoredf %>% filter(model == 'rw')
+benchmarkscore <- scoredf %>%
+  filter(model == 'rw')
 
-scoredf2bench <- scoredf %>% 
+# scoredf2bench <- scoredf %>% 
+#   filter(h !=0) %>%
+#   split(.$h) %>%
+#   imap_dfr(function(x, i){
+#     x$rmse <- x$rmse/(benchmarkscore$rmse[which(benchmarkscore$h==as.numeric(i))] %>% first)
+#     x
+#   }) #%>%
+#   ggplot() +
+#   geom_boxplot(aes(x = model, y = rmse))+
+#   facet_grid( vars(h),vars(lag))
+# 
+# scoredf2bench %>%
+#   dcast(model+lag~h) %>%
+#   export(file='data/score.xlsx')
+
+# # усредненные по горизонту прогнозирования значения
+# out_true %>%
+#   filter(startdt == max(startdt)) %>%
+#   mutate(forecastdate = as.Date(as.yearqtr(date) -h/4) %>% as.factor()
+#          ) %>%
+#   #filter(model == 'ss') %>%
+#   ggplot(aes(x = date, y = pred, color = model))+
+#   stat_summary(fun.y = 'mean', geom="line")+
+#   geom_line(aes(x = date, y = true), color = 'black')+
+#   facet_wrap(vars(lag))
+
+
+scoredf <- get.score(out_true %>%
+            na.omit)%>%
+  select( -c(enddt))  %>%
+  melt(id.vars = c('model', 'lag', 'h', 'type', 'startdt')) %>%
+  filter(variable == 'rmse', type=='test') %>%
+  dcast(model+lag+h+type+startdt~variable) %>%
   filter(h !=0) %>%
   split(.$h) %>%
   imap_dfr(function(x, i){
     x$rmse <- x$rmse/(benchmarkscore$rmse[which(benchmarkscore$h==as.numeric(i))] %>% first)
     x
-  }) #%>%
+  })
+
+# график, на котром показано, как меняется rmse при изменении границ тренировочной выборки
+# rmse в 1997-01-01 (первая дата) для соответствующего лага и соответствующего горизонта прогнозирования = 1
+scoredf %>%
+  filter(model != 'rw') %>%
+  group_by(model, lag, h) %>%
+  arrange(startdt) %>%
+  mutate(rmse = rmse/first(rmse)) %>%
   ggplot() +
-  geom_boxplot(aes(x = model, y = rmse))+
+  geom_line(aes(x = startdt, y = rmse, linetype = model, color=model), size = 0.703)+
+  facet_grid( vars(h),vars(lag))
+# по графику видно, что модели LASSO и ARIMA очень чувствительна к уменьшению размеров выборки
+# с уменьешением размеров их качество падает
+# Осталные модели в среднем либо не ухудушают свое качество, либо значительно улучшают (ss)
+scoredf %>%
+  filter(model != 'rw') %>%
+  group_by(model, lag, h) %>%
+  arrange(startdt) %>%
+  mutate(rmse = rmse/first(rmse)) %>%
+  ggplot() +
+  geom_line(aes(x = startdt, y = rmse, linetype = model, color=model), size = 0.703)+
   facet_grid( vars(h),vars(lag))
 
-scoredf2bench %>%
-  dcast(model+lag~h) %>% View
 
-# усредненные по горизонту прогнозирования значения
-out_true %>%
-  filter(startdt == max(startdt)) %>%
-  mutate(forecastdate = as.Date(as.yearqtr(date) -h/4) %>% as.factor()
-         ) %>%
-  #filter(model == 'ss') %>%
-  ggplot(aes(x = date, y = pred, color = model))+
-  stat_summary(fun.y = 'mean', geom="line")+
-  geom_line(aes(x = date, y = true), color = 'black')+
-  facet_wrap(vars(lag))
   
