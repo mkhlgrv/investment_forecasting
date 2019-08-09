@@ -29,6 +29,9 @@ ytrue <- rawdata$investment
 ui <- pageWithSidebar(
   headerPanel('Прогнозирование инвестиций'),
   sidebarPanel(
+    radioButtons('plottype',
+                 'Выберите тип графика',
+                 с('logdiff', 'cumulative')),
     selectizeInput('startdt', 'Start date',
                    out_short$startdt %>% unique),
     
@@ -51,20 +54,25 @@ ui <- pageWithSidebar(
 
 server <- function(input, output){
 
-  train3 <- eventReactive(input$update,{
-  out_short %>%
-    filter(model == input$model,
-           lag == input$lag,
-           startdt == input$startdt,
-           h == input$h) %>%
-      mutate(pred = pred %>% lag(n = input$h))
+  df <- eventReactive(input$update,{
+    if(input$plottype == 'logdiff'){
+      out_short %>%
+        filter(model == input$model,
+               lag == input$lag,
+               startdt == input$startdt,
+               h == input$h) %>%
+        mutate(pred = pred %>% lag(n = input$h))
+    } else if(input$plottype == 'cumulative'){
+      out_short
+    }
+
   })
 
   
   output$forecast <- renderPlot({
     
     ggplot()+
-      geom_line(data = train3(),
+      geom_line(data = df(),
                 aes(x = date,
                     y = pred),
                     col= 'red') +
@@ -77,9 +85,9 @@ server <- function(input, output){
                       diff.xts(lag = 4, log=TRUE)), color = 'black')+
       scale_x_date(date_breaks = "5 year", 
                    labels=date_format("%Y"),
-                   limits = as.Date(c(train3()$date %>% min,
-                                      train3()$date %>% max)))+
-      geom_vline(aes(xintercept  = as.Date(train3()$enddt %>% min)),
+                   limits = as.Date(c(df()$date %>% min,
+                                      df()$date %>% max)))+
+      geom_vline(aes(xintercept  = as.Date(df()$enddt %>% min)),
                  color = "red",linetype="dashed")+
       labs(title = "",
            y = "Изменение инвестиций (log)",
@@ -90,12 +98,32 @@ server <- function(input, output){
   })
   
   
+  
 }
 
 
 shinyApp(ui, server)
 
 
+
+out_true %>%
+  mutate(forecastdate = as.Date(as.yearqtr(date) -h/4),
+         true = exp(log(true_lag)+true),
+         pred = exp(log(true_lag)+pred)
+  ) %>%
+  filter(startdt == max(startdt),
+         lag == 1,
+         forecastdate >= min(enddt)) %>%
+  group_by(lag, h, model, startdt) %>%
+  arrange(date) %>%
+  mutate(true = SMA(true, 4),
+         pred = SMA(pred, 4)) %>%
+  na.omit %>%
+  ggplot()+
+  geom_line(aes(x = date, y = true))+
+  geom_line(aes(x = date, y = pred, color=model))+
+  facet_wrap(vars(forecastdate))+
+  scale_x_date(limits = as.Date(c('2011-07-01', '2019-01-01')))
 # server ----
 # main plot
 # metrics (rmse, r2, mae, mape)
@@ -144,7 +172,7 @@ out_true %>%
   geom_line(aes(x = date, y = true), color = 'black', size = 0.6)+
   geom_vline(aes(xintercept  = min(enddt)),
              color = "red",linetype="dashed")+
-  scale_x_date(limits = c(min(enddt), max(date)))
+  #scale_x_date(limits = c(min(enddt), max(date)))
   facet_grid(vars(lag), vars(h))
 
 # проблема: модель lasso показывает плохие результаты (прогноз по среднему) 
@@ -181,16 +209,17 @@ benchmarkscore <- scoredf %>%
 #   dcast(model+lag~h) %>%
 #   export(file='data/score.xlsx')
 
-# # усредненные по горизонту прогнозирования значения
-# out_true %>%
-#   filter(startdt == max(startdt)) %>%
-#   mutate(forecastdate = as.Date(as.yearqtr(date) -h/4) %>% as.factor()
-#          ) %>%
-#   #filter(model == 'ss') %>%
-#   ggplot(aes(x = date, y = pred, color = model))+
-#   stat_summary(fun.y = 'mean', geom="line")+
-#   geom_line(aes(x = date, y = true), color = 'black')+
-#   facet_wrap(vars(lag))
+# усредненные по горизонту прогнозирования значения
+out_true %>%
+  filter(startdt == max(startdt)) %>%
+  mutate(forecastdate = as.Date(as.yearqtr(date) -h/4) %>% as.factor()
+         ) %>%
+  # filter(model == 'ss') %>%
+  ggplot(aes(x = date, y = pred, color = model))+
+  stat_summary(fun.y = 'mean', geom="line")+
+  
+  geom_line(aes(x = date, y = true), color = 'black')+
+  facet_wrap(vars(lag))
 
 
 scoredf <- get.score(out_true %>%
