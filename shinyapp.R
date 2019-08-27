@@ -93,7 +93,7 @@ ui <- pageWithSidebar(
     
     numericInput('lag',
                  'Выберите количество лагов в модели (кварталов)',
-                 value = out_short$lag %>% max,
+                 value = out_short$lag %>% median,
                  min = out_short$lag %>% min, 
                  max = out_short$lag %>% max),
     numericInput('h',
@@ -102,20 +102,32 @@ ui <- pageWithSidebar(
                  min = out_short$h %>% min, 
                  max = out_short$h %>% max),
     selectizeInput('model', 'Выберите модель',
-                   out_short$model %>% unique,
+                   choices = out_short$model %>% unique,
+                   selected = out_short$model %>% unique %>% first, 
                    multiple = TRUE),
     checkboxInput('onlytrain', 'Показывать только тестовую выборку', value = TRUE),
+    radioButtons('scoretype',
+                 "Выберите тип представления метрик качества",
+                 choices = c("Абсолютные значения" = 'absolute',
+                             "Значения относительно базовой модели" = 'relate'), 
+                 selected = 'absolute'),
+    
+    
     actionButton("update", "Произвести расчёты")
     ),
-  mainPanel(column(5,
+  mainPanel(column(12,
     plotOutput('forecast'),
     dataTableOutput('score')
     ))
   )
 
 server <- function(input, output){
+  
+  df.true <- eventReactive(input$update,{
+    
+  })
 
-  df <- eventReactive(input$update,{
+  df.forecast <- eventReactive(input$update,{
     if(input$plottype == 'logdiff'){
       out_short %>%
         filter(model %in% input$model,
@@ -125,7 +137,8 @@ server <- function(input, output){
         mutate(pred = pred %>% lag(n = input$h)) %>%
         filter(date >= c(ifelse(input$onlytrain,
                                 enddt %>% min,
-                                date %>% min)))
+                                date %>% min))) %>%
+        na.omit
     } else if(input$plottype == 'cumulative'){
       out_short
     }
@@ -145,12 +158,32 @@ server <- function(input, output){
            1)
   }
   )
+  
+  limits <- eventReactive(input$update,{
+    
+    x <- c(df.forecast()$date %>% min,
+           df.forecast()$date %>% max)
+    ytrue_cut <- ytrue %>%
+      diff.xts(lag = 4, log=TRUE) %>%
+      .[paste0(x[1], '/', x[2])] %>%
+      as.numeric
+    
+   
+    y <- c(min(df.forecast()$pred, ytrue_cut),
+           max(df.forecast()$pred, ytrue_cut))
+    print(y)
+    list(x = x, y = y)
+  }
+  )
+  
+  
+  
 
   
   output$forecast <- renderPlot({
     
     ggplot()+
-      geom_line(data = df(),
+      geom_line(data = df.forecast(),
                 aes(x = date,
                     y = pred,
                     color = model)) +
@@ -163,9 +196,11 @@ server <- function(input, output){
                       diff.xts(lag = 4, log=TRUE)), color = 'black')+
       scale_x_date(date_breaks = datebreaks(), 
                    labels=date_format("%Y"),
-                   limits = c(df()$date %>% min,
-                                      df()$date %>% max))+
-      geom_vline(aes(xintercept  = as.Date(df()$enddt %>% min)),
+                   limits = limits()$x)+
+      scale_y_continuous(limits = limits()$y)+
+      
+      
+      geom_vline(aes(xintercept  = as.Date(df.forecast()$enddt %>% min)),
                  color = "red",linetype="dashed", alpha = vlinealpha())+
       labs(title = "",
            y = "Изменение инвестиций (log)",
@@ -175,8 +210,24 @@ server <- function(input, output){
     
   })
   
+  df.score <- eventReactive(input$update,{
+    
+    scoredf <- switch(input$scoretype,
+                      'absolute' = scoredf_raw,
+                      'relate' = scoredf)
+    scoredf %>% 
+      filter(type == 'test',
+             model %in% input$model,
+                  lag == input$lag,
+             h == input$h,
+                  startdt == input$startdt
+                  ) %>%
+      select(model, rmse)
+    
+  })
+  
   output$score <- renderDataTable({
-    scoredf
+    df.score()
   })
   
   
