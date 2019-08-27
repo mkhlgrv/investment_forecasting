@@ -1,8 +1,6 @@
 rm(list=ls())
+lib()
 trainout <- c(out1, out2, out3, out4)
-
-
-
 
 out_short <-
   trainout %>% 
@@ -24,32 +22,95 @@ load('data/raw.RData')
 ytrue <- rawdata$investment
 
 
+
+#
+
+out_true <- data.frame(date = ytrue %>%
+                         time %>%
+                         as.Date,
+                       true = ytrue %>%
+                         as.numeric %>%
+                         diff.xts(lag = 4, log=TRUE),
+                       true_lag = ytrue %>%
+                         as.numeric %>%
+                         lag.xts(lag = 4)) %>%
+  inner_join(out_short %>%
+               group_by(model, lag, startdt, enddt, h) %>%
+               mutate(pred = lag(pred, min(h))), by = 'date')
+
+
+
+# округление до 4 знаков и умножение на 100
+meanroundpercent <- function(x){
+  (x %>% mean %>% round(4))*100
+}
+
+
+
+# таблица scoredf_raw (без деления на бенчмарки)
+scoredf_raw <- get.score(out_true %>%
+                           na.omit) %>% 
+  select(-c(enddt))  %>%
+  melt(id.vars = c('model', 'lag', 'h', 'type', 'startdt')) %>%
+  filter(variable == 'rmse') %>%
+  mutate(
+    h = as.factor(h)) %>%
+  dcast(model+lag+h+type+startdt~variable,
+        fun.aggregate = mean)
+
+# техническая таблица
+benchmarkscore <- scoredf_raw %>%
+  filter(model == 'rw')
+
+# таблица scoredf (rmse даны относительно rw)
+scoredf <- get.score(out_true %>%
+                       na.omit)%>%
+  select( -c(enddt))  %>%
+  melt(id.vars = c('model', 'lag', 'h', 'type', 'startdt')) %>%
+  filter(variable == 'rmse') %>%
+  dcast(model+lag+h+type+startdt~variable) %>%
+  filter(h !=0) %>%
+  split(.$h) %>%
+  imap_dfr(function(x, i){
+    x$rmse <- x$rmse/(benchmarkscore$rmse[which(benchmarkscore$h==as.numeric(i))] %>% first)
+    x
+  })
+
+
+
 # # ui----
 
+source('lib.R')
+source('fun.R')
 ui <- pageWithSidebar(
   headerPanel('Прогнозирование инвестиций'),
   sidebarPanel(
     radioButtons('plottype',
                  'Выберите тип графика',
-                 с('logdiff', 'cumulative')),
-    selectizeInput('startdt', 'Start date',
+                 c('logdiff', 'cumulative')),
+    selectizeInput('startdt', 'Выберите левую границу тренировочной выборки',
                    out_short$startdt %>% unique),
     
     numericInput('lag',
-                 'Lag',
+                 'Выберите количество лагов в модели (кварталов)',
                  value = out_short$lag %>% max,
                  min = out_short$lag %>% min, 
                  max = out_short$lag %>% max),
     numericInput('h',
-                 'Horizon',
+                 'Выберите горизонт прогнозирования (кварталов)',
                  value =  out_short$h %>% median,
                  min = out_short$h %>% min, 
                  max = out_short$h %>% max),
-    selectizeInput('model', 'Model',
-                   out_short$model %>% unique),
-    actionButton("update", "Update View")
+    selectizeInput('model', 'Выберите модель',
+                   out_short$model %>% unique,
+                   multiple = TRUE),
+    checkboxInput('onlytrain', 'Показывать только тестовую выборку', value = TRUE),
+    actionButton("update", "Произвести расчёты")
     ),
-  mainPanel(plotOutput('forecast'))
+  mainPanel(column(5,
+    plotOutput('forecast'),
+    dataTableOutput('score')
+    ))
   )
 
 server <- function(input, output){
@@ -57,16 +118,33 @@ server <- function(input, output){
   df <- eventReactive(input$update,{
     if(input$plottype == 'logdiff'){
       out_short %>%
-        filter(model == input$model,
+        filter(model %in% input$model,
                lag == input$lag,
                startdt == input$startdt,
                h == input$h) %>%
-        mutate(pred = pred %>% lag(n = input$h))
+        mutate(pred = pred %>% lag(n = input$h)) %>%
+        filter(date >= c(ifelse(input$onlytrain,
+                                enddt %>% min,
+                                date %>% min)))
     } else if(input$plottype == 'cumulative'){
       out_short
     }
 
   })
+  
+  datebreaks <- eventReactive(input$update,{
+      ifelse(input$onlytrain,
+             '1 year',
+             '5 years')
+    }
+  )
+  
+  vlinealpha <- eventReactive(input$update,{
+    ifelse(input$onlytrain,
+           0,
+           1)
+  }
+  )
 
   
   output$forecast <- renderPlot({
@@ -74,8 +152,8 @@ server <- function(input, output){
     ggplot()+
       geom_line(data = df(),
                 aes(x = date,
-                    y = pred),
-                    col= 'red') +
+                    y = pred,
+                    color = model)) +
       geom_line(data = NULL,
                 aes(x = ytrue %>%
                       time %>%
@@ -83,18 +161,22 @@ server <- function(input, output){
                     y = ytrue %>%
                       as.numeric %>%
                       diff.xts(lag = 4, log=TRUE)), color = 'black')+
-      scale_x_date(date_breaks = "5 year", 
+      scale_x_date(date_breaks = datebreaks(), 
                    labels=date_format("%Y"),
-                   limits = as.Date(c(df()$date %>% min,
-                                      df()$date %>% max)))+
+                   limits = c(df()$date %>% min,
+                                      df()$date %>% max))+
       geom_vline(aes(xintercept  = as.Date(df()$enddt %>% min)),
-                 color = "red",linetype="dashed")+
+                 color = "red",linetype="dashed", alpha = vlinealpha())+
       labs(title = "",
            y = "Изменение инвестиций (log)",
            x = "Дата")
       
     
     
+  })
+  
+  output$score <- renderDataTable({
+    scoredf
   })
   
   
@@ -129,18 +211,6 @@ out_true %>%
 # metrics (rmse, r2, mae, mape)
 # knowcasting
 
-out_true <- data.frame(date = ytrue %>%
-             time %>%
-             as.Date,
-           true = ytrue %>%
-             as.numeric %>%
-             diff.xts(lag = 4, log=TRUE),
-           true_lag = ytrue %>%
-             as.numeric %>%
-             lag.xts(lag = 4)) %>%
-  inner_join(out_short %>%
-               group_by(model, lag, startdt, enddt, h) %>%
-               mutate(pred = lag(pred, min(h))), by = 'date')
 
 for(modeli in out_true$model %>% unique){
   print(modeli)
@@ -161,7 +231,7 @@ for(modeli in out_true$model %>% unique){
   dev.off()
 }
 
-# 
+# все прогнозы вместе в виде зеленых нитей
 out_true %>%
   mutate(sdm = paste0(model, startdt)) %>%
   filter(!model %in% c('lasso', 'postlasso', 'rw'),
@@ -178,36 +248,8 @@ out_true %>%
 # проблема: модель lasso показывает плохие результаты (прогноз по среднему) 
 # на горизонте прогнозирования 3-4 квартала
 
-meanroundpercent <- function(x){
-  (x %>% mean %>% round(4))*100
-}
-scoredf <- get.score(out_true %>%
-            na.omit)%>% 
-  select(-c(startdt, enddt))  %>%
-  melt(id.vars = c('model', 'lag', 'h', 'type')) %>%
-  filter(variable == 'rmse', type=='test') %>%
-  mutate(
-         h = as.factor(h)) %>%
-  dcast(model+h+lag~variable,
-        fun.aggregate = mean)
-  
-benchmarkscore <- scoredf %>%
-  filter(model == 'rw')
 
-# scoredf2bench <- scoredf %>% 
-#   filter(h !=0) %>%
-#   split(.$h) %>%
-#   imap_dfr(function(x, i){
-#     x$rmse <- x$rmse/(benchmarkscore$rmse[which(benchmarkscore$h==as.numeric(i))] %>% first)
-#     x
-#   }) #%>%
-#   ggplot() +
-#   geom_boxplot(aes(x = model, y = rmse))+
-#   facet_grid( vars(h),vars(lag))
-# 
-# scoredf2bench %>%
-#   dcast(model+lag~h) %>%
-#   export(file='data/score.xlsx')
+
 
 # усредненные по горизонту прогнозирования значения
 out_true %>%
@@ -222,18 +264,7 @@ out_true %>%
   facet_wrap(vars(lag))
 
 
-scoredf <- get.score(out_true %>%
-            na.omit)%>%
-  select( -c(enddt))  %>%
-  melt(id.vars = c('model', 'lag', 'h', 'type', 'startdt')) %>%
-  filter(variable == 'rmse', type=='test') %>%
-  dcast(model+lag+h+type+startdt~variable) %>%
-  filter(h !=0) %>%
-  split(.$h) %>%
-  imap_dfr(function(x, i){
-    x$rmse <- x$rmse/(benchmarkscore$rmse[which(benchmarkscore$h==as.numeric(i))] %>% first)
-    x
-  })
+
 
 # график, на котром показано, как меняется rmse при изменении границ тренировочной выборки
 # rmse в 1997-01-01 (первая дата) для соответствующего лага и соответствующего горизонта прогнозирования = 1
