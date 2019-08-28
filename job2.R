@@ -1,10 +1,10 @@
 source('lib.R')
 source('fun.R')
 
-out_zero2 <- expand.grid(startdt = as.Date('2000-01-01'),
+out6 <- expand.grid(startdt = as.Date('2000-01-01'),
                          enddt = seq(as.Date('2011-10-01'), as.Date('2015-07-01'), by = 'quarter'),
                     lag = c(0L:4L),
-                    h=c(0L), 
+                    h=c(0L:4L), 
                     model = c('ridge', 'rf')
 ) %>%
   filter(model!='arima' | lag == 0) %>%
@@ -18,4 +18,4 @@ out_zero2 <- expand.grid(startdt = as.Date('2000-01-01'),
     )
   })
 
-save(out_zero2, file = 'data/out6.RData')
+save(out6, file = 'data/out6.RData')
