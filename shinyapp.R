@@ -76,8 +76,6 @@ scoredf <- get.score(out_true %>%
     x
   })
 
-
-
 # # ui----
 
 source('lib.R')
@@ -136,12 +134,17 @@ server <- function(input, output){
                h == input$h) %>%
         mutate(pred = pred %>% lag(n = input$h)) %>%
         filter(date >= c(ifelse(input$onlytrain,
-                                enddt %>% min,
+                               (enddt %>% as.numeric() + 100) %>%
+                          as.Date() %>%
+                          as.yearqtr() %>%
+                          as.Date,
                                 date %>% min))) %>%
         na.omit
     } else if(input$plottype == 'cumulative'){
       out_short
     }
+    
+    
 
   })
   
@@ -161,6 +164,8 @@ server <- function(input, output){
   
   limits <- eventReactive(input$update,{
     
+    print(df.forecast()$date %>% max)
+    
     x <- c(df.forecast()$date %>% min,
            df.forecast()$date %>% max)
     ytrue_cut <- ytrue %>%
@@ -171,7 +176,6 @@ server <- function(input, output){
    
     y <- c(min(df.forecast()$pred, ytrue_cut),
            max(df.forecast()$pred, ytrue_cut))
-    print(y)
     list(x = x, y = y)
   }
   )
@@ -237,7 +241,11 @@ server <- function(input, output){
 
 shinyApp(ui, server)
 
-
+# 2012 - 2014 полностью
+# 13-15 full
+# 14-16 full
+# 15 - 17 full (enddt = 2014-4q)
+# 16, 17, 18 (enddt =  2015-3q)
 
 out_true %>%
   mutate(forecastdate = as.Date(as.yearqtr(date) -h/4),
