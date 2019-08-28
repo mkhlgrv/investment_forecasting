@@ -1,6 +1,5 @@
 rm(list=ls())
-lib()
-trainout <- c(out1, out2, out3, out4)
+# trainout <- c(out1, out2, out3, out5, out6, out7,out4)
 
 out_short <-
   trainout %>% 
@@ -15,15 +14,15 @@ out_short <-
     
   })
 
+
 # save(out_short, file='data/out_short.RData')
 rm(list=ls())
+setwd('~/investment_forecasting/')
 load('data/out_short.RData')
 load('data/raw.RData')
+source('fun.R')
 ytrue <- rawdata$investment
 
-
-
-#
 
 out_true <- data.frame(date = ytrue %>%
                          time %>%
@@ -50,12 +49,11 @@ meanroundpercent <- function(x){
 # таблица scoredf_raw (без деления на бенчмарки)
 scoredf_raw <- get.score(out_true %>%
                            na.omit) %>% 
-  select(-c(enddt))  %>%
-  melt(id.vars = c('model', 'lag', 'h', 'type', 'startdt')) %>%
+  melt(id.vars = c('model', 'lag', 'h', 'type', 'startdt', 'enddt')) %>%
   filter(variable == 'rmse') %>%
   mutate(
     h = as.factor(h)) %>%
-  dcast(model+lag+h+type+startdt~variable,
+  dcast(model+lag+h+type+startdt+enddt~variable,
         fun.aggregate = mean)
 
 # техническая таблица
@@ -65,16 +63,24 @@ benchmarkscore <- scoredf_raw %>%
 # таблица scoredf (rmse даны относительно rw)
 scoredf <- get.score(out_true %>%
                        na.omit)%>%
-  select( -c(enddt))  %>%
-  melt(id.vars = c('model', 'lag', 'h', 'type', 'startdt')) %>%
+  melt(id.vars = c('model', 'lag', 'h', 'type', 'startdt', 'enddt')) %>%
   filter(variable == 'rmse') %>%
-  dcast(model+lag+h+type+startdt~variable) %>%
+  dcast(model+lag+h+type+startdt+enddt~variable) %>%
+  mutate(hse = paste0(h,lag,  startdt, enddt, type)) %>%
   filter(h !=0) %>%
-  split(.$h) %>%
-  imap_dfr(function(x, i){
-    x$rmse <- x$rmse/(benchmarkscore$rmse[which(benchmarkscore$h==as.numeric(i))] %>% first)
-    x
-  })
+  split(.$hse) %>%
+  map_dfr(function(x){
+    h <- x$h %>% first %>% as.numeric
+    startdt <- x$startdt %>% first
+    enddt <- x$enddt %>% first
+    type <- x$type %>% first
+    
+    x$rmse <- x$rmse/
+      (benchmarkscore$rmse[which(benchmarkscore$h== h &
+                                  benchmarkscore$startdt==startdt &
+                                   benchmarkscore$enddt == enddt)] %>% first)
+    x %>% select(-hse)
+  }) 
 
 # # ui----
 
@@ -83,11 +89,13 @@ source('fun.R')
 ui <- pageWithSidebar(
   headerPanel('Прогнозирование инвестиций'),
   sidebarPanel(
-    radioButtons('plottype',
-                 'Выберите тип графика',
-                 c('logdiff', 'cumulative')),
+    # radioButtons('plottype',
+    #              'Выберите тип графика',
+    #              c('logdiff', 'cumulative')),
     selectizeInput('startdt', 'Выберите левую границу тренировочной выборки',
                    out_short$startdt %>% unique),
+    selectizeInput('enddt', 'Выберите правую границу тренировочной выборки',
+                   out_short$enddt %>% unique),
     
     numericInput('lag',
                  'Выберите количество лагов в модели (кварталов)',
@@ -124,13 +132,25 @@ server <- function(input, output){
   df.true <- eventReactive(input$update,{
     
   })
+  
+  observeEvent(input$update, {
+    if(df.forecast() %>% nrow == 0){
+      showModal(modalDialog(
+        title = "",
+        "К сожалению, для указанной тренировочной выборки в данный момент нет данных.",
+        easyClose = TRUE
+      ))
+    }
+    
+  })
 
   df.forecast <- eventReactive(input$update,{
-    if(input$plottype == 'logdiff'){
+    # if(input$plottype == 'logdiff'){
       out_short %>%
         filter(model %in% input$model,
                lag == input$lag,
                startdt == input$startdt,
+               enddt == input$enddt, 
                h == input$h) %>%
         mutate(pred = pred %>% lag(n = input$h)) %>%
         filter(date >= c(ifelse(input$onlytrain,
@@ -140,9 +160,9 @@ server <- function(input, output){
                           as.Date,
                                 date %>% min))) %>%
         na.omit
-    } else if(input$plottype == 'cumulative'){
-      out_short
-    }
+    # } else if(input$plottype == 'cumulative'){
+    #   out_short
+    # }
     
     
 
@@ -185,30 +205,33 @@ server <- function(input, output){
 
   
   output$forecast <- renderPlot({
+    if(df.forecast() %>% nrow != 0){
+      ggplot()+
+        geom_line(data = df.forecast(),
+                  aes(x = date,
+                      y = pred,
+                      color = model)) +
+        geom_line(data = NULL,
+                  aes(x = ytrue %>%
+                        time %>%
+                        as.Date,
+                      y = ytrue %>%
+                        as.numeric %>%
+                        diff.xts(lag = 4, log=TRUE)), color = 'black')+
+        scale_x_date(date_breaks = datebreaks(), 
+                     labels=date_format("%Y"),
+                     limits = limits()$x)+
+        scale_y_continuous(limits = limits()$y)+
+        
+        
+        geom_vline(aes(xintercept  = as.Date(df.forecast()$enddt %>% min)),
+                   color = "red",linetype="dashed", alpha = vlinealpha())+
+        labs(title = "",
+             y = "Изменение инвестиций (log)",
+             x = "Дата")
+    }
     
-    ggplot()+
-      geom_line(data = df.forecast(),
-                aes(x = date,
-                    y = pred,
-                    color = model)) +
-      geom_line(data = NULL,
-                aes(x = ytrue %>%
-                      time %>%
-                      as.Date,
-                    y = ytrue %>%
-                      as.numeric %>%
-                      diff.xts(lag = 4, log=TRUE)), color = 'black')+
-      scale_x_date(date_breaks = datebreaks(), 
-                   labels=date_format("%Y"),
-                   limits = limits()$x)+
-      scale_y_continuous(limits = limits()$y)+
-      
-      
-      geom_vline(aes(xintercept  = as.Date(df.forecast()$enddt %>% min)),
-                 color = "red",linetype="dashed", alpha = vlinealpha())+
-      labs(title = "",
-           y = "Изменение инвестиций (log)",
-           x = "Дата")
+    
       
     
     
@@ -224,14 +247,18 @@ server <- function(input, output){
              model %in% input$model,
                   lag == input$lag,
              h == input$h,
-                  startdt == input$startdt
+                  startdt == input$startdt,
+             enddt == input$enddt
                   ) %>%
       select(model, rmse)
     
   })
   
   output$score <- renderDataTable({
-    df.score()
+    datatable(df.score(),
+    options = list(
+      order = list(list(2, 'asc'))
+    ))
   })
   
   
@@ -240,6 +267,8 @@ server <- function(input, output){
 
 
 shinyApp(ui, server)
+
+
 
 # 2012 - 2014 полностью
 # 13-15 full
