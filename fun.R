@@ -29,7 +29,7 @@ train.model <- function(startdt, enddt, model,
                      series)]
     }
     # create lag
-    if(lag != 0){
+    if(lag != 0 |! model %in% c('arima', 'rw')){
       df %<>% create_lag(lag)
     }
     
