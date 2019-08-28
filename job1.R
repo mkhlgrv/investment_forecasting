@@ -1,8 +1,8 @@
 source('lib.R')
 source('fun.R')
 
-out1 <- expand.grid(startdt = seq(as.Date('1997-01-01'), as.Date('2000-01-01'), by = 'quarter'),
-                    enddt = as.Date('2011-10-01'),
+out1 <- expand.grid(startdt = as.Date('2000-01-01'),
+                    enddt = seq(as.Date('2011-10-01'), as.Date('2015-07-01'), by = 'quarter'),
                     lag = c(0L:4L),
                     h=c(0L:4L), 
                    model = c('lasso', 'postlasso', 'adalasso')
@@ -18,4 +18,4 @@ out1 <- expand.grid(startdt = seq(as.Date('1997-01-01'), as.Date('2000-01-01'), 
     )
   })
 
-save(out1, file = 'data/out1.RData')
+save(out1, file = 'data/out5.RData')
