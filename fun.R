@@ -323,7 +323,8 @@ get.score <- function(df){
               mae= MAE(pred, true),
               r2 = R2_Score(pred, true),
               type = 'train'),
-  df %>% filter(date > enddt) %>%
+  df %>% filter(date > enddt,
+                date <= as.Date(enddt + 366*3)) %>%
     summarise(rmspe = RMSPE(pred, true),
               rmse = RMSE(pred, true),
               rrse = RRSE(pred, true),
