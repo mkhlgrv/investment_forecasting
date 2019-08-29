@@ -21,6 +21,7 @@ setwd('~/investment_forecasting/')
 load('data/out_short.RData')
 load('data/raw.RData')
 source('fun.R')
+source('lib.R')
 ytrue <- rawdata$investment
 
 
@@ -82,6 +83,13 @@ scoredf <- get.score(out_true %>%
     x %>% select(-hse)
   }) 
 
+
+out_cumulative <- out_true %>%
+  mutate(forecastdate = as.Date(as.yearqtr(date) -h/4),
+         true = exp(log(true_lag)+true),
+         pred = exp(log(true_lag)+pred)
+  ) 
+
 # # ui----
 
 source('lib.R')
@@ -93,36 +101,46 @@ ui <- pageWithSidebar(
     #              'Выберите тип графика',
     #              c('logdiff', 'cumulative')),
     selectizeInput('startdt', 'Выберите левую границу тренировочной выборки',
-                   out_short$startdt %>% unique),
+                   out_short$startdt %>% unique %>% set_names(as.yearqtr(.)) ,
+                   selected = out_short$startdt %>% unique %>% last),
     selectizeInput('enddt', 'Выберите правую границу тренировочной выборки',
-                   out_short$enddt %>% unique),
+                   out_short$enddt %>% unique %>% set_names(as.yearqtr(.)) ),
     
     numericInput('lag',
                  'Выберите количество лагов в модели (кварталов)',
                  value = out_short$lag %>% median,
                  min = out_short$lag %>% min, 
                  max = out_short$lag %>% max),
+    checkboxInput('optlag', 'Использовать для каждой модели
+                  оптимальное на тренировочной выборке количество лагов', value = TRUE),
     numericInput('h',
                  'Выберите горизонт прогнозирования (кварталов)',
                  value =  out_short$h %>% median,
                  min = out_short$h %>% min, 
                  max = out_short$h %>% max),
+    checkboxInput('cumulative', 'Показывать сумму прогнозов', value = TRUE),
     selectizeInput('model', 'Выберите модель',
                    choices = out_short$model %>% unique,
                    selected = out_short$model %>% unique %>% first, 
                    multiple = TRUE),
     checkboxInput('onlytrain', 'Показывать только тестовую выборку', value = TRUE),
     radioButtons('scoretype',
-                 "Выберите тип представления метрик качества",
+                 "Выберите тип представления RMSFE",
                  choices = c("Абсолютные значения" = 'absolute',
                              "Значения относительно базовой модели" = 'relate'), 
-                 selected = 'absolute'),
+                 selected = 'relate'),
+    
+    helpText("Для корректного сравнения
+             тренировочных выборок с разными границами 
+             RMSFE рассчитывается только по первым 12 наблюдениям тестовой выборки
+             (т.е. только для первых 3 лет)."),
+    hr(),
     
     
     actionButton("update", "Произвести расчёты")
     ),
   mainPanel(column(12,
-    plotOutput('forecast'),
+    plotlyOutput('forecast'),
     dataTableOutput('score')
     ))
   )
@@ -145,27 +163,61 @@ server <- function(input, output){
   })
 
   df.forecast <- eventReactive(input$update,{
-    # if(input$plottype == 'logdiff'){
-      out_short %>%
-        filter(model %in% input$model,
-               lag == input$lag,
+    
+    out <- out_short %>%
+      filter(model %in% input$model,
+             
+             startdt == input$startdt,
+             enddt == input$enddt, 
+             h == input$h)
+    
+    
+    if(input$optlag){
+      optlag <- scoredf %>% 
+        filter(type == 'train',
+               model %in% input$model,
+               h == input$h,
                startdt == input$startdt,
-               enddt == input$enddt, 
-               h == input$h) %>%
-        mutate(pred = pred %>% lag(n = input$h)) %>%
-        filter(date >= c(ifelse(input$onlytrain,
-                               (enddt %>% as.numeric() + 100) %>%
-                          as.Date() %>%
-                          as.yearqtr() %>%
-                          as.Date,
-                                date %>% min))) %>%
-        na.omit
-    # } else if(input$plottype == 'cumulative'){
-    #   out_short
-    # }
+               enddt == input$enddt
+        ) %>%
+        group_by(model) %>%
+        filter(rmse == min(rmse)) %>%
+        filter(lag == min(lag)) %>%
+        ungroup %>%
+        select(model, lag) %>%
+        unique
+      
+      
+      out %<>%
+        split(.$model) %>%
+        map_dfr(function(x){
+          x %>%
+            filter(lag == optlag$lag[which(optlag$model ==
+                                             (x$model %>% first))])
+        })
+      
+      
+      
+    } else {
+      
+      out  %<>%
+        filter(lag == input$lag)
+        
+    }
+    if(nrow(out) != 0){
     
-    
-
+    out %>%
+      mutate(pred = pred %>% lag(n = input$h)) %>%
+      filter(date >= c(ifelse(input$onlytrain,
+                              (enddt %>% as.numeric() + 100) %>%
+                                as.Date() %>%
+                                as.yearqtr() %>%
+                                as.Date,
+                              date %>% min))) %>%
+      na.omit
+    } else {
+        data.frame()
+      }
   })
   
   datebreaks <- eventReactive(input$update,{
@@ -204,9 +256,9 @@ server <- function(input, output){
   
 
   
-  output$forecast <- renderPlot({
+  output$forecast <- renderPlotly({
     if(df.forecast() %>% nrow != 0){
-      ggplot()+
+      (ggplot()+
         geom_line(data = df.forecast(),
                   aes(x = date,
                       y = pred,
@@ -217,18 +269,21 @@ server <- function(input, output){
                         as.Date,
                       y = ytrue %>%
                         as.numeric %>%
-                        diff.xts(lag = 4, log=TRUE)), color = 'black')+
-        scale_x_date(date_breaks = datebreaks(), 
-                     labels=date_format("%Y"),
-                     limits = limits()$x)+
-        scale_y_continuous(limits = limits()$y)+
-        
-        
-        geom_vline(aes(xintercept  = as.Date(df.forecast()$enddt %>% min)),
-                   color = "red",linetype="dashed", alpha = vlinealpha())+
-        labs(title = "",
-             y = "Изменение инвестиций (log)",
-             x = "Дата")
+                        diff.xts(lag = 4, log=TRUE)), color = 'black', linetype="dashed")) %>%
+        # scale_x_date(date_breaks = datebreaks(), 
+        #              labels=date_format("%Y"),
+        #              limits = limits()$x)+
+        # scale_y_continuous(limits = limits()$y)+
+        # 
+        # 
+        # geom_vline(aes(xintercept  = as.Date(df.forecast()$enddt %>% min)),
+        #            color = "red",linetype="dashed", alpha = vlinealpha())+
+        # labs(title = "",
+        #      y = "Изменение инвестиций (log)",
+        #      x = "Дата") 
+      
+        ggplotly() %>%
+        print
     }
     
     
@@ -256,7 +311,10 @@ server <- function(input, output){
   
   output$score <- renderDataTable({
     datatable(df.score(),
+              colnames = c('Модель', 'RMSFE'),
     options = list(
+      dom = 't',
+      
       order = list(list(2, 'asc'))
     ))
   })
@@ -276,23 +334,22 @@ shinyApp(ui, server)
 # 15 - 17 full (enddt = 2014-4q)
 # 16, 17, 18 (enddt =  2015-3q)
 
-out_true %>%
-  mutate(forecastdate = as.Date(as.yearqtr(date) -h/4),
-         true = exp(log(true_lag)+true),
-         pred = exp(log(true_lag)+pred)
-  ) %>%
-  filter(startdt == max(startdt),
-         lag == 1,
-         forecastdate >= min(enddt)) %>%
-  group_by(lag, h, model, startdt) %>%
+
+
+out_cumulative %>%
+    filter(startdt == max(startdt),
+         lag == 2,
+         model == 'ss',
+         enddt == min(enddt)) %>%
+  group_by(lag, h, model, startdt, enddt, forecastdate) %>%
   arrange(date) %>%
-  mutate(true = SMA(true, 4),
-         pred = SMA(pred, 4)) %>%
+  mutate(true = mean(true),
+           pred = mean(pred)) %>%
   na.omit %>%
   ggplot()+
-  geom_line(aes(x = date, y = true))+
-  geom_line(aes(x = date, y = pred, color=model))+
-  facet_wrap(vars(forecastdate))+
+  geom_line(aes(x = date, y = true), color='grey', size = 3, linetype = 'dashed')+
+  geom_line(aes(x = date, y = pred, group = as.factor(forecastdate)))+
+  #facet_wrap(vars(forecastdate))+
   scale_x_date(limits = as.Date(c('2011-07-01', '2019-01-01')))
 # server ----
 # main plot
