@@ -27,7 +27,7 @@ library(gnm)
 library(parallel) 
 library(xgboost) 
 library(rbenchmark)
-
+library(plotly)
 
 library(e1071) 
 library(rlang)
