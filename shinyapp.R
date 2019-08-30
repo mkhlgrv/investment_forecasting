@@ -90,6 +90,8 @@ out_cumulative <- out_true %>%
          pred = exp(log(true_lag)+pred)
   ) 
 
+
+save(out_true, out_short, ytrue,scoredf, scoredf_raw, file = 'data/shinydata.RData')
 # # ui----
 
 source('lib.R')
@@ -140,7 +142,7 @@ ui <- pageWithSidebar(
     actionButton("update", "Произвести расчёты")
     ),
   mainPanel(column(12,
-    plotlyOutput('forecast'),
+    plotOutput('forecast'),
     dataTableOutput('score')
     ))
   )
@@ -256,34 +258,32 @@ server <- function(input, output){
   
 
   
-  output$forecast <- renderPlotly({
+  output$forecast <- renderPlot({
     if(df.forecast() %>% nrow != 0){
-      (ggplot()+
+      ggplot()+
         geom_line(data = df.forecast(),
                   aes(x = date,
                       y = pred,
-                      color = model)) +
+                      color = model), size = 1) +
         geom_line(data = NULL,
                   aes(x = ytrue %>%
                         time %>%
                         as.Date,
                       y = ytrue %>%
                         as.numeric %>%
-                        diff.xts(lag = 4, log=TRUE)), color = 'black', linetype="dashed")) %>%
-        # scale_x_date(date_breaks = datebreaks(), 
-        #              labels=date_format("%Y"),
-        #              limits = limits()$x)+
-        # scale_y_continuous(limits = limits()$y)+
-        # 
-        # 
-        # geom_vline(aes(xintercept  = as.Date(df.forecast()$enddt %>% min)),
-        #            color = "red",linetype="dashed", alpha = vlinealpha())+
-        # labs(title = "",
-        #      y = "Изменение инвестиций (log)",
-        #      x = "Дата") 
-      
-        ggplotly() %>%
-        print
+                        diff.xts(lag = 4, log=TRUE)), 
+                  color = 'black',size = 1, linetype="dashed")+
+        scale_x_date(date_breaks = datebreaks(),
+                     labels=date_format("%Y"),
+                     limits = limits()$x)+
+        scale_y_continuous(limits = limits()$y)+
+
+
+        geom_vline(aes(xintercept  = as.Date(df.forecast()$enddt %>% min)),
+                   color = "red",linetype="dashed", alpha = vlinealpha())+
+        labs(title = "",
+             y = "Изменение инвестиций (log)",
+             x = "Дата")
     }
     
     
@@ -440,7 +440,8 @@ source('fun.R')
 # ss data
 load('data/out3.RData')
 
-ssprob <- out3 %>% map_dfr(function(x){
+ssprob <- out3 %>%
+  map_dfr(function(x){
   series <- x$series
   h <- x$h
   lag <- x$lag
@@ -477,3 +478,34 @@ ssprob %>%
 save(ssprob, file='data/ssprob.Rda')
 
 
+optlag <- scoredf %>% 
+  filter(type == 'train') %>%
+  group_by(model, startdt, enddt, h) %>%
+  filter(rmse == min(rmse)) %>%
+  filter(lag == min(lag)) %>%
+  ungroup %>%
+  select(model, startdt, enddt, h, lag) %>%
+  unique
+
+scoredf_raw %>%
+  filter(type == 'test') %>%
+  mutate(mseh = paste0(model, startdt, enddt, h)) %>%
+  filter(h!=0) %>%
+  split(.$mseh) %>%
+  map_dfr(function(x){
+    m <- x$model %>% first
+    s <- x$startdt %>% first
+    e <- x$enddt %>% first
+    h <- x$h %>% first
+    x %>% filter(lag == unique(optlag$lag[which(optlag$model == m &
+                                    optlag$startdt == s &
+                                    optlag$enddt == e &
+                                    optlag$h == h)])) %>%
+      select(-mseh)
+  }) %>%
+  filter(startdt == max(startdt)) %>%
+  # dcast(startdt + enddt ~ model, value.var = 'rmse') %>%
+  # mutate(date = startdt) %>%
+  ggplot(aes(enddt, rmse, color = model))+
+    geom_line()+
+  facet_wrap(vars(h))
