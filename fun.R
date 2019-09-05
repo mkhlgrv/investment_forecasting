@@ -206,7 +206,7 @@ train.model <- function(startdt, enddt, model,
       
       train.out <- NULL
       
-      model_fit <- spikeslab(x = X.train, y = y.train, n.iter2 = 10000)
+      model_fit <- spikeslab(x = X.train, y = y.train, n.iter2 = 1000)
       
       pred <- predict(model_fit, newdata = rbind(X.train, X.test))$yhat.gnet
       
