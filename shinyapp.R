@@ -32,6 +32,12 @@ correct.names <- Vectorize(vectorize.args = "model",
 
 out_short$model <- correct.names(model = out_short$model)
 
+
+short_ss$model <- correct.names(model = short_ss$model)
+
+out_short <- rbind(out_short, short_ss) %>%
+  group_by(model, lag, h, startdt, enddt, date) %>%
+  filter(row_number() == 1) %>% ungroup
 # save(out_short, file='data/out_short.RData')
 rm(list=ls())
 setwd('~/investment_forecasting/')
@@ -72,7 +78,8 @@ scoredf_raw <- get.score(out_true %>%
   mutate(
     h = as.factor(h)) %>%
   dcast(model+lag+h+type+startdt+enddt~variable,
-        fun.aggregate = mean)
+        fun.aggregate = mean) %>%
+  mutate(h = h %>% as.character %>% as.numeric)
 
 # техническая таблица
 benchmarkscore <- scoredf_raw %>%
@@ -101,381 +108,23 @@ scoredf <- get.score(out_true %>%
   }) 
 
 
-out_cumulative <- out_true %>%
-  mutate(forecastdate = as.Date(as.yearqtr(date) -h/4),
-         true = exp(log(true_lag)+true),
-         pred = exp(log(true_lag)+pred)
-  ) 
+out_hair <- out_true %>%
+  mutate(forecastdate = as.Date(as.yearqtr(date) -h/4)) %>%
+  inner_join(optlag, by = c('model', 'lag', 'h', 'startdt', 'enddt')) %>%
+  mutate(
+         datediff = (date - enddt) %>% as.numeric,
+         pred = ifelse(h == 0, true, pred)) %>%
+  filter(datediff > 0 )
 
 
-save(out_true, out_short, ytrue,scoredf, scoredf_raw, file = 'data/shinydata.RData')
+save(out_true, out_short, ytrue,scoredf, scoredf_raw,out_hair, file = 'data/shinydata.RData')
 # # ui----
 
 source('lib.R')
 source('fun.R')
-ui <- pageWithSidebar(
-  headerPanel('Прогнозирование инвестиций'),
-  sidebarPanel(
-    # radioButtons('plottype',
-    #              'Выберите тип графика',
-    #              c('logdiff', 'cumulative')),
-    selectizeInput('startdt', 'Выберите левую границу тренировочной выборки',
-                   out_short$startdt %>% unique %>% set_names(as.yearqtr(.)) ,
-                   selected = out_short$startdt %>% unique %>% last),
-    # selectizeInput('enddt', 'Выберите правую границу тренировочной выборки',
-    #                out_short$enddt %>% unique %>% set_names(as.yearqtr(.))),
-    sliderInput('enddt',  'Выберите правую границу тренировочной выборки',
-                min = out_short$enddt %>% unique %>% min,
-                max = out_short$enddt %>% unique %>% max,
-                step = 92,value =out_short$enddt %>% unique %>% min,animate = TRUE
-                    ),
-    
-    numericInput('lag',
-                 'Выберите количество лагов в модели (кварталов)',
-                 value = out_short$lag %>% median,
-                 min = out_short$lag %>% min, 
-                 max = out_short$lag %>% max),
-    checkboxInput('optlag', 'Использовать для каждой модели
-                  оптимальное на тренировочной выборке количество лагов', value = TRUE),
-    numericInput('h',
-                 'Выберите горизонт прогнозирования (кварталов)',
-                 value =  out_short$h %>% median,
-                 min = out_short$h %>% min, 
-                 max = out_short$h %>% max),
-    checkboxInput('cumulative', 'Показывать сумму прогнозов', value = TRUE),
-    selectizeInput('model', 'Выберите модель',
-                   choices = out_short$model %>% unique,
-                   selected = out_short$model %>% unique %>% first, 
-                   multiple = TRUE),
-    checkboxInput('onlytrain', 'Показывать только тестовую выборку', value = TRUE),
-    radioButtons('scoretype',
-                 "Выберите тип представления RMSFE",
-                 choices = c("Абсолютные значения" = 'absolute',
-                             "Значения относительно базовой модели" = 'relate'), 
-                 selected = 'relate'),
-    
-    helpText("Для корректного сравнения
-             тренировочных выборок с разными границами 
-             RMSFE рассчитывается только по первым 12 наблюдениям тестовой выборки
-             (т.е. только для первых 3 лет)."),
-    hr(),
-    
-    
-    actionButton("update", "Произвести расчёты"),
-    actionButton("animate", "animate")
-    ),
-  mainPanel(column(12,
-    plotOutput('forecast'),
-    dataTableOutput('score')
-    ))
-  )
-
-server <- function(input, output){
-  
-  df.true <- eventReactive(input$update,{
-    
-  })
-  
-  observeEvent(input$update, {
-    if(df.forecast() %>% nrow == 0){
-      showModal(modalDialog(
-        title = "",
-        "К сожалению, для указанной тренировочной выборки в данный момент нет данных.",
-        easyClose = TRUE
-      ))
-    }
-    
-  })
-  
 
 
-  # df.forecast <- eventReactive(input$update,{
-  #   
-  #   out <- out_short %>%
-  #     filter(model %in% input$model,
-  #            
-  #            startdt == input$startdt,
-  #            enddt == input$enddt, 
-  #            h == input$h)
-  #   
-  #   
-  #   if(input$optlag){
-  #     optlag <- scoredf %>% 
-  #       filter(type == 'train',
-  #              model %in% input$model,
-  #              h == input$h,
-  #              startdt == input$startdt,
-  #              enddt == input$enddt
-  #       ) %>%
-  #       group_by(model) %>%
-  #       filter(rmse == min(rmse)) %>%
-  #       filter(lag == min(lag)) %>%
-  #       ungroup %>%
-  #       select(model, lag) %>%
-  #       unique
-  #     
-  #     
-  #     out %<>%
-  #       split(.$model) %>%
-  #       map_dfr(function(x){
-  #         x %>%
-  #           filter(lag == optlag$lag[which(optlag$model ==
-  #                                            (x$model %>% first))])
-  #       })
-  #     
-  #     
-  #     
-  #   } else {
-  #     
-  #     out  %<>%
-  #       filter(lag == input$lag)
-  #       
-  #   }
-  #   if(nrow(out) != 0){
-  #   
-  #   out %>%
-  #     mutate(pred = pred %>% lag(n = input$h)) %>%
-  #     filter(date >= c(ifelse(input$onlytrain,
-  #                             (enddt %>% as.numeric() + 100) %>%
-  #                               as.Date() %>%
-  #                               as.yearqtr() %>%
-  #                               as.Date,
-  #                             date %>% min))) %>%
-  #     na.omit
-  #   } else {
-  #       data.frame()
-  #     }
-  # })
-  
-  
-  df.forecast <- function(){
-
-      out <- out_short %>%
-        filter(model %in% input$model,
-
-               startdt == input$startdt,
-               enddt == input$enddt %>% as.yearqtr %>% as.Date,
-               h == input$h)
-
-
-      if(input$optlag){
-        optlag <- scoredf %>%
-          filter(type == 'train',
-                 model %in% input$model,
-                 h == input$h,
-                 startdt == input$startdt,
-                 enddt == input$enddt %>% as.yearqtr %>% as.Date
-          ) %>%
-          group_by(model) %>%
-          filter(rmse == min(rmse)) %>%
-          filter(lag == min(lag)) %>%
-          ungroup %>%
-          select(model, lag) %>%
-          unique
-
-
-        out %<>%
-          split(.$model) %>%
-          map_dfr(function(x){
-            x %>%
-              filter(lag == optlag$lag[which(optlag$model ==
-                                               (x$model %>% first))])
-          })
-
-
-
-      } else {
-
-        out  %<>%
-          filter(lag == input$lag)
-
-      }
-      if(nrow(out) != 0){
-
-      out %>%
-        mutate(pred = pred %>% lag(n = input$h)) %>%
-        filter(date >= c(ifelse(input$onlytrain,
-                                (enddt %>% as.numeric() + 100) %>%
-                                  as.Date() %>%
-                                  as.yearqtr() %>%
-                                  as.Date,
-                                date %>% min))) %>%
-        na.omit
-      } else {
-          data.frame()
-        }
-    }
-  
-  datebreaks <- eventReactive(input$update,{
-      ifelse(input$onlytrain,
-             '1 year',
-             '5 years')
-    }
-  )
-  
-  vlinealpha <- eventReactive(input$update,{
-    ifelse(input$onlytrain,
-           0,
-           1)
-  }
-  )
-  
-  limits <- eventReactive(input$update,{
-
-    
-    x <- c(df.forecast()$date %>% min,
-           df.forecast()$date %>% max)
-    ytrue_cut <- ytrue %>%
-      diff.xts(lag = 4, log=TRUE) %>%
-      .[paste0(x[1], '/', x[2])] %>%
-      as.numeric
-    
-   
-    y <- c(min(df.forecast()$pred, ytrue_cut),
-           max(df.forecast()$pred, ytrue_cut))
-    list(x = x, y = y)
-  }
-  )
-  
-  
-  
-
-  
-  output$forecast <- renderPlot({
-    if(df.forecast() %>% nrow != 0){
-      
-      
-      g_legend<-function(a.gplot){
-        tmp <- ggplot_gtable(ggplot_build(a.gplot))
-        leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
-        legend <- tmp$grobs[[leg]]
-        return(legend)}
-      
-      p1 <- ggplot() + geom_line(data = NULL,
-                                 aes(x = ytrue %>%
-                                       time %>%
-                                       as.Date,
-                                     y = ytrue %>%
-                                       as.numeric %>%
-                                       diff.xts(lag = 4, log=TRUE),
-                                     color='Исходный ряд',
-                                 linetype = 'Исходный ряд',
-                                 size = 'Исходный ряд'))+
-        
-        scale_color_manual(values = 'black')+
-        scale_linetype_manual(values = 'dashed')+
-        scale_size_manual(values = 1)+
-        guides(colour = guide_legend(""),
-               size = guide_legend(""),
-               linetype = guide_legend(""))+
-        theme(legend.position="right",
-              legend.justification="left",
-              legend.margin=ggplot2::margin(0,0,0,0),
-              legend.box.margin=ggplot2::margin(10,10,10,10))
-      
-      p2 <- ggplot() +
-        geom_line(data = df.forecast(),
-                         aes(x = date,
-                             y = pred,
-                             color = model), size = 1) +
-        scale_color_discrete(name = "Модель")+
-        theme(legend.position="right",
-              legend.justification="left",
-              legend.margin=ggplot2::margin(0,0,0,0),
-              legend.box.margin=ggplot2::margin(10,10,10,10))
-        
-      
-      
-      
-      
-      
-      p <- ggplot() +
-        geom_line(data = df.forecast(),
-                               aes(x = date,
-                                   y = pred,
-                                   color = model), size = 1) +
-        geom_line(data = NULL,
-                    aes(x = ytrue %>%
-                          time %>%
-                          as.Date,
-                        y = ytrue %>%
-                          as.numeric %>%
-                          diff.xts(lag = 4, log=TRUE)
-                        ),
-                  color='black',
-                    size = 1, linetype="dashed")+
-        scale_color_discrete(guide="none")+
-        
-        
-        scale_x_date(date_breaks = datebreaks(),
-                     labels=date_format("%Y"),
-                     limits = limits()$x)+
-        scale_y_continuous(limits = limits()$y)+
-
-
-        geom_vline(aes(xintercept  = as.Date(df.forecast()$enddt %>% min)),
-                   color = "red",linetype="dashed", alpha = vlinealpha())+
-        geom_rect(aes(xmin=(df.forecast()$enddt %>% min + 100) %>% as.yearqtr %>% as.Date,
-                  xmax=(df.forecast()$enddt %>% min +366*3) %>% as.yearqtr %>% as.Date,
-                  ymin=-Inf, ymax=Inf),
-                  fill="black", alpha=0.2)
-      
-        labs(title = "",
-             y = "Изменение инвестиций (log)",
-             x = "Дата")
-      
-      
-
-
-      grid.arrange(p,
-                   arrangeGrob(g_legend(p2),g_legend(p1), nrow=2),
-                               ncol=2,widths=c(7,1))
-
-      
-    }
-    
-    
-      
-    
-    
-  })
-
-  
-  
-  df.score <- eventReactive(input$update,{
-    
-    scoredf <- switch(input$scoretype,
-                      'absolute' = scoredf_raw,
-                      'relate' = scoredf)
-    scoredf %>% 
-      filter(type == 'test',
-             model %in% input$model,
-                  lag == input$lag,
-             h == input$h,
-                  startdt == input$startdt,
-             enddt == input$enddt %>% as.yearqtr %>% as.Date
-                  ) %>%
-      select(model, rmse)
-    
-  })
-  
-  output$score <- renderDataTable({
-    datatable(df.score(),
-              colnames = c('Модель', 'RMSFE'),
-              rownames = FALSE,
-    options = list(dom = 'tip', 
-      
-      order = list(list(1, 'asc'))
-    )) %>%
-      formatRound(columns=c(2), digits=3)
-  })
-  
-  
-  
-}
-
-
-shinyApp(ui, server)
+runApp()
 
 
 
@@ -488,20 +137,27 @@ shinyApp(ui, server)
 
 
 out_cumulative %>%
+  inner_join(optlag, by = c('model', 'lag', 'h', 'startdt', 'enddt')) %>%
     filter(startdt == max(startdt),
-         lag == 2,
-         model == 'ss',
-         enddt == min(enddt)) %>%
+           date >= as.Date('2011-07-01'),
+           !model %in% c('Random Walk', 'LASSO'),
+           model == 'Random Forest'
+         ) %>%
+  mutate(fdme=paste0(forecastdate, model, enddt) %>% as.factor,
+         datediff = (date - enddt) %>% as.numeric,
+         pred = ifelse(h == 0, true, pred)) %>%
+  filter(datediff >= 0) %>%
   group_by(lag, h, model, startdt, enddt, forecastdate) %>%
-  arrange(date) %>%
-  mutate(true = mean(true),
-           pred = mean(pred)) %>%
-  na.omit %>%
   ggplot()+
-  geom_line(aes(x = date, y = true), color='grey', size = 3, linetype = 'dashed')+
-  geom_line(aes(x = date, y = pred, group = as.factor(forecastdate)))+
-  #facet_wrap(vars(forecastdate))+
-  scale_x_date(limits = as.Date(c('2011-07-01', '2019-01-01')))
+  geom_line(aes(x = date, y = pred, group = fdme, color = datediff), alpha = 0.5)+
+  geom_line(aes(x = date, y = true), color='black', size = 1, linetype = 'dashed')+
+  stat_summary(aes(x = date, y = pred),
+               fill = 'darkblue',
+               size = 1,
+               fun.data = "mean_se",geom="ribbon", alpha = 0.5)+
+  facet_wrap(vars(model))+
+  #scale_x_date(limits = as.Date(c('2011-07-01', '2019-01-01')))+
+  scale_colour_gradient(low = "cornflowerblue", high = "white")
 # server ----
 # main plot
 # metrics (rmse, r2, mae, mape)
@@ -582,7 +238,7 @@ scoredf %>%
   labs(x = 'Дата прогноза', y = 'RMSFE относительно RW') +
   guides(colour = guide_legend("Модель"),
          linetype = guide_legend("Модель"))
-theme()
+
 
 
 # меняем enddt
@@ -648,7 +304,7 @@ ssprob %>%
 save(ssprob, file='data/ssprob.Rda')
 
 
-optlag <- scoredf %>% 
+optlag <- scoredf_raw %>% 
   filter(type == 'train') %>%
   group_by(model, startdt, enddt, h) %>%
   filter(rmse == min(rmse)) %>%
