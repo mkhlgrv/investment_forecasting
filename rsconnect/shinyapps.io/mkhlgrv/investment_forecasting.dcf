@@ -1,0 +1,13 @@
+name: investment_forecasting
+title: investment_forecasting
+username:
+account: mkhlgrv
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 1158444
+bundleId: 2392046
+url: https://mkhlgrv.shinyapps.io/investment_forecasting/
+when: 1567785759.93788
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: .gitattributes|.RData|README.md
