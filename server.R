@@ -132,13 +132,21 @@ function(input, output){
                                      color='Исходный ряд',
                                      linetype = 'Исходный ряд',
                                      size = 'Исходный ряд'))+
+        geom_rect(aes(xmin=(df.forecast()$enddt %>% min + 100) %>% as.yearqtr %>% as.Date,
+                      xmax=(df.forecast()$enddt %>% min +366*3) %>% as.yearqtr %>% as.Date,
+                      ymin=-Inf, ymax=Inf,
+                      fill="Тестовая выборка"),
+                  alpha=0.2)+
+        
+        scale_fill_manual(values = 'black')+
         
         scale_color_manual(values = 'black')+
         scale_linetype_manual(values = 'dotted')+
         scale_size_manual(values = 1)+
         guides(colour = guide_legend(""),
                size = guide_legend(""),
-               linetype = guide_legend(""))+
+               linetype = guide_legend(""),
+               fill = guide_legend(" "))+
         theme(legend.position="right",
               legend.justification="left",
               legend.margin=ggplot2::margin(0,0,0,0),
@@ -253,24 +261,37 @@ function(input, output){
   
   output$hair <- renderPlot({
     df.hair() %>%
-      filter(forecastdate <= input$forecastdate,
-             forecastdate > min(enddt)) %>%
+      group_by(forecastdate) %>%
+      mutate(end_max = max(enddt)) %>%
+      filter(forecastdate <= input$forecastdate %>% as.yearqtr %>% as.Date) %>%
+      filter(enddt == end_max) %>%
     ggplot()+
-      geom_line(aes(x = date, y = pred, group = fdme
+      geom_line(aes(x = date, y = pred, group = fdme,
                     # , color = datediff
-                    )
-                ,color = 'cornflowerblue',
-                alpha = 0.5)+
-      geom_line(aes(x = date, y = true), color='black', size = 1, linetype = 'dashed')#+
+                    
+                #,color = 'cornflowerblue',
+                color = model),
+                alpha = 1, size = 0.8)+
+      geom_line(aes(x = date, y = true), color='black', size = 1, linetype = 'dashed')+
+      
+      labs(title = "",
+           y = "Изменение инвестиций (log)",
+           x = "Дата")+
+      
+      # 
       # stat_summary(aes(x = date, y = pred),
-      #              fill = 'darkblue',
       #              size = 1,
-      #              fun.data = "mean_se",
+      #              fun.ymin = function(z) {quantile(z,0.25)},
+      #              fun.ymax = function(z) {quantile(z,0.75)},
+      #              #fun.y = median,
       #              geom="ribbon",
-      #              alpha = 0.5)+
-      # facet_wrap(vars(model), drop = TRUE) +
-      # scale_colour_gradient(low = "cornflowerblue", high = "white", limits = c(0,2000),
-      #                       oob = scales::squish)
+      #              alpha = 0.3)+
+      scale_fill_manual(values = 'darkblue')+
+      scale_size_manual(values = 1)+
+      guides(colour = guide_legend(""),
+             size = guide_legend(""),
+             linetype = guide_legend(""),
+             fill = guide_legend(" "))
   })
   
   

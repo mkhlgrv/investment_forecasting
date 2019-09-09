@@ -112,7 +112,8 @@ out_hair <- out_true %>%
   mutate(forecastdate = as.Date(as.yearqtr(date) -h/4)) %>%
   inner_join(optlag, by = c('model', 'lag', 'h', 'startdt', 'enddt')) %>%
   mutate(
-         datediff = (date - enddt) %>% as.numeric,
+         datediff = (forecastdate - enddt) %>%
+           as.numeric,
          pred = ifelse(h == 0, true, pred)) %>%
   filter(datediff > 0 )
 
@@ -122,7 +123,14 @@ save(out_true, out_short, ytrue,scoredf, scoredf_raw,out_hair, file = 'data/shin
 
 source('lib.R')
 source('fun.R')
+load('data/shinydata.RData')
 
+
+choises_q <- format(seq.Date(from = as.Date("2012-01-01"),
+                                   to = as.Date("2019-01-01"),
+                                 by = "quarter") %>%
+                          as.yearqtr,
+                        format = "%Y Q%q")
 
 runApp()
 
@@ -185,19 +193,6 @@ for(modeli in out_true$model %>% unique){
   dev.off()
 }
 
-# все прогнозы вместе в виде зеленых нитей
-out_true %>%
-  mutate(sdm = paste0(model, startdt)) %>%
-  filter(!model %in% c('lasso', 'postlasso', 'rw'),
-         lag != 0,
-         h != 0) %>%
-  ggplot()+
-  geom_line(aes(x = date, y = pred, group = sdm),color='darkgreen', alpha = 0.1)+
-  geom_line(aes(x = date, y = true), color = 'black', size = 0.6)+
-  geom_vline(aes(xintercept  = min(enddt)),
-             color = "red",linetype="dashed")+
-  #scale_x_date(limits = c(min(enddt), max(date)))
-  facet_grid(vars(lag), vars(h))
 
 # проблема: модель lasso показывает плохие результаты (прогноз по среднему) 
 # на горизонте прогнозирования 3-4 квартала
@@ -225,23 +220,26 @@ out_true %>%
 
 # меняем startdt
 
-scoredf %>%
+scoredf_raw %>%
   right_join(optlag, by = c('model', 'startdt', 'enddt', 'h', 'lag')) %>%
-  filter(type == 'test', enddt == min(enddt)) %>%
+  filter(type == 'test', enddt == min(enddt), h !=0) %>%
   filter(model != 'Random Walk') %>%
+  filter(model != 'ARIMA') %>%
   group_by(model, lag, h) %>%
-  arrange(enddt) %>%
-  #mutate(rmse = rmse/first(rmse)) %>%
+  arrange(startdt) %>%
+  mutate(rmse = rmse/first(rmse)) %>%
   ggplot() +
   geom_line(aes(x = startdt, y = rmse, linetype = model, color=model), size = 0.703)+
   facet_wrap( vars(h), ncol = 2) +
-  labs(x = 'Дата прогноза', y = 'RMSFE относительно RW') +
+  labs(x = 'Левая граница тренировочной выборки', y = 'RMSFE относительно RW',
+       title ='Ошибки прогноза относительно границы тренировочной выборки',
+       subtitle = 'Горизонт прогнозирования от 1 до 4 кварталов') +
   guides(colour = guide_legend("Модель"),
          linetype = guide_legend("Модель"))
 
 
 
-# меняем enddt
+
 scoredf %>%
   right_join(optlag, by = c('model', 'startdt', 'enddt', 'h', 'lag')) %>%
   filter(type == 'test', startdt == max(startdt)) %>%
@@ -252,36 +250,43 @@ scoredf %>%
   ggplot() +
   geom_line(aes(x = enddt, y = rmse, linetype = model, color=model), size = 0.703)+
   facet_wrap( vars(h), ncol = 2) +
-  labs(x = 'Дата прогноза', y = 'RMSFE относительно RW') +
+  labs(x = 'Правая граница тренировочной выборки', y = 'RMSFE относительно RW',
+       title ='Ошибки прогноза относительно границы тренировочной выборки',
+       subtitle = 'Горизонт прогнозирования от 1 до 4 кварталов') +
   guides(colour = guide_legend("Модель"),
          linetype = guide_legend("Модель"))
-  theme()
-# по графику видно, что модели LASSO и ARIMA очень чувствительна к уменьшению размеров выборки
-# с уменьешением размеров их качество падает
-# Осталные модели в среднем либо не ухудушают свое качество, либо значительно улучшают (ss)
+
 
 # вычислим значимость коэффициентов в модели spike and slab ----
 rm(list=ls())
 source('fun.R')
 # ss data
-load('data/out3.RData')
+load('jobs/out_ss.RData')
 
-ssprob <- out3 %>%
-  map_dfr(function(x){
+ssprob <- out_ss %>%
+  imap_dfr(function(x, i){
   series <- x$series
+ 
   h <- x$h
   lag <- x$lag
   x$startdt
   x$enddt
   
-  prednames <- x$model.fit$x %>% colnames
-  melted <- x$model.fit$model %>%
-    melt
+  prednames <- x$model_fit$x %>%
+    colnames
+  
+  melted <- x$model_fit$model %>%
+    melt %>%
+    mutate(value = factor(as.character(value), levels = c(1:length(prednames)))) %>%
+    dcast(`L1`~value, fun.aggregate = length,fill = 0, drop = FALSE)
   n <- nrow(melted)
+  
   prob <- (melted %>%
-    dcast(`L1`~value, fun.aggregate = length) %>%
     .[,-1] %>%
     colSums())/n %>% as.numeric
+  
+  print(i)
+
   data.frame(series = x$series,
              h = x$h,
              lag = x$lag,
@@ -292,14 +297,20 @@ ssprob <- out3 %>%
 })
 
 
+
 ssprob %>%
-  filter(h !=0, lag == 1) %>%
+  filter(h !=0,
+         lag == 1) %>%
   mutate(h = as.factor(h),
-         lag = as.factor(lag)) %>%
-  group_by(h, lag, predictor) %>%
-  filter(mean(prob)>0.05) %>%
+         lag = as.factor(lag),
+         startdt = as.numeric(startdt - min(startdt))) %>%
+  group_by(lag,h, predictor) %>%
+  mutate(prob_mean = mean(prob)) %>%
+  ungroup %>%
+  group_by(predictor) %>%
+  filter(max(prob_mean)>0.6) %>%
   ggplot()+
-  geom_line(aes(startdt, prob))+
+  geom_line(aes(enddt, prob,group = startdt, alpha = startdt))+
   facet_grid(vars(predictor), vars(h))
 save(ssprob, file='data/ssprob.Rda')
 

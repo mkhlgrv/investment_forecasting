@@ -54,7 +54,8 @@ navbarPage('Прогнозирование инвестиций',
                       selectizeInput('model_hair', 'Выберите модель',
                                      choices = out_short$model %>% unique,
                                      selected = out_short$model %>% unique %>% first, 
-                                     multiple = FALSE),
+                                     
+                                     multiple = TRUE),
                       # checkboxInput('onlytrain_hair', 'Показывать только тестовую выборку', value = TRUE),
              #          radioButtons('scoretype_hair',
              #                       "Выберите тип представления RMSFE",
@@ -65,12 +66,23 @@ navbarPage('Прогнозирование инвестиций',
              # тренировочных выборок с разными границами 
              # RMSFE рассчитывается только по первым 12 наблюдениям тестовой выборки
              # (т.е. только для первых 3 лет)."),
-             sliderInput('forecastdate', 'Дата прогноза',
-                         min = out_hair$forecastdate[which(out_hair$forecastdate > min(out_hair$enddt))] %>% min,
-                         max = out_hair$forecastdate %>% max,
-                         value = out_hair$forecastdate[which(out_hair$forecastdate > min(out_hair$enddt))] %>% min,
-                         step = 92,animate = TRUE,
-                         timeFormat = '%b %Y'),
+             
+             
+             sliderValues(
+               inputId = "forecastdate", label = "Дата прогноза", width = "100%",
+               values = choises_q,
+               from = choises_q[1], to = NULL,
+               dragRange = TRUE,
+               grid = FALSE,
+               animate = animationOptions(interval = 1500)
+             ),
+            
+             # sliderInput('forecastdate', 'Дата прогноза',
+             #             min = out_hair$forecastdate[which(out_hair$forecastdate > min(out_hair$enddt))] %>% min,
+             #             max = out_hair$forecastdate %>% max,
+             #             value = out_hair$forecastdate[which(out_hair$forecastdate > min(out_hair$enddt))] %>% min,
+             #             step = 92,animate = TRUE,
+             #             timeFormat = '%b %Y'),
                       hr(),
                       actionButton("update_hair", "Произвести расчёты")
                       
