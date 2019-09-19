@@ -347,5 +347,5 @@ bloomberg <- import('data/bloomberg.csv') %>%
 
 rawdata <- merge.xts(inv,sophistdata, def, mkr, gov,gko, bloomberg)
 save(rawdata, file = "data/raw.RData")
-export(rawdata, 'data/raw.csv', 'csv', row.names = TRUE)
+rio::export(rawdata, 'data/raw.csv', 'csv', row.names = TRUE)
 rm(list=ls())
