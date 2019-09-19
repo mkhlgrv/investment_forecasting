@@ -50,6 +50,16 @@ navbarPage('Прогнозирование инвестиций',
                                      out_short$startdt %>% unique %>% set_names(as.yearqtr(.)) ,
                                      selected = out_short$startdt %>% unique %>% last),
                       helpText('Для каждой модели используется оптимальное количество лагов'),
+                      sliderInput('h_hair',
+                                   'Выберите  горизонт прогнозирования (кварталов)',
+                                   value =  c(out_short$h %>% min, out_short$h %>% median),
+                                   min = out_short$h %>% min, 
+                                   max = out_short$h %>% max,
+                                  step = 1),
+                      
+                      checkboxInput('actualforecast',
+                                    'Показывать только наиболее актуальные прогнозы', value = TRUE),
+                      
                       
                       selectizeInput('model_hair', 'Выберите модель',
                                      choices = out_short$model %>% unique,
@@ -71,7 +81,8 @@ navbarPage('Прогнозирование инвестиций',
              sliderValues(
                inputId = "forecastdate", label = "Дата прогноза", width = "100%",
                values = choises_q,
-               from = choises_q[1], to = NULL,
+               from = choises_q[1],
+               to = NULL,
                dragRange = TRUE,
                grid = FALSE,
                animate = animationOptions(interval = 1500)

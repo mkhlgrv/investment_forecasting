@@ -33,12 +33,18 @@ correct.names <- Vectorize(vectorize.args = "model",
 out_short$model <- correct.names(model = out_short$model)
 
 
-short_ss$model <- correct.names(model = short_ss$model)
+load('jobs/short_arima.RData')
+load('jobs/short_rw.RData')
+load('jobs/short_ss.RData')
+load('jobs/short_adalasso.RData')
+load('jobs/short_lasso.RData')
+load('jobs/short_postlasso.RData')
+load('jobs/short_ridge.RData')
 
-out_short <- rbind(out_short, short_ss) %>%
-  group_by(model, lag, h, startdt, enddt, date) %>%
-  filter(row_number() == 1) %>% ungroup
-# save(out_short, file='data/out_short.RData')
+
+
+out_short <-do.call(rbind, list(short_ss, short_arima, short_adalasso, short_rw, short_ridge, short_postlasso, short_lasso))
+save(out_short, file='data/out_short.RData')
 rm(list=ls())
 setwd('~/investment_forecasting/')
 load('data/out_short.RData')
@@ -57,9 +63,31 @@ out_true <- data.frame(date = ytrue %>%
                        true_lag = ytrue %>%
                          as.numeric %>%
                          lag.xts(lag = 4)) %>%
-  inner_join(out_short %>%
+  right_join(out_short %>%
+               mutate(group = paste(model, lag, startdt, enddt, h)) %>%
+               split(.$group) %>%
+               map_dfr(function(x){
+                 x$group <- NULL
+                 m <- x$model %>% first
+                 l <- x$lag %>% first
+                 sd <- x$startdt %>% first
+                 ed <- x$enddt %>% first
+                 h <- x$h %>% first
+                 dt <- x$date %>% max %>% as.yearqtr %>% as.numeric %>% add(1/4)
+                 rbind(x, data.frame(model = m,
+                                     lag = l,
+                                     startdt = sd,
+                                     enddt = ed,
+                                     h = h,
+                                     date = seq(dt,
+                                                dt + (h+1)/4,
+                                                by = 1/4
+                                     ) %>% as.yearqtr %>% as.Date,
+                                     pred = 0))
+               }) %>% 
                group_by(model, lag, startdt, enddt, h) %>%
-               mutate(pred = lag(pred, min(h))), by = 'date')
+               mutate(pred = lag(pred, min(h))),
+             by = 'date')
 
 
 
@@ -108,6 +136,16 @@ scoredf <- get.score(out_true %>%
   }) 
 
 
+optlag <- scoredf_raw %>% 
+  filter(type == 'train') %>%
+  group_by(model, startdt, enddt, h) %>%
+  filter(rmse == min(rmse)) %>%
+  filter(lag == min(lag)) %>%
+  ungroup %>%
+  select(model, startdt, enddt, h, lag) %>%
+  unique
+
+
 out_hair <- out_true %>%
   mutate(forecastdate = as.Date(as.yearqtr(date) -h/4)) %>%
   inner_join(optlag, by = c('model', 'lag', 'h', 'startdt', 'enddt')) %>%
@@ -115,7 +153,7 @@ out_hair <- out_true %>%
          datediff = (forecastdate - enddt) %>%
            as.numeric,
          pred = ifelse(h == 0, true, pred)) %>%
-  filter(datediff > 0 )
+   filter(datediff > 0 )
 
 
 save(out_true, out_short, ytrue,scoredf, scoredf_raw,out_hair, file = 'data/shinydata.RData')
@@ -263,6 +301,8 @@ source('fun.R')
 # ss data
 load('jobs/out_ss.RData')
 
+load('jobs/short_ss.RData')
+
 ssprob <- out_ss %>%
   imap_dfr(function(x, i){
   series <- x$series
@@ -295,34 +335,30 @@ ssprob <- out_ss %>%
              predictor = prednames,
              prob = prob)
 })
+# save(ssprob, file='data/ssprob.Rda')
 
-
+load('data/ssprob.Rda')
 
 ssprob %>%
-  filter(h !=0,
-         lag == 1) %>%
-  mutate(h = as.factor(h),
-         lag = as.factor(lag),
-         startdt = as.numeric(startdt - min(startdt))) %>%
-  group_by(lag,h, predictor) %>%
+  inner_join(optlag %>% filter(model == 'ss') %>% select(-model),
+             by = c('lag', 'h', 'startdt', 'enddt')) %>%
+  filter(h >=4, startdt == max(startdt)) %>%
+  
+  mutate(
+         startdt = as.factor(startdt)) %>%
+  group_by(h, predictor, startdt) %>%
   mutate(prob_mean = mean(prob)) %>%
   ungroup %>%
   group_by(predictor) %>%
-  filter(max(prob_mean)>0.6) %>%
+  filter(max(prob_mean)>0.6) %>% #|grepl('oil', first(predictor))) %>%
+  #mutate(group = paste0(h, "_", startdt)) #%>%
   ggplot()+
-  geom_line(aes(enddt, prob,group = startdt, alpha = startdt))+
-  facet_grid(vars(predictor), vars(h))
-save(ssprob, file='data/ssprob.Rda')
+  geom_line(aes(enddt, prob, color = h, group = h))+
+  #scale_alpha_discrete(range = c(0, 0.3))
+  #stat_summary(aes(enddt, prob), alpha = 0.5, geom = 'ribbon', fun.data = 'mean_cl_boot')+
+  facet_wrap(vars(predictor))
 
 
-optlag <- scoredf_raw %>% 
-  filter(type == 'train') %>%
-  group_by(model, startdt, enddt, h) %>%
-  filter(rmse == min(rmse)) %>%
-  filter(lag == min(lag)) %>%
-  ungroup %>%
-  select(model, startdt, enddt, h, lag) %>%
-  unique
 
 scoredf_raw %>%
   filter(type == 'test') %>%

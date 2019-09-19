@@ -10,7 +10,7 @@ create_lag <- function(df, lag){
   }
   return(out %>% as.xts)
 }
-
+ 
 # 1. начальная дата
 # 2. конечная дата
 # 3. модель

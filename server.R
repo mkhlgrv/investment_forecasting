@@ -19,7 +19,7 @@ function(input, output){
   
   df.forecast <- eventReactive(input$update,{
     
-    out <- out_short %>%
+    out <- out_true %>%
       filter(model %in% input$model,
              
              startdt == input$startdt,
@@ -28,7 +28,7 @@ function(input, output){
     
     
     if(input$optlag){
-      optlag <- scoredf %>%
+      optlag <- scoredf_raw %>%
         filter(type == 'train',
                model %in% input$model,
                h == input$h,
@@ -62,14 +62,14 @@ function(input, output){
     if(nrow(out) != 0){
       
       out %>%
-        mutate(pred = pred %>% lag(n = input$h)) %>%
         filter(date >= c(ifelse(input$onlytrain,
-                                (enddt %>% as.numeric() + 100) %>%
-                                  as.Date() %>%
-                                  as.yearqtr() %>%
+                                enddt %>%
+                                   as.Date %>%
+                                   as.yearqtr %>%
+                                   add(1/4) %>%
+                                   as.yearqtr %>%
                                   as.Date,
-                                date %>% min))) %>%
-        na.omit
+                                date %>% min)))
     } else {
       data.frame()
     }
@@ -114,6 +114,9 @@ function(input, output){
   
   output$forecast <- renderPlot({
     if(df.forecast() %>% nrow != 0){
+      
+      print(df.forecast())
+      
       
       
       g_legend<-function(a.gplot){
@@ -223,18 +226,28 @@ function(input, output){
   
   df.score <- eventReactive(input$update,{
     
+    
+    
     scoredf <- switch(input$scoretype,
                       'absolute' = scoredf_raw,
                       'relate' = scoredf)
-    scoredf %>% 
+    scoredf %<>% 
       filter(type == 'test',
              model %in% input$model,
-             lag == input$lag,
              h == input$h,
              startdt == input$startdt,
              enddt == input$enddt
-      ) %>%
-      select(model, rmse)
+      )
+    if(input$optlag) {
+      scoredf %<>%
+        inner_join(optlag,
+                   by = c('startdt', 'enddt', 'h', 'model', 'lag'))
+    } else{
+      scoredf %<>%
+        filter(lag == input$lag) %>% print
+    }
+    scoredf %>%
+      select(model, rmse) 
     
   })
   
@@ -251,42 +264,44 @@ function(input, output){
   
   df.hair <- eventReactive(input$update_hair, {
     out_hair %>%
-      # inner_join(optlag, by = c('model', 'lag', 'h', 'startdt', 'enddt')) %>%
+      mutate(qdiff = (date %>% as.yearqtr %>% as.numeric)-
+               (forecastdate %>% as.yearqtr %>% as.numeric)) %>%
+      filter(qdiff >= input$h_hair[1]/4,qdiff <=
+               input$h_hair[2]/4) %>%
       filter(startdt == input$startdt_hair,
-             model %in% input$model_hair
-      ) %>%
-      mutate(fdme=paste0(forecastdate, model, enddt) %>% as.factor)
+             model %in% input$model_hair) %>%
+      mutate(fdme=paste0(forecastdate, model, enddt) %>% as.factor) %>%
+      group_by(forecastdate) %>%
+      mutate(end_max = max(enddt)) %>%
+      ungroup %>%
+      (function(x) {if(input$actualforecast) x %>% filter(enddt == end_max) else x })
       
   })
   
   output$hair <- renderPlot({
     df.hair() %>%
-      group_by(forecastdate) %>%
-      mutate(end_max = max(enddt)) %>%
+      
       filter(forecastdate <= input$forecastdate %>% as.yearqtr %>% as.Date) %>%
-      filter(enddt == end_max) %>%
+      
     ggplot()+
-      geom_line(aes(x = date, y = pred, group = fdme,
-                    # , color = datediff
-                    
-                #,color = 'cornflowerblue',
-                color = model),
-                alpha = 1, size = 0.8)+
+      geom_line(aes(x = date, y = pred, group = fdme),
+                color = 'cornflowerblue',
+                alpha = 0.3,
+                size = 0.8)+
       geom_line(aes(x = date, y = true), color='black', size = 1, linetype = 'dashed')+
       
       labs(title = "",
            y = "Изменение инвестиций (log)",
            x = "Дата")+
       
-      # 
-      # stat_summary(aes(x = date, y = pred),
-      #              size = 1,
-      #              fun.ymin = function(z) {quantile(z,0.25)},
-      #              fun.ymax = function(z) {quantile(z,0.75)},
-      #              #fun.y = median,
-      #              geom="ribbon",
-      #              alpha = 0.3)+
-      scale_fill_manual(values = 'darkblue')+
+      stat_summary(aes(x = date, y = pred, group = model),
+                   size = 1,
+                   fun.ymin = function(z) {quantile(z,0.25)},
+                   fun.ymax = function(z) {quantile(z,0.75)},
+                   #fun.y = median,
+                   geom="ribbon",
+                   fill = 'darkblue',
+                   alpha = 0.3)+
       scale_size_manual(values = 1)+
       guides(colour = guide_legend(""),
              size = guide_legend(""),
