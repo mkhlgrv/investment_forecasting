@@ -66,6 +66,8 @@ navbarPage('Прогнозирование инвестиций',
                                      selected = out_short$model %>% unique %>% first, 
                                      
                                      multiple = TRUE),
+                      checkboxInput('facet',
+                                    'Каждую модель на отдельном графике', value = TRUE),
                       # checkboxInput('onlytrain_hair', 'Показывать только тестовую выборку', value = TRUE),
              #          radioButtons('scoretype_hair',
              #                       "Выберите тип представления RMSFE",

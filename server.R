@@ -115,8 +115,6 @@ function(input, output){
   output$forecast <- renderPlot({
     if(df.forecast() %>% nrow != 0){
       
-      print(df.forecast())
-      
       
       
       g_legend<-function(a.gplot){
@@ -136,7 +134,7 @@ function(input, output){
                                      linetype = 'Исходный ряд',
                                      size = 'Исходный ряд'))+
         geom_rect(aes(xmin=(df.forecast()$enddt %>% min + 100) %>% as.yearqtr %>% as.Date,
-                      xmax=(df.forecast()$enddt %>% min +366*3) %>% as.yearqtr %>% as.Date,
+                      xmax=(df.forecast()$enddt %>% min + 366*3) %>% as.yearqtr %>% as.Date,
                       ymin=-Inf, ymax=Inf,
                       fill="Тестовая выборка"),
                   alpha=0.2)+
@@ -204,7 +202,8 @@ function(input, output){
         
         labs(title = "",
              y = "Изменение инвестиций (log)",
-             x = "Дата")
+             x = "Дата")+
+        theme_minimal()
       
       
       
@@ -271,7 +270,7 @@ function(input, output){
       filter(startdt == input$startdt_hair,
              model %in% input$model_hair) %>%
       mutate(fdme=paste0(forecastdate, model, enddt) %>% as.factor) %>%
-      group_by(forecastdate) %>%
+      group_by(forecastdate, model) %>%
       mutate(end_max = max(enddt)) %>%
       ungroup %>%
       (function(x) {if(input$actualforecast) x %>% filter(enddt == end_max) else x })
@@ -279,34 +278,33 @@ function(input, output){
   })
   
   output$hair <- renderPlot({
-    df.hair() %>%
+    {(df.hair() %>%
       
       filter(forecastdate <= input$forecastdate %>% as.yearqtr %>% as.Date) %>%
+        ggplot()+
       
-    ggplot()+
-      geom_line(aes(x = date, y = pred, group = fdme),
-                color = 'cornflowerblue',
-                alpha = 0.3,
-                size = 0.8)+
       geom_line(aes(x = date, y = true), color='black', size = 1, linetype = 'dashed')+
       
       labs(title = "",
            y = "Изменение инвестиций (log)",
            x = "Дата")+
-      
-      stat_summary(aes(x = date, y = pred, group = model),
-                   size = 1,
-                   fun.ymin = function(z) {quantile(z,0.25)},
-                   fun.ymax = function(z) {quantile(z,0.75)},
-                   #fun.y = median,
-                   geom="ribbon",
-                   fill = 'darkblue',
-                   alpha = 0.3)+
-      scale_size_manual(values = 1)+
+      scale_size_manual(values = 1) +
       guides(colour = guide_legend(""),
              size = guide_legend(""),
              linetype = guide_legend(""),
              fill = guide_legend(" "))
+     )} %>%
+    (function(x) {if(input$facet) {x +
+        geom_line(aes(x = date, y = pred, group = fdme),
+                                               color = 'cornflowerblue',
+                                               alpha = 0.8,
+                                               size = 0.8)+
+        facet_wrap(vars(model))} 
+      else {x +
+        geom_line(aes(x = date, y = pred, group = fdme, color = model),
+                  alpha = 0.8,
+                  size = 0.8)}})
+      
   })
   
   

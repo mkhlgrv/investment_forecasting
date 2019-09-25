@@ -3,11 +3,14 @@ do.call.pipe <- function(args,what){
 }
 create_lag <- function(df, lag){
   out <- df
-  for(i in 1:lag){
-    x <- lag.xts(df, k = i)
-    colnames(x) <- paste0(colnames(x), "_lag", i)
-    out %<>% merge.zoo(x)
+  if(lag > 0){
+    for(i in 1:lag){
+      x <- lag.xts(df, k = i)
+      colnames(x) <- paste0(colnames(x), "_lag", i)
+      out %<>% merge.zoo(x)
+    }
   }
+  
   return(out %>% as.xts)
 }
  
@@ -44,12 +47,12 @@ train.model <- function(startdt, enddt, model,
       df$investment <- NULL
     }
     
-    df %<>% na.omit 
+    df %<>% .[rowSums(is.na(.[,colnames(.)!='y']))==0,]
     
     # проверка на start и end
     
     if(startdt >= enddt){
-      message('start must be greater then end')
+      message('start must be greater than end')
       return(NULL)
     }
     
@@ -61,14 +64,16 @@ train.model <- function(startdt, enddt, model,
     enddt <- min(enddt %>% as.yearqtr,
                  last(time(df)) %>% as.yearqtr) %>%
       as.Date
-    
-    
+  
     if(df[paste0(startdt, "/", enddt)] %>% nrow < 48){
-      message('train set length must be greater then 48 quarters')
+      message('train set length must be greater than 48 quarters')
       return(NULL)
     }
     
-    
+    if(which((time(df) %>% as.Date())==(enddt%>% as.yearqtr%>% as.Date))+1>length(df$y %>% na.omit)){
+      message('enddt must not be greater than last date when investment data is avaliable minus h quarters)')
+      return(NULL)
+    }
     
     train_n <- which(time(df) %>% as.Date()==(startdt %>% as.yearqtr %>% as.Date)):
       which((time(df) %>% as.Date())== 
@@ -76,6 +81,9 @@ train.model <- function(startdt, enddt, model,
     
     test_n <- (which((time(df) %>% as.Date())==(enddt%>% as.yearqtr%>% as.Date))+1):nrow(df)
     
+    
+    df$y %<>% na.fill(0)
+
     
     X.matrix <- model.matrix(y~0+., data = df)
     
@@ -87,14 +95,20 @@ train.model <- function(startdt, enddt, model,
     
     y.test <- df$y[test_n] %>% as.numeric
     
-    tc <- trainControl(method = "timeslice", initialWindow = 40,horizon = 8,fixedWindow = TRUE)
+    tc <- trainControl(method = "timeslice",
+                       initialWindow = 40,
+                       horizon = 8,
+                       fixedWindow = TRUE)
     
     if(model == 'lasso'){
       train.out <- train(x=X.train,
                          y=y.train,
                          method = "glmnet",
-                         metric = "RMSE",trControl = tc,
-                         tuneGrid = expand.grid(.alpha = c(1),.lambda = seq(0.05,0.0001,length = 300)))
+                         metric = "RMSE",
+                         trControl = tc,
+                         tuneGrid =
+                           expand.grid(.alpha = c(1),
+                                       .lambda = seq(0.05,0.0001,length = 300)))
       
       
       model_fit <- glmnet(X.train,
@@ -167,37 +181,52 @@ train.model <- function(startdt, enddt, model,
                             alpha = 1,
                             lambda = train.out$bestTune[1,2])
       
+      
+      
       nzvars <- predict(model_lasso, type = "nonzero") %>% .[[1]]
+      
+      
       
       train_post <- as.data.frame(X.train) %>%
         select(nzvars) %>%
         mutate(y = y.train)
+      
+      
+      
+      if(class(X.test)=='numeric'){
+        X.test %<>% as.tibble %>% t %>% set_colnames(colnames(X.train))
+      }
+      
       test_post <-  as.data.frame(X.test) %>%
         select(nzvars) %>%
         mutate(y = 0)
+      
+      
       model_fit <- lm(y~., data = train_post)
       
       pred <- predict(model_fit,newdata = rbind(train_post,test_post ))
       
     } else if (model == 'rf'){
       
-      tunegrid <- expand.grid(.mtry=seq(5,10))
+      # tunegrid <- expand.grid(.mtry=seq(5,10))
+      # 
+      # tc_rf <- trainControl(method='repeatedcv', 
+      #                       number=10, 
+      #                       repeats=3, 
+      #                       search='grid')
+      # 
+      # train.out <- train(x = X.train,
+      #                    y = y.train,
+      #                    method = "rf", 
+      #                    metric = "RMSE",
+      #                    trControl = tc_rf,
+      #                    tuneGrid = tunegrid)
       
-      tc_rf <- trainControl(method='repeatedcv', 
-                            number=10, 
-                            repeats=3, 
-                            search='grid')
+      # bestmtry <- train.out$bestTune[1,1]
       
-      train.out <- train(x = X.train,
-                         y = y.train,
-                         method = "rf", 
-                         metric = "RMSE",
-                         trControl = tc_rf,
-                         tuneGrid = tunegrid)
       
-      bestmtry <- train.out$bestTune[1,1]
-      
-      model_fit <- randomForest(x = X.train, y = y.train, mtry = bestmtry)
+      train.out <- NULL
+      model_fit <- randomForest(x = X.train, y = y.train, ntree = 100)
       
       pred <-  predict(model_fit, newdata = rbind(X.train, X.test)) %>%
         as.numeric
@@ -205,8 +234,15 @@ train.model <- function(startdt, enddt, model,
     } else if (model =='ss'){
       
       train.out <- NULL
+      print(X.train)
+      print(nrow(X.train)) 
+      stop()
       
-      model_fit <- spikeslab(x = X.train, y = y.train, n.iter2 = 1000)
+      model_fit <- spikeslab(x = X.train,
+                             y = y.train,
+                             n.iter2 = 1000,
+                             bigp.smalln = ifelse(ncol(X.train)>=nrow(X.train)),
+                             intercept = TRUE)
       
       pred <- predict(model_fit, newdata = rbind(X.train, X.test))$yhat.gnet
       
@@ -228,7 +264,7 @@ train.model <- function(startdt, enddt, model,
       # проверка на start и end
       
       if(startdt >= enddt){
-        message('start must be greater then end')
+        message('start must be greater than end')
         return(NULL)
       }
       
@@ -243,7 +279,7 @@ train.model <- function(startdt, enddt, model,
       
       
       if(df[paste0(startdt, "/", enddt)] %>% nrow < 48){
-        message('train set length must be greater then 48 quarters')
+        message('train set length must be greater than 48 quarters')
         return(NULL)
       }
       
@@ -254,6 +290,9 @@ train.model <- function(startdt, enddt, model,
                 (enddt %>% as.yearqtr%>% as.Date))
       
       test_n <- (which((time(df) %>% as.Date())==(enddt%>% as.yearqtr%>% as.Date))+1):nrow(df)
+      
+    
+      
     
       y.train <- df$y[train_n] %>% as.numeric
       y.test <- df$y[test_n] %>% as.numeric
@@ -335,7 +374,6 @@ get.score <- function(df){
 }
 
 
-normal.score <- function(df)
 
 check.normal <- function(df = outall %>%
                            filter(model!="Accelerator") ){
@@ -508,4 +546,23 @@ margin: 0;
   )
   htmltools::attachDependencies(sliderTag, dep)
 }
+
+
+correct.names <- Vectorize(vectorize.args = "model",
+                           FUN = function(model) {
+                             switch(as.character(model),
+                                    'lasso' = 'LASSO',
+                                    'postlasso' = 'Post-LASSO',
+                                    'adalasso' = 'Adaptive LASSO',
+                                    'ridge' = 'Ridge',
+                                    'rf' = 'Random Forest',
+                                    'ss' = 'Spike-and-Slab',
+                                    'arima' = 'AR',
+                                    'rw' = 'Random Walk')})
+
+# округление до 4 знаков и умножение на 100
+meanroundpercent <- function(x){
+  (x %>% mean %>% round(4))*100
+}
+
 
