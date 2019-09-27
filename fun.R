@@ -20,7 +20,7 @@ create_lag <- function(df, lag){
 # 4. набор переменных (только из тех, что указаны в calibrating)
 # 5. на сколько периодов вперед прогнозировать (max)
 
-train.model <- function(startdt, enddt, model,
+train.model <- function(startdt= as.Date('2000-01-01'), enddt = as.Date('2012-01-01'), model,
                         # series parameter 
                         # only for regularisation and machine learning models
                         series='', lag = 4, h = 4L){
@@ -48,6 +48,7 @@ train.model <- function(startdt, enddt, model,
     }
     
     df %<>% .[rowSums(is.na(.[,colnames(.)!='y']))==0,]
+    
     
     # проверка на start и end
     
@@ -234,14 +235,11 @@ train.model <- function(startdt, enddt, model,
     } else if (model =='ss'){
       
       train.out <- NULL
-      print(X.train)
-      print(nrow(X.train)) 
-      stop()
       
       model_fit <- spikeslab(x = X.train,
                              y = y.train,
                              n.iter2 = 1000,
-                             bigp.smalln = ifelse(ncol(X.train)>=nrow(X.train)),
+                             bigp.smalln = ncol(X.train)>=nrow(X.train),
                              intercept = TRUE)
       
       pred <- predict(model_fit, newdata = rbind(X.train, X.test))$yhat.gnet
