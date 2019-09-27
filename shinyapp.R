@@ -17,7 +17,7 @@ out_short <- expand.grid(startdt = c(as.Date('1997-01-01'), as.Date('2000-01-01'
             enddt =  c(as.Date('2013-01-01'), as.Date('2018-07-01')),
             lag = c(2L),
             h=c(1L,2L,8L),
-            model = c('postlasso', 'ss', 'rf', 'lasso', 'adalasso', 'ridge')
+            model = c('postlasso', 'ss', 'rf', 'rw','lasso', 'adalasso', 'ridge')
 ) %>%
   split(seq(1:nrow(.))) %>%
   map(function(x){
