@@ -13,6 +13,33 @@ load('jobs/short_rf.RData')
 
 
 
+out_short <- expand.grid(startdt = c(as.Date('1997-01-01'), as.Date('2000-01-01')),
+            enddt =  c(as.Date('2013-01-01'), as.Date('2018-07-01')),
+            lag = c(2L),
+            h=c(1L,2L,8L),
+            model = c('postlasso', 'ss', 'rf', 'lasso', 'adalasso', 'ridge')
+) %>%
+  split(seq(1:nrow(.))) %>%
+  map(function(x){
+    train.model(startdt=x$startdt,
+                enddt=x$enddt,
+                model = x$model,
+                lag=x$lag,
+                h=x$h
+    )
+  })  %>% plyr::compact() %>%
+  map_dfr(function(x){
+    data.frame(model=x$model,
+               lag = x$lag,
+               startdt= x$startdt,
+               enddt= x$enddt,
+               h = x$h,
+               date = x$date,
+               pred=x$pred)
+
+  })
+
+
 out_short <-do.call(rbind,
                     list(short_ss,
                          short_arima,
@@ -22,6 +49,7 @@ out_short <-do.call(rbind,
                          short_postlasso,
                          short_lasso,
                          short_rf))
+
 
 
 out_short$model <- correct.names(model = out_short$model)
