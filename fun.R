@@ -20,10 +20,19 @@ create_lag <- function(df, lag){
 # 4. набор переменных (только из тех, что указаны в calibrating)
 # 5. на сколько периодов вперед прогнозировать (max)
 
-train.model <- function(startdt= as.Date('2000-01-01'), enddt = as.Date('2012-01-01'), model,
+train.model <- function(startdt= as.Date('2000-01-01'),
+                        enddt = as.Date('2012-01-01'),
+                        model,
                         # series parameter 
                         # only for regularisation and machine learning models
-                        series='', lag = 4, h = 4L){
+                        series='',
+                        lag = 4,
+                        h = 4L,
+                        # parameters for durable evaluations with function arguments from expand.grid table
+                        i = NULL, 
+                        N = NULL
+                        ){
+  message(paste0(i, '/', N))
   # import df
   load('data/stationary_data.RData')
   if(!model %in% c('arima', 'rw')){
@@ -53,7 +62,7 @@ train.model <- function(startdt= as.Date('2000-01-01'), enddt = as.Date('2012-01
     # проверка на start и end
     
     if(startdt >= enddt){
-      message('start must be greater than end')
+      message('start must be greater then end')
       return(NULL)
     }
     
@@ -67,12 +76,12 @@ train.model <- function(startdt= as.Date('2000-01-01'), enddt = as.Date('2012-01
       as.Date
   
     if(df[paste0(startdt, "/", enddt)] %>% nrow < 48){
-      message('train set length must be greater than 48 quarters')
+      message('train set length must be greater then 48 quarters')
       return(NULL)
     }
     
     if(which((time(df) %>% as.Date())==(enddt%>% as.yearqtr%>% as.Date))+1>length(df$y %>% na.omit)){
-      message('enddt must not be greater than last date when investment data is avaliable minus h quarters)')
+      #message('enddt must not be greater then last date when investment data is avaliable minus h quarters')
       return(NULL)
     }
     
@@ -209,21 +218,6 @@ train.model <- function(startdt= as.Date('2000-01-01'), enddt = as.Date('2012-01
       
     } else if (model == 'rf'){
       
-      # tunegrid <- expand.grid(.mtry=seq(5,10))
-      # 
-      # tc_rf <- trainControl(method='repeatedcv', 
-      #                       number=10, 
-      #                       repeats=3, 
-      #                       search='grid')
-      # 
-      # train.out <- train(x = X.train,
-      #                    y = y.train,
-      #                    method = "rf", 
-      #                    metric = "RMSE",
-      #                    trControl = tc_rf,
-      #                    tuneGrid = tunegrid)
-      
-      # bestmtry <- train.out$bestTune[1,1]
       
       
       train.out <- NULL
@@ -262,7 +256,7 @@ train.model <- function(startdt= as.Date('2000-01-01'), enddt = as.Date('2012-01
       # проверка на start и end
       
       if(startdt >= enddt){
-        message('start must be greater than end')
+        message('start must be greater then end')
         return(NULL)
       }
       
@@ -277,7 +271,7 @@ train.model <- function(startdt= as.Date('2000-01-01'), enddt = as.Date('2012-01
       
       
       if(df[paste0(startdt, "/", enddt)] %>% nrow < 48){
-        message('train set length must be greater than 48 quarters')
+        message('train set length must be greater then 48 quarters')
         return(NULL)
       }
       
