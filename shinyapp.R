@@ -1,7 +1,9 @@
 rm(list=ls())
+
 source('fun.R')
 source('lib.R')
 
+getwd()
 load('jobs/short_arima.RData')
 load('jobs/short_rw.RData')
 load('jobs/short_ss.RData')
@@ -13,31 +15,33 @@ load('jobs/short_rf.RData')
 
 
 
-out_short <- expand.grid(startdt = c(as.Date('1997-01-01'), as.Date('2000-01-01')),
-            enddt =  c(as.Date('2013-01-01'), as.Date('2018-07-01')),
-            lag = c(2L),
-            h=c(1L,2L,8L),
-            model = c('postlasso', 'ss', 'rf', 'rw','lasso', 'adalasso', 'ridge')
-) %>%
-  split(seq(1:nrow(.))) %>%
-  map(function(x){
-    train.model(startdt=x$startdt,
-                enddt=x$enddt,
-                model = x$model,
-                lag=x$lag,
-                h=x$h
-    )
-  })  %>% plyr::compact() %>%
-  map_dfr(function(x){
-    data.frame(model=x$model,
-               lag = x$lag,
-               startdt= x$startdt,
-               enddt= x$enddt,
-               h = x$h,
-               date = x$date,
-               pred=x$pred)
 
-  })
+# 
+# out_short <- expand.grid(startdt = c(as.Date('1997-01-01'), as.Date('2000-01-01')),
+#             enddt =  c(as.Date('2013-01-01'), as.Date('2018-07-01')),
+#             lag = c(2L),
+#             h=c(1L,2L,8L),
+#             model = c('postlasso', 'ss', 'rf', 'rw','lasso', 'adalasso', 'ridge')
+# ) %>%
+#   split(seq(1:nrow(.))) %>%
+#   map(function(x){
+#     train.model(startdt=x$startdt,
+#                 enddt=x$enddt,
+#                 model = x$model,
+#                 lag=x$lag,
+#                 h=x$h
+#     )
+#   })  %>% plyr::compact() %>%
+#   map_dfr(function(x){
+#     data.frame(model=x$model,
+#                lag = x$lag,
+#                startdt= x$startdt,
+#                enddt= x$enddt,
+#                h = x$h,
+#                date = x$date,
+#                pred=x$pred)
+# 
+#   })
 
 
 out_short <-do.call(rbind,
@@ -79,8 +83,6 @@ out_true <- data.frame(date = ytrue %>%
                mutate(group = paste(model, lag, startdt, enddt, h)) %>%
                split(.$group) %>%
                map_dfr(function(x){
-                 
-                 # id vars
                  
                  x$group <- NULL
                  m <- x$model %>% first
