@@ -26,7 +26,7 @@ train.model <- function(startdt= as.Date('2000-01-01'),
                         # series parameter 
                         # only for regularisation and machine learning models
                         series='',
-                        lag = 4,
+                        lag = 2L,
                         h = 4L,
                         # parameters for durable evaluations with function arguments from expand.grid table
                         i = NULL, 
@@ -34,7 +34,7 @@ train.model <- function(startdt= as.Date('2000-01-01'),
                         ){
   message(paste0(i, '/', N))
   # import df
-  load('data/stationary_data.RData')
+  load('~/investment_forecasting/data/stationary_data.RData')
   if(!model %in% c('arima', 'rw')){
     if(series!=''){
       df %<>% df[, c('investment',
@@ -60,6 +60,7 @@ train.model <- function(startdt= as.Date('2000-01-01'),
     
     
     # проверка на start и end
+    
     
     if(startdt >= enddt){
       message('start must be greater then end')
@@ -318,7 +319,7 @@ train.model <- function(startdt= as.Date('2000-01-01'),
     }
   }
   
-   
+
   list(
     model = model,
     series = series,
