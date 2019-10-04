@@ -1,0 +1,13 @@
+name: investment_forecasting
+title: investment_forecasting
+username:
+account: mkhlgrv
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 1158444
+bundleId: 2468305
+url: https://mkhlgrv.shinyapps.io/investment_forecasting/
+when: 1570189939.76531
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: .gitattributes|.RData|calibrating.R|import.R|plotting.R|rawdata.RData|README.md|shinyapp.R|training.R|upgrade.R|ref/High Dimensional Sparse Econometric Models.pdf|ref/LASSO METHODS FOR GAUSSIAN INSTRUMENTAL VARIABLES.pdf|ref/Ridge Regression Biased Estimation for Nonorthogonal Problems.pdf|ref/The Adaptive Lasso and Its Oracle Properties.pdf|data|jobs|plot|report
