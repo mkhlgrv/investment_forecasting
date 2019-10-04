@@ -186,22 +186,22 @@ out_hair <- out_true %>%
 
 out_cumulative <- out_true %>%
   mutate(forecastdate = as.Date(as.yearqtr(date) -h/4)) %>%
-  inner_join(optlag, by = c('model', 'lag', 'h', 'startdt', 'enddt')) %>%
+  inner_join(optlag, by = c('model', 'lag', 'h', 'startdt', 'enddt')) %>% 
   filter(quarter(forecastdate) == 4,
-         year(date) >= 2012) %>%
+         year(date) >= 2012) %>% 
   mutate(pred_cumulative = exp(log(true_lag)+pred),
          true_cumulative = exp(log(true_lag)+true))
 
 save(out_true, out_short, ytrue,scoredf,optlag, optstart, scoredf_raw,out_hair, rawdata,out_cumulative,
      
-     file = 'data/shinydata.RData')
+     file = 'shinydata.RData')
 # # ui----
 
 rm(list=ls())
 source('lib.R')
 source('fun.R')
 load('rawdata.RData')
-load('data/shinydata.RData')
+load('shinydata.RData')
 
 choises_q <- format(seq.Date(from = as.Date("2012-01-01"),
                              to = as.Date("2019-01-01"),
@@ -222,16 +222,16 @@ med_forecast <- import('data/med_forecast.csv', encoding = 'UTF-8', header = TRU
   
 
 
-my_forecast <- out_cumulative %>%
-  group_by(forecastdate, model) %>%
-  mutate(end_max = max(enddt)) %>%
+my_forecast <-
+  out_cumulative %>%
+  dplyr::group_by(forecastdate, model, h) %>%
+  mutate(end_max = max(enddt)) %>% 
   filter(enddt == end_max) %>% 
-  ungroup() %>%
+  ungroup() %>% 
   filter(h!=0) %>%
   mutate(year  = year(date),
          h_year = if_else(h<=4, 1, 2)) %>%
-  # filter(year(date)<=2018) %>%
-  group_by(model,h_year, year, startdt, forecastdate) %>%
+  dplyr::group_by(model,h_year, year, startdt, forecastdate) %>%
   summarise(pred = sum(pred_cumulative),
             true_lag = sum(true_lag),
             true = sum(true_cumulative)) %>%
@@ -250,10 +250,11 @@ raw_y <- rawdata$investment %>%
   mutate(investment = 100*(investment/lag(investment)-1))
 
 
-forec_vs <- my_forecast %>% select(-c(true_lag, true)) %>%
+forec_vs <- my_forecast %>%
+  select(-c(true_lag, true)) %>%
   filter(h_year ==1, startdt == max(startdt)) %>%
   filter(!is.na(pred)) %>%
-  filter(!model %in% c('Random Walk', 'ARIMA'))
+  filter(!model %in% c('Random Walk', 'AR'))
 plot1 <- forec_vs %>%   ggplot()+
   geom_bar(aes(year, pred, fill = model),
            stat="identity",
@@ -275,7 +276,8 @@ plot2 <- ggplot()+
                alpha ='Прогноз МЭР'), med_forecast %>%
              group_by(year) %>%
                      filter(fctyear== max(fctyear)) %>%
-             filter(year < 2020),
+               filter(year <=2019 )
+           ,
            stat="identity",
            position = 'dodge'
            )+
@@ -305,7 +307,8 @@ p <- forec_vs %>%   ggplot()+
            med_forecast %>%
              group_by(year) %>%
              filter(fctyear== max(fctyear)) %>%
-             filter(year < 2020),
+             filter(year <=2019 )
+             ,
            stat="identity",
            position = 'dodge'
   )+geom_point(aes(year, investment),
@@ -335,7 +338,21 @@ grid.arrange(p,
 
 
 
-  scoredf %>%
+scoredf %>%
+  
+  filter(type=='test',
+         startdt == min(startdt)) %>%
+  dplyr::group_by(model, startdt,enddt, h, lag) %>%
+  mutate(rm_min = min(mean(rmse, na.rm=TRUE))) %>%
+  filter(mean(rmse) == mean(rm_min)) %>%
+  ggplot(aes(enddt,
+             rmse,
+             group=interaction(model, lag, h ),
+             color=as.factor(h)))+
+  geom_line()+
+  facet_wrap(vars(model))
+
+scoredf %>%
     inner_join(optlag,
                by = c("model", "lag", "h", "startdt", "enddt")) %>%
     filter(type=='test',
@@ -345,6 +362,17 @@ grid.arrange(p,
     print
 
 
+
+
+scoredf %>%
+  filter(model != 'Random Walk',
+         type=='test') %>%
+    inner_join(optlag,
+               by = c('startdt', 'enddt', 'h', 'model', 'lag')) %>%
+  mutate(startdt = as.factor(startdt)) %>%
+  ggplot()+
+   stat_summary(aes(h, rmse, color= model),geom='line',size=1, fun.y=mean)#+
+  geom_boxplot(aes(model, rmse, fill=startdt))
 
 
 # 2012 - 2014 полностью
@@ -484,23 +512,30 @@ ssprob <- out_ss %>%
  
   h <- x$h
   lag <- x$lag
-  x$startdt
-  x$enddt
   
   prednames <- x$model_fit$x %>%
     colnames
   
+  
   melted <- x$model_fit$model %>%
-    melt %>%
-    mutate(value = factor(as.character(value), levels = c(1:length(prednames)))) %>%
-    dcast(`L1`~value, fun.aggregate = length,fill = 0, drop = FALSE)
-  n <- nrow(melted)
-  
-  prob <- (melted %>%
-    .[,-1] %>%
-    colSums())/n %>% as.numeric
-  
+    melt
+  if(nrow(melted) == 0){
+    prob=NA
+  } else{
+    
+    melted %<>% mutate(value = factor(as.character(value), levels = c(1:length(prednames)))) %>%
+      dcast(`L1`~value, fun.aggregate = length,fill = 0, drop = FALSE)
+    n <- nrow(melted)
+    
+    prob <- (melted %>%
+               .[,-1] %>%
+               colSums())/n %>% as.numeric
+    
+    
+  }
   print(i)
+  
+  
 
   data.frame(series = x$series,
              h = x$h,
@@ -534,15 +569,24 @@ ss_coefs <- out_ss %>%
   })
 
 
-ss_coefs %>% 
-  filter() %>%
+
+ssprob %>%
+  filter(h>4) %>%
+  inner_join(ss_coefs,
+                      by = c("series", "h", "lag", "startdt", "enddt", "predictor")) %>%
+  inner_join(optlag %>% filter(model == 'Spike-and-Slab'), by = c("h", "lag", "startdt", "enddt")) %>%
+  mutate(prob = ifelse(is.na(prob), 0, prob)) %>%
+  group_by(h, lag, predictor) %>%
+  mutate(prob_mean = mean(prob)) %>%
+  ungroup() %>%
+  group_by(predictor) %>%
+  filter(mean(prob_mean) > 0.375) %>%
   mutate(h = as.factor(h)) %>%
   ggplot(aes(enddt, value,
-             color = h,
-             group = interaction(predictor, startdt, lag, h)))+
-  geom_line(size = 1)+
-  facet_wrap(vars(predictor))
-# save(ssprob, file='data/ssprob.Rda')
+             color = predictor))+
+  stat_summary(fun.y=mean, geom = 'line') +
+  facet_wrap(vars( h))
+save(ssprob, file='data/ssprob.Rda')
 
 load('data/ssprob.Rda')
 
