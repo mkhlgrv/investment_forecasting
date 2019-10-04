@@ -45,14 +45,17 @@ load('jobs/short_rf.RData')
 
 
 out_short <-do.call(rbind,
-                    list(short_ss,
-                         short_arima,
-                         short_adalasso,
-                         short_rw,
-                         short_ridge,
-                         short_postlasso,
-                         short_lasso,
-                         short_rf))
+                    list(short_ss
+                         ,
+                         # short_arima,
+                         # short_adalasso,
+                          short_rw
+                         #,
+                         # short_ridge,
+                         # short_postlasso,
+                         # short_lasso,
+                         # short_rf
+                         ))
 
 
 
@@ -586,6 +589,18 @@ scoredf_raw %>%
   ggplot(aes(enddt, rmse, color = model))+
     geom_line()+
   facet_wrap(vars(h))
+################################
 
+# что то нажо сделать стем, что после конца прогнозирования на оджну точку только одно наблдюение
+# группы должны создаваться не по fdme а просто mde
 
+load('ssdatatest.RDS')
+ssdatatest %>%
+  select(-c(true, fdme)) %>%
+  filter(date >= '2015-01-01') %>%
+  na.omit %>%
+  mutate(newfd = paste0(model, forecastdate)) %>%
+  ggplot(aes(x = date, y = pred, color = newfd))+
+  geom_point()+
+  geom_line()
   
