@@ -47,14 +47,14 @@ load('jobs/short_rf.RData')
 out_short <-do.call(rbind,
                     list(short_ss
                          ,
-                         # short_arima,
-                         # short_adalasso,
+                         short_arima,
+                         short_adalasso,
                           short_rw
-                         #,
-                         # short_ridge,
-                         # short_postlasso,
-                         # short_lasso,
-                         # short_rf
+                         ,
+                         short_ridge,
+                         short_postlasso,
+                         short_lasso,
+                         short_rf
                          ))
 
 
