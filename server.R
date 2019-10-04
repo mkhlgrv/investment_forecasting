@@ -269,18 +269,33 @@ function(input, output){
                input$h_hair[2]/4) %>%
       filter(startdt == input$startdt_hair,
              model %in% input$model_hair) %>%
-      mutate(fdme=paste0(forecastdate, model, enddt) %>% as.factor) %>%
-      group_by(forecastdate, model) %>%
+      
+      
+      (function(x) {if(input$actualforecast){
+        x %>%
+          mutate(group=paste0(forecastdate, model) %>%
+                   as.factor)
+      }  else {
+        x %>%
+          mutate(group = paste0(forecastdate, model, enddt) %>%
+                   as.factor )
+      }
+                      }) %>%
+      group_by(h, forecastdate, model) %>%
       mutate(end_max = max(enddt)) %>%
       ungroup %>%
-      (function(x) {if(input$actualforecast) x %>% filter(enddt == end_max) else x })
+      (function(x) {if(input$actualforecast) x %>% filter(enddt == end_max) else x }) 
+      
       
   })
   
   output$hair <- renderPlot({
+    
+    print(input$forecastdate)
     {(df.hair() %>%
-      
       filter(forecastdate <= input$forecastdate %>% as.yearqtr %>% as.Date) %>%
+        # (function(x) {
+        #  x %>% write_rds('ssdatatest.RDS')}) %>%
         ggplot()+
       
       geom_line(aes(x = date, y = true), color='black', size = 1, linetype = 'dashed')+
@@ -295,13 +310,13 @@ function(input, output){
              fill = guide_legend(" "))
      )} %>%
     (function(x) {if(input$facet) {x +
-        geom_line(aes(x = date, y = pred, group = fdme),
+        geom_line(aes(x = date, y = pred, group = group),
                                                color = 'cornflowerblue',
                                                alpha = 0.8,
                                                size = 0.8)+
         facet_wrap(vars(model))} 
       else {x +
-        geom_line(aes(x = date, y = pred, group = fdme, color = model),
+        geom_line(aes(x = date, y = pred, group = group, color = model),
                   alpha = 0.8,
                   size = 0.8)}})
       

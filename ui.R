@@ -78,24 +78,12 @@ navbarPage('Прогнозирование инвестиций',
              # тренировочных выборок с разными границами 
              # RMSFE рассчитывается только по первым 12 наблюдениям тестовой выборки
              # (т.е. только для первых 3 лет)."),
-             
-             
-             sliderValues(
-               inputId = "forecastdate", label = "Дата прогноза", width = "100%",
-               values = choises_q,
-               from = choises_q[1],
-               to = NULL,
-               dragRange = TRUE,
-               grid = FALSE,
-               animate = animationOptions(interval = 1500)
-             ),
-            
-             # sliderInput('forecastdate', 'Дата прогноза',
-             #             min = out_hair$forecastdate[which(out_hair$forecastdate > min(out_hair$enddt))] %>% min,
-             #             max = out_hair$forecastdate %>% max,
-             #             value = out_hair$forecastdate[which(out_hair$forecastdate > min(out_hair$enddt))] %>% min,
-             #             step = 92,animate = TRUE,
-             #             timeFormat = '%b %Y'),
+             sliderTextInput(inputId = "forecastdate", 
+                             label = "Дата прогноза",
+                             choices = choises_q,selected = choises_q[1],
+                             animate = animationOptions(interval = 700)
+                              ),
+      
                       hr(),
                       actionButton("update_hair", "Произвести расчёты")
                       
