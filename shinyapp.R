@@ -570,8 +570,8 @@ ss_coefs <- out_ss %>%
 
 
 
-ssprob %>%
-  filter(h>4) %>%
+p <- ssprob %>%
+  filter(h<=4) %>%
   inner_join(ss_coefs,
                       by = c("series", "h", "lag", "startdt", "enddt", "predictor")) %>%
   inner_join(optlag %>% filter(model == 'Spike-and-Slab'), by = c("h", "lag", "startdt", "enddt")) %>%
@@ -579,13 +579,14 @@ ssprob %>%
   group_by(h, lag, predictor) %>%
   mutate(prob_mean = mean(prob)) %>%
   ungroup() %>%
-  group_by(predictor) %>%
-  filter(mean(prob_mean) > 0.375) %>%
+  group_by(predictor) %>% 
+  filter(mean(prob_mean) > 0.499) %>%
   mutate(h = as.factor(h)) %>%
-  ggplot(aes(enddt, value,
+  ggplot(aes(enddt, prob,
              color = predictor))+
   stat_summary(fun.y=mean, geom = 'line') +
   facet_wrap(vars( h))
+plotly::ggplotly(p)
 save(ssprob, file='data/ssprob.Rda')
 
 load('data/ssprob.Rda')
@@ -647,4 +648,18 @@ ssdatatest %>%
   ggplot(aes(x = date, y = pred, color = newfd))+
   geom_point()+
   geom_line()
-  
+
+##### PC
+load('data/stationary_data.RData')
+
+datatopc <- df %>% as.data.frame() %>% na.omit()
+
+pc <- datatopc%>% as.matrix() %>% na.omit%>% prcomp()
+pc %>% summary
+ggplot(aes(pc$x[,2],datatopc$investment),data=NULL)+
+  geom_point(aes(color=datatopc %>% rownames() %>% as.yearqtr %>% year %>% as.factor()))+
+  geom_smooth(method='lm')
+
+lm(lag.xts(investment,k = -1)~., datatopc) %>% summary
+
+
