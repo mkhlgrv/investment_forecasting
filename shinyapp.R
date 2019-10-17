@@ -649,7 +649,7 @@ ssdatatest %>%
   geom_point()+
   geom_line()
 
-##### PC
+  ##### PC
 load('data/stationary_data.RData')
 
 datatopc <- df %>% as.data.frame() %>% na.omit()
@@ -660,6 +660,10 @@ ggplot(aes(pc$x[,2],datatopc$investment),data=NULL)+
   geom_point(aes(color=datatopc %>% rownames() %>% as.yearqtr %>% year %>% as.factor()))+
   geom_smooth(method='lm')
 
-lm(lag.xts(investment,k = -1)~., datatopc) %>% summary
-
-
+model <- cv.spikeslab(x = dplyr::mutate(df %>% as.data.frame, y=lag.xts(investment,-1)) %>%
+               na.omit %>%
+               select(-y),
+             y= dplyr::mutate(df%>% as.data.frame, y=lag.xts(investment,-1)) %>%
+               na.omit %>%
+               pull(y),
+             K = 10, verbose=FALSE)
