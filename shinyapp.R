@@ -652,18 +652,8 @@ ssdatatest %>%
   ##### PC
 load('data/stationary_data.RData')
 
-datatopc <- df %>% as.data.frame() %>% na.omit()
+load('data/raw.RData')
 
-pc <- datatopc%>% as.matrix() %>% na.omit%>% prcomp()
-pc %>% summary
-ggplot(aes(pc$x[,2],datatopc$investment),data=NULL)+
-  geom_point(aes(color=datatopc %>% rownames() %>% as.yearqtr %>% year %>% as.factor()))+
-  geom_smooth(method='lm')
+load('jobs/out_lasso.RData')
 
-model <- cv.spikeslab(x = dplyr::mutate(df %>% as.data.frame, y=lag.xts(investment,-1)) %>%
-               na.omit %>%
-               select(-y),
-             y= dplyr::mutate(df%>% as.data.frame, y=lag.xts(investment,-1)) %>%
-               na.omit %>%
-               pull(y),
-             K = 10, verbose=FALSE)
+
