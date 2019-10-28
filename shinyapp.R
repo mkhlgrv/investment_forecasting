@@ -12,7 +12,7 @@ load('jobs/short_lasso.RData')
 load('jobs/short_postlasso.RData')
 load('jobs/short_ridge.RData')
 load('jobs/short_rf.RData')
-
+load('jobs/short_elnet.RData')
 
 
 
@@ -45,7 +45,8 @@ load('jobs/short_rf.RData')
 
 
 out_short <-do.call(rbind,
-                    list(short_ss
+                    list(short_ss,
+                         short_elnet
                          ,
                          short_arima,
                          short_adalasso,
@@ -155,7 +156,7 @@ scoredf <- get.score(out_true %>%
 
 
 optlag <- scoredf_raw %>% 
-  filter(type == 'train') %>%
+  filter(type == 'test') %>%
   group_by(model, startdt, enddt, h) %>%
   filter(rmse == min(rmse)) %>%
   filter(lag == min(lag)) %>%
@@ -164,7 +165,7 @@ optlag <- scoredf_raw %>%
   unique
 
 optstart <- scoredf_raw %>% 
-  filter(type == 'train') %>%
+  filter(type == 'test') %>%
   group_by(model, enddt, h, lag) %>%
   filter(rmse == min(rmse)) %>%
   filter(startdt == max(startdt)) %>%
@@ -202,6 +203,12 @@ source('lib.R')
 source('fun.R')
 load('rawdata.RData')
 load('shinydata.RData')
+
+
+
+
+
+  
 
 choises_q <- format(seq.Date(from = as.Date("2012-01-01"),
                              to = as.Date("2019-01-01"),
@@ -655,5 +662,76 @@ load('data/stationary_data.RData')
 load('data/raw.RData')
 
 load('jobs/out_lasso.RData')
+
+
+
+
+
+
+scoredf %>%
+  filter(type == 'test') %>%
+  filter(startdt == '1997-01-01') %>%
+  group_by(model, lag, h, startdt) %>%
+  summarise(rmse = mean(rmse)) %>%
+  ungroup %>%
+  group_by(model, startdt, h) %>%
+  filter(rmse == min(rmse)) %>%
+  filter(lag == min(lag)) %>%
+  dcast(model ~ h) %>%
+  xtable %>%
+  print(include.rownames = FALSE)
+
+scoredf %>%
+  filter(type == 'test') %>%
+  filter(startdt == '2000-01-01') %>%
+  group_by(model, lag, h, startdt) %>%
+  summarise(rmse = mean(rmse)) %>%
+  ungroup %>%
+  group_by(model, startdt, h) %>%
+  filter(rmse == min(rmse)) %>%
+  filter(lag == min(lag)) %>%
+  dcast(model ~ h) %>%
+  xtable %>%
+  print(include.rownames = FALSE)
+
+
+
+scoredf %>%
+  filter(type == 'test') %>%
+  filter(startdt == '1997-01-01') %>%
+  group_by(model, lag, h, startdt) %>%
+  summarise(rmse = mean(rmse)) %>%
+  ungroup %>%
+  group_by(model, startdt, h) %>%
+  filter(rmse == min(rmse)) %>%
+  filter(lag == min(lag)) %>%
+  dcast(model ~ h, value.var = 'lag') %>%
+  xtable %>%
+  print(include.rownames = FALSE)
+
+scoredf %>%
+  filter(type == 'test') %>%
+  filter(startdt == '2000-01-01') %>%
+  group_by(model, lag, h, startdt) %>%
+  summarise(rmse = mean(rmse)) %>%
+  ungroup %>%
+  group_by(model, startdt, h) %>%
+  filter(rmse == min(rmse)) %>%
+  filter(lag == min(lag)) %>%
+  dcast(model ~ h, value.var = 'lag') %>%
+  xtable %>%
+  print(include.rownames = FALSE)
+
+
+# тест диболда мариано
+
+
+dmdf <- get.dm(out_true %>% na.omit)
+
+dmdf %>%
+  filter(model != 'Random Walk') %>%
+  ggplot(aes( lag,interaction(h, model))) +
+  geom_raster(aes(fill = stat))+
+  scale_fill_gradient2()
 
 

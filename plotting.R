@@ -21,33 +21,19 @@ load("out.RData")
 
 
 # investment level
-level_plot <-
-  ggplot(df_long) +
-  geom_line(aes(y = FC, x = time(df_long)))+
+invest_plot <-
+  ggplot(df %>% na.omit) +
+  geom_line(aes(y = investment, x = time(df %>% na.omit)))+
   labs(title = "",
-       y = "Валовые инвестиции",
-       x = "Дата") + theme_bw()
-cairo_pdf("plot/level_plot.pdf", width = 10, height = 5)
-print(level_plot)
-dev.off()
-
-
-
-des_plot <- na.omit(df_long)$FC %>% stl(4, robust = TRUE) %>% .$time.series %>% as.data.frame() %>%
-  mutate(date = time(na.omit(df_long)),
-         x = na.omit(df_long)$FC) %>%
-  set_names(c("Сезонность", "Тренд", "Остаток", "Дата", "Исходный ряд")) %>%
-  melt(id.vars = "Дата") %>%
-  ggplot(aes(x = Дата, y = value))+
-  geom_line()+
-  facet_grid(rows = vars(variable), scales = "free_y")+
-  labs(title = "", x = "")+
+      y = "валовое накопление основного капитала",
+       x = "Дата") +
   theme_bw()
-  
-
-cairo_pdf("plot/des_plot.pdf", width = 8, height = 5)
-print(des_plot)
+cairo_pdf("plot/invest_plot.pdf", width = 10, height = 5)
+print(invest_plot)
 dev.off()
+
+
+
 
 ##графики в уровнях
 outall <- list(out1, out2,
@@ -79,175 +65,8 @@ outall %<>% split(1:nrow(.)) %>%
   }) %>% do.call.pipe(rbind)
 
 
-# bad_outall <- outall %>%
-#   ggplot()+
-#   geom_line(aes(x = date, y = y.true))+
-#   geom_line(aes(x = date, y = y.pred, color = model))+
-#   facet_wrap(vars(horizon), scales = "free")+
-#   labs(title = "Прогнозы валовых инвестиций",
-#        y = "Валовые инвестиции",
-#        x = "Дата", subtitle = "Горизонт прогнозирования от 1 до 12 кварталов") +
-#   theme_bw()+
-#   guides(colour = guide_legend(title = "Модель"))
-#   
-# 
-# cairo_pdf("plot/bad_outall.pdf", width = 10, height = 5)
-# print(bad_outall)
-# dev.off()
-
-smooth1 <- outall %>%
-  filter(model %in%c("Ridge", "Elastic Net", "LASSO", "Accelerator")) %>%
-  group_by(model, window, horizon) %>%
-  mutate(y.true = c(rep(NA,3), rollmean(y.true, 4)), 
-         y.pred = c(rep(NA,3),rollmean(y.pred, 4))) %>%
-  ggplot()+
-  geom_line(aes(x = date, y = y.true))+
-  geom_line(aes(x = date, y = y.pred, color = model))+
-  facet_wrap(vars(horizon), scales = "free")+
-  labs(title = "",
-       y = "Валовые инвестиции",
-       x = "Дата", subtitle = "Горизонт прогнозирования от 1 до 12 кварталов") +
-  theme_bw()+
-  guides(colour = guide_legend(title = "Модель"))
-
-cairo_pdf("plot/smooth1.pdf", width = 10, height = 5)
-print(smooth1)
-dev.off()
 
 
-smooth2 <- outall %>%
-  filter(model %in%c("LASSO","LASSO+PC", "Post LASSO", "Adaptive LASSO", "Accelerator")) %>%
-  group_by(model, window, horizon) %>%
-  mutate(y.true = c(rep(NA,3), rollmean(y.true, 4)), 
-         y.pred = c(rep(NA,3),rollmean(y.pred, 4))) %>%
-  ggplot()+
-  geom_line(aes(x = date, y = y.true))+
-  geom_line(aes(x = date, y = y.pred, color = model))+
-  facet_wrap(vars(horizon), scales = "free")+
-  labs(title = "",
-       y = "Валовые инвестиции",
-       x = "Дата", subtitle = "Горизонт прогнозирования от 1 до 12 кварталов") +
-  theme_bw()+
-  guides(colour = guide_legend(title = "Модель"))
-
-cairo_pdf("plot/smooth2.pdf", width = 10, height = 5)
-print(smooth2)
-dev.off()
-
-smooth3 <- outall %>%
-  filter(model %in%c("Random Forest","Spike and Slab", "Boosting", "Accelerator")) %>%
-  group_by(model, window, horizon) %>%
-  mutate(y.true = c(rep(NA,3), rollmean(y.true, 4)), 
-         y.pred = c(rep(NA,3),rollmean(y.pred, 4))) %>%
-  ggplot()+
-  geom_line(aes(x = date, y = y.true))+
-  geom_line(aes(x = date, y = y.pred, color = model))+
-  facet_wrap(vars(horizon), scales = "free")+
-  labs(title = "",
-       y = "Валовые инвестиции",
-       x = "Дата", subtitle = "Горизонт прогнозирования от 1 до 12 кварталов") +
-  theme_bw()+
-  guides(colour = guide_legend(title = "Модель"))
-
-cairo_pdf("plot/smooth3.pdf", width = 10, height = 5)
-print(smooth3)
-dev.off()
-
-smooth4 <- outall %>%
-  filter(model %in%c("Accelerator", "LASSO+VAR")) %>%
-  group_by(model, window, horizon) %>%
-  mutate(y.true = c(rep(NA,3), rollmean(y.true, 4)), 
-         y.pred = c(rep(NA,3),rollmean(y.pred, 4))) %>%
-  ggplot()+
-  geom_line(aes(x = date, y = y.true))+
-  geom_line(aes(x = date, y = y.pred, color = model))+
-  facet_wrap(vars(horizon), scales = "free")+
-  labs(title = "",
-       y = "Валовые инвестиции",
-       x = "Дата", subtitle = "Горизонт прогнозирования от 1 до 12 кварталов") +
-  theme_bw()+
-  guides(colour = guide_legend(title = "Модель"))
-
-cairo_pdf("plot/smooth4.pdf", width = 10, height = 5)
-print(smooth4)
-dev.off()
-
-benchmark.score <- outall %>%
-  filter(model == "Accelerator") %>%
-  get.score()
-  
-rmse1 <- outall %>%
-  filter(model %in% c("Ridge", "Elastic Net", "LASSO")) %>%
-   get.score() %>%
-  ungroup %>%
-  split(1:nrow(.)) %>%
-  map_dfr(function(x){
-    x$rmse <-x$rmse/ benchmark.score %>% filter(horizon == x$horizon) %>% pull(rmse)
-    x
-  }) %>%
-  ggplot()+geom_line(aes(x=horizon, y = rmse, color = model))+
-  geom_point(aes(x=horizon, y = rmse, color = model)) +
-  labs(title = "",
-       y = "RMSE",
-       x = "Горизонт прогноза") +
-  theme_bw()+
-  guides(colour = guide_legend(title = "Модель"))
-cairo_pdf("plot/rmse1.pdf", width = 10, height = 5)
-print(rmse1)
-dev.off()
-
-rmse2 <- outall %>%
-  filter(model %in% c("LASSO","LASSO+PC", "Post LASSO", "Adaptive LASSO")) %>%
-  get.score() %>%
-  ungroup %>%
-  split(1:nrow(.)) %>%
-  map_dfr(function(x){
-    x$rmse <-x$rmse/ benchmark.score %>% filter(horizon == x$horizon) %>% pull(rmse)
-    x
-  }) %>% ggplot()+geom_line(aes(x=horizon, y = rmse, color = model))+
-  geom_point(aes(x=horizon, y = rmse, color = model))+
-  labs(title = "",
-       y = "RMSE",
-       x = "Горизонт прогноза") +
-  theme_bw()+
-  guides(colour = guide_legend(title = "Модель"))
-cairo_pdf("plot/rmse2.pdf", width = 10, height = 5)
-print(rmse2)
-dev.off()
-
-rmse3 <- outall %>%
-  filter(model %in% c("Random Forest","Spike and Slab", "Boosting","LASSO+VAR")) %>%
-  get.score() %>%
-  ungroup %>%
-  split(1:nrow(.)) %>%
-  map_dfr(function(x){
-    x$rmse <-x$rmse/ benchmark.score %>% filter(horizon == x$horizon) %>% pull(rmse)
-    x
-  }) %>% ggplot()+geom_line(aes(x=horizon, y = rmse, color = model))+
-  geom_point(aes(x=horizon, y = rmse, color = model))+
-  labs(title = "",
-       y = "RMSE",
-       x = "Горизонт прогноза") +
-  theme_bw()+
-  guides(colour = guide_legend(title = "Модель"))
-cairo_pdf("plot/rmse3.pdf", width = 10, height = 5)
-print(rmse3)
-dev.off()
-
-
-rmse4 <- outall %>%
-  filter(model %in% c("Accelerator")) %>%
-  get.score() %>%
-  ggplot()+geom_line(aes(x=horizon, y = rmse, color = model))+
-  geom_point(aes(x=horizon, y = rmse, color = model))+
-  labs(title = "",
-       y = "RMSE",
-       x = "Горизонт прогноза") +
-  theme_bw()+
-  guides(colour = guide_legend(title = "Модель"))
-cairo_pdf("plot/rmse4.pdf", width = 10, height = 5)
-print(rmse4)
-dev.off()
 
 
 

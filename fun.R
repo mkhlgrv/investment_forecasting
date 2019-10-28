@@ -131,6 +131,27 @@ train.model <- function(startdt= as.Date('2000-01-01'),
                       newx = rbind(X.train, X.test)) %>% as.numeric
       
     } 
+    
+    else if(model == 'elnet'){
+      train.out <- train(x=X.train,
+                         y=y.train,
+                         method = "glmnet",
+                         metric = "RMSE",
+                         trControl = tc,
+                         tuneGrid =
+                           expand.grid(.alpha = c(0.5),
+                                       .lambda = seq(0.05,0.0001,length = 300)))
+      
+      
+      model_fit <- glmnet(X.train,
+                          y.train,
+                          alpha = 0.5,
+                          lambda = train.out$bestTune[1,2])
+      
+      pred <- predict(model_fit,
+                      newx = rbind(X.train, X.test)) %>% as.numeric
+      
+    } 
     else if(model == 'ridge'){
       train.out <- train(x=X.train,
                          y=y.train,
@@ -355,8 +376,9 @@ get.score <- function(df){
               mae= MAE(pred, true),
               r2 = R2_Score(pred, true),
               type = 'train'),
-  df %>% filter(date > enddt,
-                date <= as.Date(enddt + 366*3)) %>%
+  df %>% filter(enddt <= '2016-10-01',
+                date > enddt,
+                date <= as.Date(enddt + 366*2)) %>%
     summarise(rmspe = RMSPE(pred, true),
               rmse = RMSE(pred, true),
               rrse = RRSE(pred, true),
@@ -548,6 +570,7 @@ correct.names <- Vectorize(vectorize.args = "model",
                                     'postlasso' = 'Post-LASSO',
                                     'adalasso' = 'Adaptive LASSO',
                                     'ridge' = 'Ridge',
+                                    'elnet' = 'Elastic Net',
                                     'rf' = 'Random Forest',
                                     'ss' = 'Spike-and-Slab',
                                     'arima' = 'AR',
@@ -557,5 +580,27 @@ correct.names <- Vectorize(vectorize.args = "model",
 meanroundpercent <- function(x){
   (x %>% mean %>% round(4))*100
 }
+
+get.dm <- function(df){
+    df %>%
+  filter(enddt <= '2016-10-01',
+         date > enddt,
+         date <= as.Date(enddt + 366*2)) %>%
+            mutate(error = pred-true) %>%
+    dcast(model + enddt + h + lag + date ~ startdt, value.var = 'error') %>%
+    group_by(model, h, lag) %>%
+    summarise(pvalue = ifelse(all(`1997-01-01`==`2000-01-01`), 1, 
+                              (forecast::dm.test(
+                                                 `2000-01-01`,
+                                                 `1997-01-01`) %>% .$p.value)),
+              stat = ifelse(all(`1997-01-01`==`2000-01-01`), 1, 
+                                 (forecast::dm.test(
+                                   `2000-01-01`,
+                                   `1997-01-01`) %>% .$statistic))
+              
+              ) %>%
+    ungroup()
+    
+  }
 
 

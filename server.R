@@ -134,7 +134,7 @@ function(input, output){
                                      linetype = 'Исходный ряд',
                                      size = 'Исходный ряд'))+
         geom_rect(aes(xmin=(df.forecast()$enddt %>% min + 100) %>% as.yearqtr %>% as.Date,
-                      xmax=(df.forecast()$enddt %>% min + 366*3) %>% as.yearqtr %>% as.Date,
+                      xmax=(df.forecast()$enddt %>% min + 366*2) %>% as.yearqtr %>% as.Date,
                       ymin=-Inf, ymax=Inf,
                       fill="Тестовая выборка"),
                   alpha=0.2)+
