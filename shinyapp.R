@@ -46,16 +46,16 @@ load('out/short_elnet.RData')
 
 out_short <-do.call(rbind,
                     list(
-                      #short_ss,
-                       #  short_elnet
-                         #,
-                        # short_arima,
-                         #short_adalasso,
-                        #  short_rw
-                         #,
-                         #short_ridge,
-                         #short_postlasso,
-                         #short_lasso,
+                      short_ss,
+                       short_elnet
+                      ,
+                      short_arima,
+                      short_adalasso,
+                       short_rw
+                      ,
+                      short_ridge,
+                      short_postlasso,
+                      short_lasso,
                          short_rf
                          ))
 
