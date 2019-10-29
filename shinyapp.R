@@ -4,15 +4,15 @@ source('fun.R')
 source('lib.R')
 
 getwd()
-load('jobs/short_arima.RData')
-load('jobs/short_rw.RData')
-load('jobs/short_ss.RData')
-load('jobs/short_adalasso.RData')
-load('jobs/short_lasso.RData')
-load('jobs/short_postlasso.RData')
-load('jobs/short_ridge.RData')
-load('jobs/short_rf.RData')
-load('jobs/short_elnet.RData')
+load('out/short_arima.RData')
+load('out/short_rw.RData')
+load('out/short_ss.RData')
+load('out/short_adalasso.RData')
+load('out/short_lasso.RData')
+load('out/short_postlasso.RData')
+load('out/short_ridge.RData')
+load('out/short_rf.RData')
+load('out/short_elnet.RData')
 
 
 
@@ -45,16 +45,17 @@ load('jobs/short_elnet.RData')
 
 
 out_short <-do.call(rbind,
-                    list(short_ss,
-                         short_elnet
-                         ,
-                         short_arima,
-                         short_adalasso,
-                          short_rw
-                         ,
-                         short_ridge,
-                         short_postlasso,
-                         short_lasso,
+                    list(
+                      #short_ss,
+                       #  short_elnet
+                         #,
+                        # short_arima,
+                         #short_adalasso,
+                        #  short_rw
+                         #,
+                         #short_ridge,
+                         #short_postlasso,
+                         #short_lasso,
                          short_rf
                          ))
 
@@ -203,8 +204,6 @@ source('lib.R')
 source('fun.R')
 load('rawdata.RData')
 load('shinydata.RData')
-
-
 
 
 
@@ -699,13 +698,13 @@ scoredf %>%
 scoredf %>%
   filter(type == 'test') %>%
   filter(startdt == '1997-01-01') %>%
-  group_by(model, lag, h, startdt) %>%
-  summarise(rmse = mean(rmse)) %>%
+  group_by(model, lag, h, startdt, enddt) %>%
+  # summarise(rmse = mean(rmse)) %>%
   ungroup %>%
-  group_by(model, startdt, h) %>%
+  group_by(model, startdt, h, enddt) %>%
   filter(rmse == min(rmse)) %>%
   filter(lag == min(lag)) %>%
-  dcast(model ~ h, value.var = 'lag') %>%
+  dcast(model+enddt ~ h, value.var = 'lag') %>%
   xtable %>%
   print(include.rownames = FALSE)
 
