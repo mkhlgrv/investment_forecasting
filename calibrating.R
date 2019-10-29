@@ -46,7 +46,7 @@ save(df, file = 'data/stationary_data.RData')
 
 eseries <- c('investment', 'mkr_1d','mkr_7d','gov_6m','GKO', #'gov_1y',
   'reer', 'neer', 'oil', 'rts',
-  'deflator',
+  #'deflator',
   
   
    'CPI_Q_CHI',

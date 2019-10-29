@@ -34,9 +34,14 @@ train.model <- function(startdt= as.Date('2000-01-01'),
                         ){
   message(paste0(i, '/', N))
   # import df
-  load('~/investment_forecasting/data/stationary_data.RData')
+  if(series == ''){
+    load('~/investment_forecasting/data/stationary_data.RData')
+  } else if(series == 'e') {
+    load('~/investment_forecasting/data/stationary_data_ext.RData')
+  }
+  
   if(!model %in% c('arima', 'rw')){
-    if(series!=''){
+    if(!series %in% c('', 'e')){
       df %<>% df[, c('investment',
                      series)]
     }
@@ -106,10 +111,16 @@ train.model <- function(startdt= as.Date('2000-01-01'),
     
     y.test <- df$y[test_n] %>% as.numeric
     
-    tc <- trainControl(method = "timeslice",
-                       initialWindow = 40,
-                       horizon = 8,
-                       fixedWindow = TRUE)
+    
+    
+    
+    tc <- trainControl(method = 'cv', number = 10)
+      
+      
+      # trainControl(method = "timeslice",
+      #                  initialWindow = 40,
+      #                  horizon = 8,
+      #                  fixedWindow = TRUE)
     
     if(model == 'lasso'){
       train.out <- train(x=X.train,
@@ -119,7 +130,7 @@ train.model <- function(startdt= as.Date('2000-01-01'),
                          trControl = tc,
                          tuneGrid =
                            expand.grid(.alpha = c(1),
-                                       .lambda = seq(0.05,0.0001,length = 300)))
+                                       .lambda = seq(0.05,0.0001,length = 100)))
       
       
       model_fit <- glmnet(X.train,
@@ -140,7 +151,7 @@ train.model <- function(startdt= as.Date('2000-01-01'),
                          trControl = tc,
                          tuneGrid =
                            expand.grid(.alpha = c(0.5),
-                                       .lambda = seq(0.05,0.0001,length = 300)))
+                                       .lambda = seq(0.05,0.0001,length = 100)))
       
       
       model_fit <- glmnet(X.train,
@@ -157,7 +168,7 @@ train.model <- function(startdt= as.Date('2000-01-01'),
                          y=y.train,
                          method = "glmnet",
                          metric = "RMSE",trControl = tc,
-                         tuneGrid = expand.grid(.alpha = 0,.lambda = seq(0.05,0.0001,length = 300)))
+                         tuneGrid = expand.grid(.alpha = 0,.lambda = seq(0.05,0.0001,length = 100)))
       model_fit <- glmnet(X.train,
                           y.train,
                           alpha = 0,
@@ -173,7 +184,7 @@ train.model <- function(startdt= as.Date('2000-01-01'),
                            y=y.train,
                            method = "glmnet",
                            metric = "RMSE",trControl = tc,
-                           tuneGrid = expand.grid(.alpha = 0,.lambda = seq(0.05,0.0001,length = 300)))
+                           tuneGrid = expand.grid(.alpha = 0,.lambda = seq(0.05,0.0001,length = 100)))
       
       m_ridge <- glmnet(X.train,
                         y.train,
@@ -184,7 +195,7 @@ train.model <- function(startdt= as.Date('2000-01-01'),
                          y=y.train,
                          method = "glmnet",
                          metric = "RMSE",trControl = tc,
-                         tuneGrid = expand.grid(.alpha = 1,.lambda = seq(0.05,0.0001,length = 300)))
+                         tuneGrid = expand.grid(.alpha = 1,.lambda = seq(0.05,0.0001,length = 100)))
       
       w3 <- 1/abs(as.numeric(coef(m_ridge))
                   [1:(ncol(X.train))] )^0.5 ## Using gamma = 1
@@ -205,7 +216,7 @@ train.model <- function(startdt= as.Date('2000-01-01'),
                          y=y.train,
                          method = "glmnet",
                          metric = "RMSE",trControl = tc,
-                         tuneGrid = expand.grid(.alpha = c(1),.lambda = seq(0.05,0.0001,length = 300)))
+                         tuneGrid = expand.grid(.alpha = c(1),.lambda = seq(0.05,0.0001,length = 100)))
       
       
       model_lasso <- glmnet(X.train,
