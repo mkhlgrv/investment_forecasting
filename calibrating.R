@@ -8,7 +8,8 @@ series <- c('investment', 'mkr_1d','mkr_7d','gov_6m','GKO', #'gov_1y',
             'reer', 'neer', 'oil', 'rts',
             'CPI_Q_CHI', 'GDPEA_Q_DIRI',
             'GDPEA_C_Q', 'INVFC_Q',
-            'EMPLDEC_Q'
+            'EMPLDEC_Q',
+          
             )
 df <- rawdata[,series]
 # отношение номинальных инвестиций к номинальному ВВП
@@ -40,5 +41,117 @@ for(i in c('investment', 'CPI_Q_CHI',
 
 save(df, file = 'data/stationary_data.RData')
 
+
+# extended series ----
+
+eseries <- c('investment', 'mkr_1d','mkr_7d','gov_6m','GKO', #'gov_1y',
+  'reer', 'neer', 'oil', 'rts',
+  'deflator',
+  
+  
+   'CPI_Q_CHI',
+  'GDPEA_Q_DIRI',
+  'GDPEA_C_Q', 'INVFC_Q',
+  
+  
+  
+  'EMPLDEC_Q',
+  'UNEMPL_Q_SH',
+  
+  'CONSTR_Q_NAT', 
+  'WAG_Q', 
+  'CONI_Q_CHI', 
+  'CTI_Q_CHI', 
+  'AGR_Q_DIRI', 
+  'RTRD_Q_DIRI', 
+  'HHI_Q_DIRI',
+  'M0_Q', 
+  'M2_Q',
+
+
+  'CBREV_Q',
+  'CBEX_Q',
+  'FBREV_Q',
+  'FBEX_Q',
+  'RDEXRO_Q',# официальный курс доллара
+  'RDEXRM_Q',# курс доллара на ммвб
+  'LIAB_T_Q',# кредиторская задолженность в среднем за период
+  'LIAB_UNP_Q',# просроченная кредиторская задолженность в среднем за период
+  'LIAB_S_Q',# кредиторская задолженность поставщикам в среднем за период
+  'LIAB_B_Q',# кредиторская задолженность в бюджет в среднем за период
+  'DBT_T_Q',#дебиторская задолженность в среднем за период
+  'DBT_UNP_Q',#просроченная дебиторская задолженность в среднем за период
+  # 'DBT_P_Q',# дебиторская задолженность покупателей в среднем за период
+  'EX_T_Q',# экспорт
+  'IM_T_Q',# импорт
+  'PPI_EA_Q' # (после 2004-01)
+  )
+
+
+df <- rawdata[,eseries]
+# отношение номинальных инвестиций к номинальному ВВП
+df$invest2gdp <- df$INVFC_Q/df$GDPEA_C_Q
+
+# удалить лишнее
+df$GDPEA_C_Q <- df$INVFC_Q <- NULL
+
+# вставить gko в 6m gov bond yield
+df$gov_6m[which(is.na(df$gov_6m))] <- 
+  df$GKO[which(is.na(df$gov_6m))]
+
+df$GKO <- NULL
+
+# нестационарные ряды без сезонности (разность) ----
+for(i in c('reer','neer','oil','rts')){
+  df[,i] %<>% diff.xts(log=TRUE)
+}
+
+# нестационарные ряды с сезонностью (4-ая разность) ----
+for(i in c('investment', 'CPI_Q_CHI',
+           'invest2gdp',
+           # 'deflator', только с 1996
+           'GDPEA_Q_DIRI',
+           
+           'EMPLDEC_Q',
+           'UNEMPL_Q_SH',
+           
+           'CONSTR_Q_NAT', 
+           ###### 'TRP_Q_PASS_DIRI', 
+           'WAG_Q', 
+           'CONI_Q_CHI', 
+           'CTI_Q_CHI', 
+           'AGR_Q_DIRI', 
+           'RTRD_Q_DIRI', 
+           'HHI_Q_DIRI',
+           'M0_Q', 
+           'M2_Q',
+           ####   'IR_Q',
+           #### 'ICR_Q',
+           'CBREV_Q',
+           'CBEX_Q',
+           'FBREV_Q',
+           'FBEX_Q',
+           'RDEXRO_Q',# официальный курс доллара
+           'RDEXRM_Q',# курс доллара на ммвб
+           'LIAB_T_Q',# кредиторская задолженность в среднем за период
+           'LIAB_UNP_Q',# просроченная кредиторская задолженность в среднем за период
+           'LIAB_S_Q',# кредиторская задолженность поставщикам в среднем за период
+           'LIAB_B_Q',# кредиторская задолженность в бюджет в среднем за период
+           'DBT_T_Q',#дебиторская задолженность в среднем за период
+           'DBT_UNP_Q',#просроченная дебиторская задолженность в среднем за период
+           ########## 'DBT_P_Q',# дебиторская задолженность покупателей в среднем за период
+           'EX_T_Q',# экспорт
+           'IM_T_Q',# импорт
+           'PPI_EA_Q' # (после 2004-01)
+           
+          
+           
+           )){
+  print(i)
+  df[,i] %<>% diff.xts(lag = 4, log=TRUE)
+}
+#df['1996-01/2019-06'] %>% missmap()
+
+save(df, file = 'data/stationary_data_ext.RData')
 
 
