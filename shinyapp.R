@@ -131,7 +131,7 @@ scoredf_raw <- get.score(out_true %>%
 
 # техническая таблица
 benchmarkscore <- scoredf_raw %>%
-  filter(model == 'Random Walk')
+  filter(model == 'Random Walk'& h >0 | model == 'AR' & h ==0)
 
 # таблица scoredf (rmse даны относительно rw)
 scoredf <- get.score(out_true %>%
@@ -140,7 +140,7 @@ scoredf <- get.score(out_true %>%
   filter(variable == 'rmse') %>%
   dcast(model+lag+h+type+startdt+enddt~variable) %>%
   mutate(hse = paste0(h,lag,  startdt, enddt, type)) %>%
-  filter(h !=0) %>%
+  # filter(h !=0) %>%
   split(.$hse) %>%
   map_dfr(function(x){
     h <- x$h %>% first %>% as.numeric
@@ -663,7 +663,7 @@ load('data/raw.RData')
 load('jobs/out_lasso.RData')
 
 
-
+library(xtable)
 
 
 
@@ -682,7 +682,7 @@ scoredf %>%
 
 scoredf %>%
   filter(type == 'test') %>%
-  filter(startdt == '2000-01-01') %>%
+  filter(startdt == '2001-1-01') %>%
   group_by(model, lag, h, startdt) %>%
   summarise(rmse = mean(rmse)) %>%
   ungroup %>%
@@ -696,22 +696,24 @@ scoredf %>%
 
 
 scoredf %>%
-  filter(type == 'test') %>%
+  filter(type == 'test',
+         !model %in% c('Random Walk', 'AR')) %>%
   filter(startdt == '1997-01-01') %>%
   group_by(model, lag, h, startdt, enddt) %>%
-  # summarise(rmse = mean(rmse)) %>%
+  summarise(rmse = mean(rmse)) %>%
   ungroup %>%
-  group_by(model, startdt, h, enddt) %>%
+  group_by(model, startdt, h) %>%
   filter(rmse == min(rmse)) %>%
   filter(lag == min(lag)) %>%
-  dcast(model+enddt ~ h, value.var = 'lag') %>%
+  dcast(model ~ h, value.var = 'lag') %>%
   xtable %>%
   print(include.rownames = FALSE)
 
 scoredf %>%
-  filter(type == 'test') %>%
-  filter(startdt == '2000-01-01') %>%
-  group_by(model, lag, h, startdt) %>%
+  filter(type == 'test',
+         !model %in% c('Random Walk', 'AR')) %>%
+  filter(startdt == '2001-01-01') %>%
+  group_by(model, lag, h, startdt, enddt) %>%
   summarise(rmse = mean(rmse)) %>%
   ungroup %>%
   group_by(model, startdt, h) %>%
