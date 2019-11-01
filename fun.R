@@ -600,13 +600,13 @@ get.dm <- function(df){
             mutate(error = pred-true) %>%
     dcast(model + enddt + h + lag + date ~ startdt, value.var = 'error') %>%
     group_by(model, h, lag) %>%
-    summarise(pvalue = ifelse(all(`1997-01-01`==`2000-01-01`), 1, 
+    summarise(pvalue = ifelse(all(`1997-01-01`==`2001-01-01`), 1, 
                               (forecast::dm.test(
-                                                 `2000-01-01`,
+                                                 `2001-01-01`,
                                                  `1997-01-01`) %>% .$p.value)),
-              stat = ifelse(all(`1997-01-01`==`2000-01-01`), 1, 
+              stat = ifelse(all(`1997-01-01`==`2001-01-01`), 1, 
                                  (forecast::dm.test(
-                                   `2000-01-01`,
+                                   `2001-01-01`,
                                    `1997-01-01`) %>% .$statistic))
               
               ) %>%
