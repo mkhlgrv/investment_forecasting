@@ -387,9 +387,9 @@ get.score <- function(df){
               mae= MAE(pred, true),
               r2 = R2_Score(pred, true),
               type = 'train'),
-  df %>% filter(enddt <= '2016-10-01',
+  df %>% filter(enddt <= as.Date(as.yearqtr(as.Date('2018-10-01'))-h/4),
                 date > enddt,
-                date <= as.Date(enddt + 366*2)) %>%
+                date <= as.Date(enddt + 100)) %>%
     summarise(rmspe = RMSPE(pred, true),
               rmse = RMSE(pred, true),
               rrse = RRSE(pred, true),
@@ -596,22 +596,74 @@ get.dm <- function(df){
     df %>%
   filter(enddt <= '2016-10-01',
          date > enddt,
-         date <= as.Date(enddt + 366*2)) %>%
-            mutate(error = pred-true) %>%
-    dcast(model + enddt + h + lag + date ~ startdt, value.var = 'error') %>%
+         date < as.Date(enddt + 100)) %>%
+    dcast(model + h + lag +true+date~ startdt, value.var = 'pred') %>%
     group_by(model, h, lag) %>%
-    summarise(pvalue = ifelse(all(`1997-01-01`==`2001-01-01`), 1, 
-                              (forecast::dm.test(
-                                                 `2001-01-01`,
-                                                 `1997-01-01`) %>% .$p.value)),
-              stat = ifelse(all(`1997-01-01`==`2001-01-01`), 1, 
-                                 (forecast::dm.test(
-                                   `2001-01-01`,
-                                   `1997-01-01`) %>% .$statistic))
+    summarise(pvalue = ifelse(all(`1997-01-01`==`2001-01-01`), 1,
+                              (DM.test(`2001-01-01`,
+                                                 `1997-01-01`,
+                                       y = true,
+                                       c=TRUE,
+                                                 H1 =ifelse(
+                                                   mean((`2001-01-01`-true)^2) < 
+                                                     mean((`1997-01-01`-true)^2),
+                                                   'more',
+                                                   ifelse(mean((`2001-01-01`-true)^2) > 
+                                                            mean((`1997-01-01`-true)^2),
+                                                          'less', 'same')
+                                                 )) %>% .$p.value)),
+              stat = ifelse(all(`1997-01-01`==`2001-01-01`), 0,
+                            (DM.test(`2001-01-01`,
+                                     `1997-01-01`,
+                                     y = true,
+                                     c=TRUE,
+                                     H1 =ifelse(
+                                       mean((`2001-01-01`-true)^2) < 
+                                         mean((`1997-01-01`-true)^2),
+                                       'more',
+                                       ifelse(mean((`2001-01-01`-true)^2) > 
+                                                mean((`1997-01-01`-true)^2),
+                                              'less', 'same')
+                                     )) %>% .$statistic))
               
               ) %>%
     ungroup()
     
-  }
+}
 
+get.dm.lag <- function(df){
+  df %>%
+    filter(enddt <= '2016-10-01',
+           date > enddt,
+           date < as.Date(enddt + 100)) %>%
+    mutate(error = pred-true) %>%
+    group_by(model, lag, startdt, h) %>%
+    mutate(e_m = mean(error^2)) %>%
+    ungroup %>%
+    mutate(group = paste0(model, startdt, h)) %>%
+    split(.$group) %>%
+    map_dfr(function(x){
+      true <- x$true[which(x$e_m == min(x$e_m))]
+      bench <- x$pred[which(x$e_m == min(x$e_m))]
+      x %<>% dcast(model+startdt+ h+ date~lag, value.var='pred')
+      pvalue <- c()
+      for(i in 5:9){
+        actualx <- x %>% as.data.frame %>% .[,i]
+        pvalue <- c(pvalue, ifelse(all(actualx== bench), 1,
+               DM.test(bench,actualx,
+                       true,c = TRUE,
+                        
+                                 H1 = 'more'
+                                          ) %>% .$p.value
+               
+               ))
+        
 
+      }
+      data.frame(model=x$model %>% first,
+                 startdt = x$startdt %>% first,
+                 h = x$h %>% first,
+                 lag = 0:4,
+                 pvalue = pvalue)
+    })
+}
