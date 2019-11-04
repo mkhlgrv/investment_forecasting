@@ -25,7 +25,7 @@ train.model <- function(startdt= as.Date('2000-01-01'),
                         model,
                         # series parameter 
                         # only for regularisation and machine learning models
-                        series='',
+                        series='e',
                         lag = 2L,
                         h = 4L,
                         # parameters for durable evaluations with function arguments from expand.grid table
@@ -58,7 +58,7 @@ train.model <- function(startdt= as.Date('2000-01-01'),
     df$y <- lag.xts(df$investment, k = -h)
     
     if(h == 0){
-      df$investment <- NULL
+      df$investment <-df$invest2gdp <-  NULL
     }
     
     df %<>% .[rowSums(is.na(.[,colnames(.)!='y']))==0,]
