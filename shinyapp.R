@@ -16,41 +16,13 @@ load('out/short_elnet.RData')
 
 
 
-# 
-# out_short <- expand.grid(startdt = c(as.Date('1997-01-01'), as.Date('2000-01-01')),
-#             enddt =  c(as.Date('2013-01-01'), as.Date('2018-07-01')),
-#             lag = c(2L),
-#             h=c(1L,2L,8L),
-#             model = c('postlasso', 'ss', 'rf', 'rw','lasso', 'adalasso', 'ridge')
-# ) %>%
-#   split(seq(1:nrow(.))) %>%
-#   map(function(x){
-#     train.model(startdt=x$startdt,
-#                 enddt=x$enddt,
-#                 model = x$model,
-#                 lag=x$lag,
-#                 h=x$h
-#     )
-#   })  %>% plyr::compact() %>%
-#   map_dfr(function(x){
-#     data.frame(model=x$model,
-#                lag = x$lag,
-#                startdt= x$startdt,
-#                enddt= x$enddt,
-#                h = x$h,
-#                date = x$date,
-#                pred=x$pred)
-# 
-#   })
-
 
 out_short <-do.call(rbind,
                     list(
-                      short_ss,
-                       short_elnet
-                      ,
-                      short_arima,
-                      short_adalasso,
+                       short_ss,
+                       short_elnet,
+                       short_arima,
+                       short_adalasso,
                        short_rw
                       ,
                       short_ridge,
@@ -142,31 +114,33 @@ scoredf <- get.score(out_true %>%
   split(.$hls) %>%
   map_dfr(function(x){
     if(x$h %>% first == 0){
-      x$rmse = x$rmse/ x$rmse[which(x$model == 'AR')]
-    } else {
+       x$rmse = x$rmse/ x$rmse[which(x$model == 'AR')]
+    } 
+    
+    else {
       x$rmse = x$rmse/x$rmse[which(x$model == 'Random Walk')]
     }
     x %>% select(-hls)
   }) 
 
 
-optlag <- scoredf_raw %>% 
-  filter(type == 'test') %>%
-  group_by(model, startdt, enddt, h) %>%
-  filter(rmse == min(rmse)) %>%
-  filter(lag == min(lag)) %>%
-  ungroup %>%
-  select(model, startdt, enddt, h, lag) %>%
-  unique
-
-optstart <- scoredf_raw %>% 
-  filter(type == 'test') %>%
-  group_by(model, enddt, h, lag) %>%
-  filter(rmse == min(rmse)) %>%
-  filter(startdt == max(startdt)) %>%
-  ungroup %>%
-  select(model, startdt, enddt, h, lag) %>%
-  unique
+# optlag <- scoredf_raw %>% 
+#   filter(type == 'test') %>%
+#   group_by(model, startdt, enddt, h) %>%
+#   filter(rmse == min(rmse)) %>%
+#   filter(lag == min(lag)) %>%
+#   ungroup %>%
+#   select(model, startdt, enddt, h, lag) %>%
+#   unique
+# 
+# optstart <- scoredf_raw %>% 
+#   filter(type == 'test') %>%
+#   group_by(model, enddt, h, lag) %>%
+#   filter(rmse == min(rmse)) %>%
+#   filter(startdt == max(startdt)) %>%
+#   ungroup %>%
+#   select(model, startdt, enddt, h, lag) %>%
+#   unique
 
 
 out_hair <- out_true %>%
@@ -649,111 +623,6 @@ ssdatatest %>%
   geom_point()+
   geom_line()
 
-  ##### PC
-load('data/stationary_data.RData')
-
-load('data/raw.RData')
-
-load('jobs/out_lasso.RData')
-
-
-library(xtable)
-
-
-scoredf$model <- factor(scoredf$model,
-                            levels = c("Random Walk","AR","Adaptive LASSO",
-                                       "Elastic Net","LASSO","Post-LASSO",
-                                       "Random Forest","Ridge","Spike-and-Slab"))
-scoredf %>%
-  filter(type == 'test') %>%
-  filter(startdt == '1997-01-01') %>%
-  group_by(model, lag, h, startdt) %>%
-  summarise(rmse = mean(rmse)) %>%
-  ungroup %>%
-  group_by(model, startdt, h) %>%
-  # filter(rmse == min(rmse)) %>%
-  # filter(lag == min(lag)) %>%
-  #dcast(model ~ h+lag) %>%
-  ggplot(aes(h,interaction(lag, model), fill = model, alpha = rmse))+
-  geom_raster()
-  xtable %>%
-  print(include.rownames = FALSE)
-
-scoredf %>%
-  filter(type == 'test') %>%
-  filter(startdt == '2001-01-01') %>%
-  group_by(model, lag, h, startdt) %>%
-  summarise(rmse = mean(rmse)) %>%
-  ungroup %>%
-  group_by(model, startdt, h) %>%
-  filter(rmse == min(rmse)) %>%
-  filter(lag == min(lag)) %>%
-  dcast(model ~ h) %>%
-  xtable %>%
-  print(include.rownames = FALSE)
 
 
 
-scoredf %>%
-  filter(type == 'test') %>%
-  filter(startdt == '1997-01-01') %>%
-  group_by(model, lag, h, startdt) %>%
-  summarise(rmse = mean(rmse)) %>%
-  ungroup %>%
-  group_by(model, startdt, h) %>%
-  filter(rmse == min(rmse)) %>%
-  filter(lag == min(lag)) %>%
-  dcast(model ~ h, value.var ='lag') %>%
-  xtable %>%
-  print(include.rownames = FALSE)
-
-scoredf %>%
-  filter(type == 'test') %>%
-  filter(startdt == '2001-01-01') %>%
-  group_by(model, lag, h, startdt) %>%
-  summarise(rmse = mean(rmse)) %>%
-  ungroup %>%
-  group_by(model, startdt, h) %>%
-  filter(rmse == min(rmse)) %>%
-  filter(lag == min(lag)) %>%
-  dcast(model ~ h, value.var ='lag') %>%
-  xtable %>%
-  print(include.rownames = FALSE)
-
-
-
-
-dmdf <- get.dm(out_true %>% na.omit)
-
-dmsd <- dmdf %>%
-  filter(model != 'Random Walk') %>%
-  mutate(change = ifelse(pvalue > 0.01,
-                          '0',
-                          ifelse(stat < 0,
-                                 '+',
-                                 '-')
-                          )) %>%
-  ggplot(aes( model,interaction(h, lag))) +
-  geom_raster(aes(fill = change))
-
-cairo_pdf('plot/dmsd.pdf')
-print(dmsd)
-dev.off()
-
-
-dmtest <- get.dm.lag(out_true %>% na.omit) %>%
-  filter(!model %in% c('Random Walk', 'AR')) %>%
-  # mutate(change = ifelse(pvalue > 0.01,
-  #                        '0',
-  #                        ifelse(stat < 0,
-  #                               '+',
-  #                               '-')
-  # )) %>%
-  mutate(less = ifelse(pvalue >0.05 , FALSE, TRUE)) %>%
-  ggplot(aes(lag, interaction(model, startdt))) +
-  geom_raster(aes(fill = less))+
-  facet_wrap(vars(h))
-
-cairo_pdf('plot/dmtest.pdf')
-print(dmtest)
-dev.off()

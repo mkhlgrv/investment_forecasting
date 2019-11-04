@@ -66,13 +66,10 @@ navbarPage('Прогнозирование инвестиций',
                                      selected = out_short$model %>% unique %>% first, 
                                      
                                      multiple = TRUE),
-                      checkboxInput('facet',
-                                    'Каждую модель на отдельном графике', value = TRUE),
-                      # checkboxInput('onlytrain_hair', 'Показывать только тестовую выборку', value = TRUE),
-             #          radioButtons('scoretype_hair',
-             #                       "Выберите тип представления RMSFE",
-             #                       choices = c("Абсолютные значения" = 'absolute',
-             #                                   "Значения относительно базовой модели" = 'relate'), 
+                      radioButtons('facet', 'Тип представления',choices = c('Каждую модель на отдельном графике' = 'divide',
+                                                                            'Все модели на одном графике' = 'together',
+                                                                            'Усредненный прогноз' = 'mean')
+                                   , selected = 'divide'),
              #                       selected = 'relate'),
              #          helpText("Для корректного сравнения
              # тренировочных выборок с разными границами 

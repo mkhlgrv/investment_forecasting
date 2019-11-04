@@ -309,16 +309,24 @@ function(input, output){
              linetype = guide_legend(""),
              fill = guide_legend(" "))
      )} %>%
-    (function(x) {if(input$facet) {x +
+    (function(x) {if(input$facet == 'divide') {x +
         geom_line(aes(x = date, y = pred, group = group),
                                                color = 'cornflowerblue',
                                                alpha = 0.8,
                                                size = 0.8)+
         facet_wrap(vars(model))} 
-      else {x +
+      else if(input$facet == 'together'){x +
         geom_line(aes(x = date, y = pred, group = group, color = model),
                   alpha = 0.8,
-                  size = 0.8)}})
+                  size = 0.8)} 
+      else{x+
+        stat_summary(aes(x = date, y = pred, group = forecastdate),
+                     geom = 'line',
+                     linetype = 'dashed',
+                     color = 'cornflowerblue',
+                     fun.y=mean)
+        
+      }})
       
   })
   
