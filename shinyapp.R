@@ -113,13 +113,13 @@ scoredf <- get.score(out_true %>%
   # filter(h !=0) %>%
   split(.$hls) %>%
   map_dfr(function(x){
-    if(x$h %>% first == 0){
-       x$rmse = x$rmse/ x$rmse[which(x$model == 'AR')]
-    } 
-    
-    else {
-      x$rmse = x$rmse/x$rmse[which(x$model == 'Random Walk')]
-    }
+    # if(x$h %>% first == 0){
+    #    x$rmse = x$rmse/ x$rmse[which(x$model == 'AR')]
+    # } 
+    # 
+    # else {
+    x$rmse = x$rmse/x$rmse[which(x$model == 'Random Walk')]
+    # }
     x %>% select(-hls)
   }) 
 
@@ -162,9 +162,10 @@ out_cumulative <- out_true %>%
   mutate(pred_cumulative = exp(log(true_lag)+pred),
          true_cumulative = exp(log(true_lag)+true))
 
-save(out_true, out_short, ytrue,scoredf,optlag, optstart, scoredf_raw,out_hair, rawdata,out_cumulative,
+save(out_true, out_short, ytrue,scoredf, scoredf_raw,#out_hair,optlag, optstart, rawdata,out_cumulative,
      
      file = 'shinydata.RData')
+
 # # ui----
 
 rm(list=ls())
