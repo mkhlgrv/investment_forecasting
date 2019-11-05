@@ -43,19 +43,15 @@ dev.off()
 
 
 ##### rmsfe table -----
-load('data/stationary_data.RData')
-
-load('data/raw.RData')
-
-
-
-library(xtable)
+load('shinydata.RData')
 
 
 scoredf$model <- factor(scoredf$model,
                         levels = c("Random Walk","AR","Adaptive LASSO",
                                    "Elastic Net","LASSO","Post-LASSO",
-                                   "Random Forest","Ridge","Spike-and-Slab"))
+                                   "Random Forest","Ridge","Spike and Slab"))
+
+
 scoredf %>%
   filter(type == 'test') %>%
   filter(startdt == '1997-01-01') %>%
@@ -178,8 +174,7 @@ source('lib.r')
 load('out/full/out_lasso.RData')
 load('out/full/out_adalasso.RData')
 
-
-lasso_beta <- ovut_lasso %>%
+lasso_beta <- out_lasso %>%
   plyr::compact()%>%
   map_dfr(
     function(x){
@@ -197,7 +192,27 @@ lasso_beta <- ovut_lasso %>%
     }
   )
 
+rm(out_postlasso)
+lasso_nonzero <- lasso_beta %>%
+  filter(lag == 4) %>%
+  mutate(startdt = factor(startdt, c('2001-01-01','1997-01-01'))) %>%
+  group_by(lag, h, startdt, enddt) %>%
+  summarise(nz = sum(beta != 0)) %>%
+  ggplot(aes(enddt, nz, linetype = startdt))+
+  geom_line()+
+  labs(title = "",
+       y = "Количество переменных",
+       x = "Дата",
+       color = '')+
+  facet_wrap(vars(h), scales = 'free_y')+
+  theme_bw()
+
 # количество переменных
+
+cairo_pdf('plot/lasso_nonzero.pdf')
+print(lasso_nonzero)
+dev.off()
+
 
 adalasso_beta <- out_adalasso %>%
   plyr::compact()%>%
@@ -219,17 +234,18 @@ adalasso_beta <- out_adalasso %>%
 
 # количество переменных
 ada_nonzero <-  adalasso_beta %>%
-  filter(lag == 4) %>%
+   filter(lag == 4) %>%
   mutate(startdt = factor(startdt, c('2001-01-01','1997-01-01'))) %>%
   group_by(lag, h, startdt, enddt) %>%
   summarise(nz = sum(beta != 0)) %>%
   ggplot(aes(enddt, nz, linetype = startdt))+
   geom_line()+
+  #stat_summary(geom='line', fun.y=mean)+
   labs(title = "",
        y = "Количество переменных",
        x = "Дата",
        color = '')+
-  facet_wrap(vars(h))+
+  facet_wrap(vars(h), scales = 'free_y')+
   theme_bw()
 
 
@@ -240,16 +256,16 @@ dev.off()
 
 
 adalasso_beta %>% group_by(predictor, lag, h, startdt) %>%
-  filter(lag==0,startdt== '2001-01-01') %>%
-  filter(h<2) %>%
+  filter(lag==4,startdt== '2001-01-01') %>%
+  filter(h<=4) %>%
   group_by(predictor, h) %>%
   summarise(beta = mean(beta)) %>%
   ungroup %>%
   group_by(h) %>%
   arrange(desc(abs(beta))) %>%
   mutate(rn = row_number(),
-         pred_beta = paste0(predictor, round(beta,3))) %>%
-  filter(rn<=40) %>%
+         pred_beta = paste0(predictor,' ', round(beta,3))) %>%
+  filter(rn<=5) %>%
   ungroup %>%
   dcast(rn~h, value.var = 'pred_beta') %>%
   xtable %>%
@@ -265,8 +281,8 @@ adalasso_beta %>% group_by(predictor, lag, h, startdt) %>%
   group_by(h) %>%
   arrange(desc(abs(beta))) %>%
   mutate(rn = row_number(),
-         pred_beta = paste0(predictor, round(beta,3))) %>%
-  filter(rn<=10) %>%
+         pred_beta = paste0(predictor,' ', round(beta,3))) %>%
+  filter(rn<=5) %>%
   ungroup %>%
   dcast(rn~h, value.var = 'pred_beta') %>%
   xtable %>%
