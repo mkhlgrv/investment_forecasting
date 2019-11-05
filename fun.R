@@ -272,7 +272,8 @@ train.model <- function(startdt= as.Date('2000-01-01'),
       pred <- predict(model_fit, newdata = rbind(X.train, X.test))$yhat.gnet
       
     }
-  } else {
+  } else 
+    {
     
       
       if(!is.integer(h)){
@@ -346,7 +347,11 @@ train.model <- function(startdt= as.Date('2000-01-01'),
       }
       
     } else if (model == 'rw'){
-      pred <- y.full
+      if(h == 0){
+        pred <- lag.xts(y.full)
+      } else{
+        pred <- y.full
+      }
       train.out <- model_fit <- NULL
     }
   }
@@ -583,7 +588,7 @@ correct.names <- Vectorize(vectorize.args = "model",
                                     'ridge' = 'Ridge',
                                     'elnet' = 'Elastic Net',
                                     'rf' = 'Random Forest',
-                                    'ss' = 'Spike-and-Slab',
+                                    'ss' = 'Spike and Slab',
                                     'arima' = 'AR',
                                     'rw' = 'Random Walk')})
 
