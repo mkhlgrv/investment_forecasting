@@ -44,35 +44,31 @@ save(df, file = 'data/stationary_data.RData')
 
 # extended series ----
 
-eseries <- c('investment', 'mkr_1d','mkr_7d','gov_6m','GKO', #'gov_1y',
+eseries <- c('investment', 'mkr_1d','mkr_7d','gov_6m','GKO',
   'reer', 'neer', 'oil', 'rts',
-  #'deflator',
+  
+  'GDPEA_C_Q', 'INVFC_Q', # служебные для invest2gdp
   
   
-   'CPI_Q_CHI',
-  'GDPEA_Q_DIRI',
-  'GDPEA_C_Q', 'INVFC_Q',
+  'CPI_Q_CHI',# ипц
+  'GDPEA_Q_DIRI', # ввп
   
-  
-  
-  'EMPLDEC_Q',
-  'UNEMPL_Q_SH',
-  
-  'CONSTR_Q_NAT', 
-  'WAG_Q', 
-  'CONI_Q_CHI', 
-  'CTI_Q_CHI', 
-  'AGR_Q_DIRI', 
-  'RTRD_Q_DIRI', 
-  'HHI_Q_DIRI',
-  'M0_Q', 
-  'M2_Q',
-
-
-  'CBREV_Q',
-  'CBEX_Q',
-  'FBREV_Q',
-  'FBEX_Q',
+  'UNEMPL_Q_SH',# безработица
+  'EMPLDEC_Q', # заявленная потребность в работника
+  'CONSTR_Q_NAT', # индекс строительно-монтажных работ, 
+  'WAG_Q', # зарплата
+  'CONI_Q_CHI', # индекс цен на строительно-монтажные работы
+  'CTI_Q_CHI', # индекс тарифов на грузовые перевозки
+  'AGR_Q_DIRI', # индекс сельхоз производства
+  #'CNSTR_Q_DIRI',# индекс работ в строительстве
+  'RTRD_Q_DIRI', # оборот розничной торговли
+  'HHI_Q_DIRI',# индекс реальных денежных доходов населения
+  'M0_Q', # M0
+  'M2_Q',# М2
+  'CBREV_Q',# доходы конс. бюджета 
+  'CBEX_Q',# расходы конс. бюджета
+  'FBREV_Q',# доходы фед. бюджета
+  'FBEX_Q',# расходы фед. бюджета
   'RDEXRO_Q',# официальный курс доллара
   'RDEXRM_Q',# курс доллара на ммвб
   'LIAB_T_Q',# кредиторская задолженность в среднем за период

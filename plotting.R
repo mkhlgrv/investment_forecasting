@@ -171,29 +171,39 @@ dev.off()
 source('fun.R')
 source('lib.r')
 
-load('out/full/out_lasso.RData')
+load('out/full/out_postlasso.RData')
 load('out/full/out_adalasso.RData')
 
-lasso_beta <- out_lasso %>%
+
+load('out/short_postlasso.RData')
+
+short_postlasso %>% filter(h==8, lag==4, startdt=='1997-01-01', date > enddt, date < enddt+100)%>% View
+postlasso_beta <- 
+  out_postlasso %>%
   plyr::compact()%>%
   map_dfr(
-    function(x){
-      betaval = x$model_fit$beta 
-      x$model_fit$beta
+    function(x, i){
+      if(x$h==8 &x$lag==4 & x$startdt=='1997-01-01'& x$enddt == '2014-04-01'){
+        print(x, i)
+      }
+      betaval = x$model_fit$coefficients
       data.frame(model = x$model,
                  lag = x$lag,
-                 h = x$h, 
+                 h = x$h,
                  startdt=x$startdt,
                  enddt = x$enddt,
-                 predictor = betaval%>% rownames(),
+                 predictor = betaval%>% names(),
                  beta = betaval%>% as.numeric
       )
       
     }
   )
 
+
+
+
 rm(out_postlasso)
-lasso_nonzero <- lasso_beta %>%
+postlasso_nonzero <- postlasso_beta %>%
   filter(lag == 4) %>%
   mutate(startdt = factor(startdt, c('2001-01-01','1997-01-01'))) %>%
   group_by(lag, h, startdt, enddt) %>%
@@ -255,21 +265,33 @@ print(ada_nonzero)
 dev.off()
 
 
-adalasso_beta %>% group_by(predictor, lag, h, startdt) %>%
-  filter(lag==4,startdt== '2001-01-01') %>%
-  filter(h<=4) %>%
-  group_by(predictor, h) %>%
-  summarise(beta = mean(beta)) %>%
+ada_p <- adalasso_beta %>%
+  group_by(predictor, lag, h, startdt) %>%
+  filter(lag==4,
+         startdt== '2001-01-01'
+         ,
+         predictor %in% c('investment', 'mkr_1d','mkr_7d','gov_6m','GKO',
+                          'invest2gdp',
+         'oil', 'rts',
+         'CPI_Q_CHI',
+         'GDPEA_Q_DIRI',
+         #'EMPLDEC_Q',
+         'CONI_Q_CHI', # индекс цен на строительно-монтажные работы
+         'CNSTR_Q_DIRI'# индекс работ в строительств
+         )
+         ) %>%
+  group_by(h, lag, predictor) %>%
+  mutate(beta_mean = mean(beta)) %>%
   ungroup %>%
-  group_by(h) %>%
-  arrange(desc(abs(beta))) %>%
-  mutate(rn = row_number(),
-         pred_beta = paste0(predictor,' ', round(beta,3))) %>%
-  filter(rn<=5) %>%
-  ungroup %>%
-  dcast(rn~h, value.var = 'pred_beta') %>%
-  xtable %>%
-  print(include.rownames = FALSE)
+  group_by(h, lag,  startdt, enddt) %>%
+  arrange(desc(abs(beta_mean))) %>% 
+  #filter(row_number()<=5) %>%
+  ungroup() %>%
+  ggplot()+
+  geom_line(aes(enddt, beta, color=predictor))+
+  facet_wrap(vars(h))
+
+plotly::ggplotly(ada_p)
 
 
 adalasso_beta %>% group_by(predictor, lag, h, startdt) %>%

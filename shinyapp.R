@@ -472,10 +472,12 @@ scoredf %>%
 
 
 # вычислим значимость коэффициентов в модели spike and slab ----
+getwd()
 rm(list=ls())
 source('fun.R')
+source('lib.R')
 # ss data
-load('jobs/out_ss.RData')
+load('out/full/out_ss.RData')
 
 load('jobs/short_ss.RData')
 
@@ -546,83 +548,43 @@ ss_coefs <- out_ss %>%
 
 
 p <- ssprob %>%
-  filter(h<=4) %>%
-  inner_join(ss_coefs,
+  filter(lag ==0,
+         startdt=='2001-01-01'#,
+         
+         
+         # predictor %in% c('investment', 'mkr_1d','mkr_7d','gov_6m','GKO',
+         # 
+         # 'oil', 'rts',
+         # 'CPI_Q_CHI',
+         # 'GDPEA_Q_DIRI',
+         # #'EMPLDEC_Q',
+         # 'CONI_Q_CHI', # индекс цен на строительно-монтажные работы
+         # 'CNSTR_Q_DIRI'# индекс работ в строительств
+         #)
+         
+         ) %>%
+   inner_join(ss_coefs,
                       by = c("series", "h", "lag", "startdt", "enddt", "predictor")) %>%
-  inner_join(optlag %>% filter(model == 'Spike-and-Slab'), by = c("h", "lag", "startdt", "enddt")) %>%
   mutate(prob = ifelse(is.na(prob), 0, prob)) %>%
   group_by(h, lag, predictor) %>%
   mutate(prob_mean = mean(prob)) %>%
+  ungroup %>%
+  group_by(h, lag,  startdt, enddt) %>%
+  arrange(desc(prob_mean)) %>% 
+  filter(row_number()<=5) %>%
   ungroup() %>%
-  group_by(predictor) %>% 
-  filter(mean(prob_mean) > 0.499) %>%
-  mutate(h = as.factor(h)) %>%
-  ggplot(aes(enddt, prob,
-             color = predictor))+
-  stat_summary(fun.y=mean, geom = 'line') +
+  mutate(h = as.factor(h),
+         value= ifelse(prob<0.5, NA, value)) %>%
+  ggplot()+
+  #stat_summary(aes(enddt, prob,
+  #                 color = predictor),fun.y=mean, geom = 'line', linetype='dashed') +
+  geom_line(aes(enddt, prob, color = predictor))+
   facet_wrap(vars( h))
 plotly::ggplotly(p)
+
 save(ssprob, file='data/ssprob.Rda')
 
 load('data/ssprob.Rda')
-
-ssprob %>%
-  inner_join(optlag %>% filter(model == 'ss') %>% select(-model),
-             by = c('lag', 'h', 'startdt', 'enddt')) %>%
-  filter(h >=4, startdt == max(startdt)) %>%
-  
-  mutate(
-         startdt = as.factor(startdt)) %>%
-  group_by(h, predictor, startdt) %>%
-  mutate(prob_mean = mean(prob)) %>%
-  ungroup %>%
-  group_by(predictor) %>%
-  filter(max(prob_mean)>0.3) %>% #|grepl('oil', first(predictor))) %>%
-  #mutate(group = paste0(h, "_", startdt)) #%>%
-  ggplot()+
-  geom_line(aes(enddt, prob, color = h, group = h))+
-  #scale_alpha_discrete(range = c(0, 0.3))
-  #stat_summary(aes(enddt, prob), alpha = 0.5, geom = 'ribbon', fun.data = 'mean_cl_boot')+
-  facet_wrap(vars(predictor))
-
-
-
-scoredf_raw %>%
-  filter(type == 'test') %>%
-  mutate(mseh = paste0(model, startdt, enddt, h)) %>%
-  filter(h!=0) %>%
-  split(.$mseh) %>%
-  map_dfr(function(x){
-    m <- x$model %>% first
-    s <- x$startdt %>% first
-    e <- x$enddt %>% first
-    h <- x$h %>% first
-    x %>% filter(lag == unique(optlag$lag[which(optlag$model == m &
-                                    optlag$startdt == s &
-                                    optlag$enddt == e &
-                                    optlag$h == h)])) %>%
-      select(-mseh)
-  }) %>%
-  filter(startdt == max(startdt)) %>%
-  # dcast(startdt + enddt ~ model, value.var = 'rmse') %>%
-  # mutate(date = startdt) %>%
-  ggplot(aes(enddt, rmse, color = model))+
-    geom_line()+
-  facet_wrap(vars(h))
-################################
-
-# что то нажо сделать с тем, что после конца прогнозирования на оджну точку только одно наблдюение
-# группы должны создаваться не по fdme а просто mde
-
-load('ssdatatest.RDS')
-ssdatatest %>%
-  select(-c(true, fdme)) %>%
-  filter(date >= '2015-01-01') %>%
-  na.omit %>%
-  mutate(newfd = paste0(model, forecastdate)) %>%
-  ggplot(aes(x = date, y = pred, color = newfd))+
-  geom_point()+
-  geom_line()
 
 
 
