@@ -55,6 +55,7 @@ scoredf$model <- factor(scoredf$model,
 scoredf %>%
   filter(type == 'test') %>%
   filter(startdt == '1997-01-01') %>%
+  filter(lag==0) %>%
   group_by(model, lag, h, startdt) %>%
   summarise(rmse = mean(rmse)) %>%
   ungroup %>%
@@ -68,6 +69,7 @@ scoredf %>%
 scoredf %>%
   filter(type == 'test') %>%
   filter(startdt == '2001-01-01') %>%
+  filter(lag==0) %>%
   group_by(model, lag, h, startdt) %>%
   summarise(rmse = mean(rmse)) %>%
   ungroup %>%
@@ -109,7 +111,7 @@ scoredf %>%
 #### dm test ----
 
 
-dmdf <- get.dm(out_true %>% na.omit)
+dmdf <- get.dm(out_true %>%filter(lag==0) %>% na.omit)
 
 dmsd <- dmdf %>%
   filter(model != 'Random Walk') %>%
@@ -119,8 +121,8 @@ dmsd <- dmdf %>%
                                 '+',
                                 '-')
   )) %>%
-  ggplot(aes( model,interaction(h, lag))) +
-  geom_raster(aes(fill = change))
+  ggplot(aes( model,factor(h))) +
+  geom_tile(aes(fill = change),color='grey')
 
 cairo_pdf('plot/dmsd.pdf')
 print(dmsd)
@@ -228,23 +230,28 @@ adalasso_beta <- out_adalasso %>%
   plyr::compact()%>%
   map_dfr(
   function(x){
-    betaval = x$model_fit$beta 
-    x$model_fit$beta
-    data.frame(model = x$model,
-               lag = x$lag,
-               h = x$h, 
-               startdt=x$startdt,
-               enddt = x$enddt,
-               predictor = betaval%>% rownames(),
-               beta = betaval%>% as.numeric
-    )
-    
+    if(x$lag!=0){
+      NULL
+    } else{
+      betaval = x$model_fit$beta 
+      x$model_fit$beta
+      data.frame(model = x$model,
+                 lag = x$lag,
+                 h = x$h, 
+                 startdt=x$startdt,
+                 enddt = x$enddt,
+                 predictor = betaval%>% rownames(),
+                 beta = betaval%>% as.numeric
+      )
+      
+    }
+
   }
-)
+) %>% plyr::compact()
 
 # количество переменных
 ada_nonzero <-  adalasso_beta %>%
-   filter(lag == 4) %>%
+  # filter(lag == 4) %>%
   mutate(startdt = factor(startdt, c('2001-01-01','1997-01-01'))) %>%
   group_by(lag, h, startdt, enddt) %>%
   summarise(nz = sum(beta != 0)) %>%
@@ -255,7 +262,7 @@ ada_nonzero <-  adalasso_beta %>%
        y = "Количество переменных",
        x = "Дата",
        color = '')+
-  facet_wrap(vars(h), scales = 'free_y')+
+  facet_wrap(vars(h))+
   theme_bw()
 
 
@@ -267,13 +274,13 @@ dev.off()
 
 ada_p <- adalasso_beta %>%
   group_by(predictor, lag, h, startdt) %>%
-  filter(lag==4,
+  filter(
          startdt== '2001-01-01'
          ,
          predictor %in% c('investment', 'mkr_1d','mkr_7d','gov_6m','GKO',
                           'invest2gdp',
-         'oil', 'rts',
-         'CPI_Q_CHI',
+         'oil', 
+         'rts',
          'GDPEA_Q_DIRI',
          #'EMPLDEC_Q',
          'CONI_Q_CHI', # индекс цен на строительно-монтажные работы

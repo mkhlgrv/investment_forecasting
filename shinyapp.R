@@ -144,8 +144,9 @@ scoredf <- get.score(out_true %>%
 
 
 out_hair <- out_true %>%
+  filter(lag==0) %>%
   mutate(forecastdate = as.Date(as.yearqtr(date) -h/4)) %>%
-  inner_join(optlag, by = c('model', 'lag', 'h', 'startdt', 'enddt')) %>%
+  #inner_join(optlag, by = c('model', 'lag', 'h', 'startdt', 'enddt')) %>%
   mutate(
          datediff = (forecastdate - enddt) %>%
            as.numeric,
@@ -155,14 +156,15 @@ out_hair <- out_true %>%
 
 
 out_cumulative <- out_true %>%
+  filter(lag==0) %>%
   mutate(forecastdate = as.Date(as.yearqtr(date) -h/4)) %>%
-  inner_join(optlag, by = c('model', 'lag', 'h', 'startdt', 'enddt')) %>% 
+  #inner_join(optlag, by = c('model', 'lag', 'h', 'startdt', 'enddt')) %>% 
   filter(quarter(forecastdate) == 4,
          year(date) >= 2012) %>% 
   mutate(pred_cumulative = exp(log(true_lag)+pred),
          true_cumulative = exp(log(true_lag)+true))
 
-save(out_true, out_short, ytrue,scoredf, scoredf_raw,#out_hair,optlag, optstart, rawdata,out_cumulative,
+save(out_true, out_short, ytrue,scoredf, scoredf_raw,out_hair,out_cumulative,
      
      file = 'shinydata.RData')
 
@@ -171,7 +173,8 @@ save(out_true, out_short, ytrue,scoredf, scoredf_raw,#out_hair,optlag, optstart,
 rm(list=ls())
 source('lib.R')
 source('fun.R')
-load('rawdata.RData')
+load('data/rawdata.RData')
+load('data/raw.RData')
 load('shinydata.RData')
 
 
