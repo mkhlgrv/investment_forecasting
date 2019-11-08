@@ -265,7 +265,7 @@ train.model <- function(startdt= as.Date('2000-01-01'),
       
       model_fit <- spikeslab(x = X.train,
                              y = y.train,
-                             n.iter2 = 1000,
+                             n.iter2 = 500,
                              bigp.smalln = ncol(X.train)>=nrow(X.train),
                              intercept = TRUE)
       

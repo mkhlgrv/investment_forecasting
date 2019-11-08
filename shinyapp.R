@@ -16,7 +16,6 @@ load('out/short_elnet.RData')
 
 
 
-
 out_short <-do.call(rbind,
                     list(
                        short_ss,

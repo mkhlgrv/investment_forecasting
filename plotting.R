@@ -54,7 +54,7 @@ scoredf$model <- factor(scoredf$model,
 
 scoredf %>%
   filter(type == 'test') %>%
-  filter(startdt == '1997-01-01') %>%
+  filter(startdt == '1996-01-01') %>%
   filter(lag==0) %>%
   group_by(model, lag, h, startdt) %>%
   summarise(rmse = mean(rmse)) %>%
