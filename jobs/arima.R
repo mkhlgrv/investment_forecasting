@@ -1,9 +1,9 @@
 source('~/investment_forecasting/lib.R')
 source('~/investment_forecasting/fun.R')
 
-out_arima <- expand.grid(startdt = c(as.Date('1997-01-01'), as.Date('2001-01-01')),
+out_arima <- expand.grid(startdt = c(as.Date('1996-01-01'), as.Date('2000-01-01')),
                          enddt = seq(as.Date('2012-10-01'), as.Date('2018-10-01'), by = 'quarter'),
-                      lag = c(0L:4L),
+                         lag = c(0L),
                       h=c(0L:8L), 
                       model = c('arima')
 ) %T>% 
@@ -22,7 +22,7 @@ out_arima <- expand.grid(startdt = c(as.Date('1997-01-01'), as.Date('2001-01-01'
   })
 
 save(out_arima,
-     file = 'out_arima.RData')
+     file = 'out/full/out_arima.RData')
 
 short_arima <- out_arima %>%
   map_dfr(function(x){
@@ -35,5 +35,5 @@ short_arima <- out_arima %>%
                pred=x$pred) 
     
   })
-save(short_arima, file = 'short_arima.RData')
+save(short_arima, file = 'out/short_arima.RData')
 

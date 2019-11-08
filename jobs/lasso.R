@@ -1,9 +1,9 @@
 source('~/investment_forecasting/lib.R')
 source('~/investment_forecasting/fun.R')
 
-out_lasso <- expand.grid(startdt = c(as.Date('1997-01-01'), as.Date('2001-01-01')),
+out_lasso <- expand.grid(startdt = c(as.Date('1996-01-01'), as.Date('2000-01-01')),
                          enddt = seq(as.Date('2012-10-01'), as.Date('2018-10-01'), by = 'quarter'),
-                      lag = c(0L:4L),
+                         lag = c(0L),
                       h=c(0L:8L), 
                       model = c('lasso')
 )%T>% 
@@ -22,7 +22,7 @@ out_lasso <- expand.grid(startdt = c(as.Date('1997-01-01'), as.Date('2001-01-01'
   })
 
 save(out_lasso,
-     file = 'out_lasso.RData')
+     file = 'out/full/out_lasso.RData')
 
 short_lasso <- out_lasso %>%
   map_dfr(function(x){
@@ -35,5 +35,5 @@ short_lasso <- out_lasso %>%
                pred=x$pred) 
     
   })
-save(short_lasso, file = 'short_lasso.RData')
+save(short_lasso, file = 'out/short_lasso.RData')
 

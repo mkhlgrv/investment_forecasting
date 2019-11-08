@@ -1,9 +1,9 @@
 source('~/investment_forecasting/lib.R')
 source('~/investment_forecasting/fun.R')
 
-out_adalasso <- expand.grid(startdt = c(as.Date('1997-01-01'), as.Date('2001-01-01')),
+out_adalasso <- expand.grid(startdt = c(as.Date('1996-01-01'), as.Date('2000-01-01')),
                       enddt = seq(as.Date('2012-10-01'), as.Date('2018-10-01'), by = 'quarter'),
-                      lag = c(0L:4L),
+                      lag = c(0L),
                       h=c(0L:8L), 
                       model = c('adalasso')
 ) %T>% 
@@ -22,7 +22,7 @@ out_adalasso <- expand.grid(startdt = c(as.Date('1997-01-01'), as.Date('2001-01-
   })
 
 save(out_adalasso,
-     file = 'out_adalasso.RData')
+     file = 'out/full/out_adalasso.RData')
 
 short_adalasso <- out_adalasso %>%
   map_dfr(function(x){
@@ -35,5 +35,5 @@ short_adalasso <- out_adalasso %>%
                pred=x$pred) 
     
   })
-save(short_adalasso, file = 'short_adalasso.RData')
+save(short_adalasso, file = 'out/short_adalasso.RData')
 

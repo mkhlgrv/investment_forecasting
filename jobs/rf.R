@@ -1,9 +1,9 @@
 source('~/investment_forecasting/lib.R')
 source('~/investment_forecasting/fun.R')
 
-out_rf <- expand.grid(startdt = c(as.Date('1997-01-01'), as.Date('2001-01-01')),
+out_rf <- expand.grid(startdt = c(as.Date('1996-01-01'), as.Date('2000-01-01')),
                       enddt = seq(as.Date('2012-10-01'), as.Date('2018-10-01'), by = 'quarter'),
-                      lag = c(0L:4L),
+                      lag = c(0L),
                       h=c(0L:8L),
                       model = c('rf')
 )%T>% 
@@ -22,7 +22,7 @@ out_rf <- expand.grid(startdt = c(as.Date('1997-01-01'), as.Date('2001-01-01')),
   })
 
 save(out_rf,
-     file = 'out_rf.RData')
+     file = 'out/full/out_rf.RData')
 
 
 short_rf <- out_rf %>%
@@ -36,5 +36,5 @@ short_rf <- out_rf %>%
                pred=x$pred) 
     
   })
-save(short_rf, file = 'short_rf.RData')
+save(short_rf, file = 'out/short_rf.RData')
 
