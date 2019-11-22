@@ -81,7 +81,7 @@ out_true <- data.frame(date = ytrue %>%
                                                 by = 1/4
                                      ) %>% as.yearqtr %>% as.Date,
                                      pred = 0))
-               }) %>% 
+               }) %>%
                group_by(model, lag, startdt, enddt, h) %>%
                mutate(pred = lag(pred, first(h))),
              by = 'date')
@@ -89,7 +89,7 @@ out_true <- data.frame(date = ytrue %>%
 
 # таблица scoredf_raw (без деления на бенчмарки)
 scoredf_raw <- get.score(out_true %>%
-                           na.omit) %>% 
+                           na.omit) %>%
   melt(id.vars = c('model', 'lag', 'h', 'type', 'startdt', 'enddt')) %>%
   filter(variable == 'rmse') %>%
   mutate(
@@ -106,38 +106,38 @@ scoredf <- get.score(out_true %>%
   melt(id.vars = c('model', 'lag', 'h', 'type', 'startdt','enddt')) %>%
   filter(variable == 'rmse') %>%
   dcast(model+lag+h+type+startdt~variable, fun.aggregate=mean) %>%
-  mutate(hls = paste0(h,lag,  startdt)) %>%
+  mutate(hls = paste0(h,lag, startdt)) %>%
   # filter(h !=0) %>%
   split(.$hls) %>%
   map_dfr(function(x){
     # if(x$h %>% first == 0){
-    #    x$rmse = x$rmse/ x$rmse[which(x$model == 'AR')]
-    # } 
-    # 
+    # x$rmse = x$rmse/ x$rmse[which(x$model == 'AR')]
+    # }
+    #
     # else {
     x$rmse = x$rmse/x$rmse[which(x$model == 'Random Walk')]
     # }
     x %>% select(-hls)
-  }) 
+  })
 
 
-# optlag <- scoredf_raw %>% 
-#   filter(type == 'test') %>%
-#   group_by(model, startdt, enddt, h) %>%
-#   filter(rmse == min(rmse)) %>%
-#   filter(lag == min(lag)) %>%
-#   ungroup %>%
-#   select(model, startdt, enddt, h, lag) %>%
-#   unique
-# 
-# optstart <- scoredf_raw %>% 
-#   filter(type == 'test') %>%
-#   group_by(model, enddt, h, lag) %>%
-#   filter(rmse == min(rmse)) %>%
-#   filter(startdt == max(startdt)) %>%
-#   ungroup %>%
-#   select(model, startdt, enddt, h, lag) %>%
-#   unique
+# optlag <- scoredf_raw %>%
+# filter(type == 'test') %>%
+# group_by(model, startdt, enddt, h) %>%
+# filter(rmse == min(rmse)) %>%
+# filter(lag == min(lag)) %>%
+# ungroup %>%
+# select(model, startdt, enddt, h, lag) %>%
+# unique
+#
+# optstart <- scoredf_raw %>%
+# filter(type == 'test') %>%
+# group_by(model, enddt, h, lag) %>%
+# filter(rmse == min(rmse)) %>%
+# filter(startdt == max(startdt)) %>%
+# ungroup %>%
+# select(model, startdt, enddt, h, lag) %>%
+# unique
 
 
 out_hair <- out_true %>%
@@ -155,9 +155,9 @@ out_hair <- out_true %>%
 out_cumulative <- out_true %>%
   filter(lag==0) %>%
   mutate(forecastdate = as.Date(as.yearqtr(date) -h/4)) %>%
-  #inner_join(optlag, by = c('model', 'lag', 'h', 'startdt', 'enddt')) %>% 
+  #inner_join(optlag, by = c('model', 'lag', 'h', 'startdt', 'enddt')) %>%
   filter(quarter(forecastdate) == 3,
-         year(date) >= 2012) %>% 
+         year(date) >= 2012) %>%
   mutate(pred_cumulative = exp(log(true_lag)+pred),
          true_cumulative = exp(log(true_lag)+true))
 
@@ -165,10 +165,11 @@ save(out_true, out_short, ytrue,scoredf, scoredf_raw,out_hair,out_cumulative,
      
      file = 'shinydata.RData')
 
-# # ui----
+# # ui--—
 
 rm(list=ls())
-source('lib.R')ы
+
+source('lib.R')
 source('fun.R')
 load('data/rawdata.RData')
 load('data/raw.RData')
@@ -201,10 +202,10 @@ my_forecast <-
   out_cumulative %>%
   dplyr::group_by(forecastdate, model, h) %>%
   filter(enddt == forecastdate) %>%
-  ungroup() %>% 
+  ungroup() %>%
   filter(h!=0) %>%
   filter(h > 1, h < 6) %>%
-  mutate(year  = year(date),
+  mutate(year = year(date),
          h_year = if_else(h<=4, 1, 2)) %>%
   dplyr::group_by(model,h_year, year, startdt, forecastdate) %>%
   summarise(pred = sum(pred_cumulative),
@@ -231,7 +232,7 @@ forec_vs <- my_forecast %>%
   filter(!is.na(pred)) %>%
   filter(!model %in% c('Random Walk', 'AR'))
 
-plot1 <- forec_vs %>%   ggplot()+
+plot1 <- forec_vs %>% ggplot()+
   geom_bar(aes(year, pred, fill = model),
            stat="identity",
            # fill = 'white',
@@ -267,7 +268,7 @@ plot2 <- ggplot()+
         legend.box.margin=ggplot2::margin(10,10,10,10))
 
 
-p <- forec_vs %>%   ggplot()+
+p <- forec_vs %>% ggplot()+
   geom_bar(aes(year, pred, fill = model),
            stat="identity",
            # fill = 'white',
@@ -288,10 +289,10 @@ p <- forec_vs %>%   ggplot()+
   stat="identity",
   position = 'dodge'
   )+geom_point(aes(year, investment),
-               data = raw_y %>% filter(year >2013),
+               data = raw_y %>% filter(year <2019,year >2013),
                color = 'black', size = 2)+
   geom_line(aes(year, investment),
-            data = raw_y %>% filter(year >2013),
+            data = raw_y %>% filter(year <2019,year >2013),
             color = 'black')+
   
   scale_fill_discrete(guide="none")+
@@ -333,7 +334,9 @@ scoredf %>%
              by = c("model", "lag", "h", "startdt", "enddt")) %>%
   filter(type=='test',
          h >=5,
-         model != 'Random Walk') %>% dcast(model~h, value.var='rmse', fun.aggregate = min) %>%
+         model
+         
+         != 'Random Walk') %>% dcast(model~h, value.var='rmse', fun.aggregate = min) %>%
   xtable::xtable() %>%
   print
 
@@ -355,7 +358,7 @@ geom_boxplot(aes(model, rmse, fill=startdt))
 # 13-15 full
 # 14-16 full
 # 15 - 17 full (enddt = 2014-4q)
-# 16, 17, 18 (enddt =  2015-3q)
+# 16, 17, 18 (enddt = 2015-3q)
 
 
 
@@ -381,7 +384,7 @@ out_cumulative %>%
   facet_wrap(vars(model))+
   #scale_x_date(limits = as.Date(c('2011-07-01', '2019-01-01')))+
   scale_colour_gradient(low = "cornflowerblue", high = "white")
-# server ----
+# server ——
 # main plot
 # metrics (rmse, r2, mae, mape)
 # knowcasting
@@ -399,8 +402,8 @@ for(modeli in out_true$model %>% unique){
     ggplot()+
     geom_line(aes(x = date, y = pred, group = enddt.factor), color = 'darkgreen', alpha = 0.2)+
     geom_line(aes(x = date, y = true))+
-    # geom_vline(aes(xintercept  = min(enddt)),
-    #            color = "red",linetype="dashed")+
+    # geom_vline(aes(xintercept = min(enddt)),
+    # color = "red",linetype="dashed")+
     labs(title = modeli) +
     facet_grid(vars(lag), vars(h))
   png(paste0('plot/facets/',modeli,".png"), width = 1000, height = 700)
@@ -409,7 +412,7 @@ for(modeli in out_true$model %>% unique){
 }
 
 
-# проблема: модель lasso показывает плохие результаты (прогноз по среднему) 
+# проблема: модель lasso показывает плохие результаты (прогноз по среднему)
 # на горизонте прогнозирования 3-4 квартала
 
 
@@ -465,6 +468,7 @@ scoredf %>%
   ggplot() +
   geom_line(aes(x = enddt, y = rmse, linetype = model, color=model), size = 0.703)+
   facet_wrap( vars(h), ncol = 2) +
+  
   labs(x = 'Правая граница тренировочной выборки', y = 'RMSFE относительно RW')+
   # title ='Ошибки прогноза относительно границы тренировочной выборки') +
   guides(colour = guide_legend("Модель"),
@@ -472,7 +476,7 @@ scoredf %>%
   scale_x_date(limits = as.Date(c('2011-10-01', '2017-01-01')))
 
 
-# вычислим значимость коэффициентов в модели spike and slab ----
+# вычислим значимость коэффициентов в модели spike and slab ——
 getwd()
 rm(list=ls())
 source('fun.R')
@@ -554,7 +558,7 @@ p <- ssprob %>%
          
          
          # predictor %in% c('investment', 'mkr_1d','mkr_7d','gov_6m','GKO',
-         # 
+         #
          # 'oil', 'rts',
          # 'CPI_Q_CHI',
          # 'GDPEA_Q_DIRI',
@@ -570,15 +574,15 @@ p <- ssprob %>%
   group_by(h, lag, predictor) %>%
   mutate(prob_mean = mean(prob)) %>%
   ungroup %>%
-  group_by(h, lag,  startdt, enddt) %>%
-  arrange(desc(prob_mean)) %>% 
+  group_by(h, lag, startdt, enddt) %>%
+  arrange(desc(prob_mean)) %>%
   filter(row_number()<=5) %>%
   ungroup() %>%
   mutate(h = as.factor(h),
          value= ifelse(prob<0.5, NA, value)) %>%
   ggplot()+
   #stat_summary(aes(enddt, prob,
-  #                 color = predictor),fun.y=mean, geom = 'line', linetype='dashed') +
+  # color = predictor),fun.y=mean, geom = 'line', linetype='dashed') +
   geom_line(aes(enddt, prob, color = predictor))+
   facet_wrap(vars( h))
 plotly::ggplotly(p)

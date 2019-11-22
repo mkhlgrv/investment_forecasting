@@ -34,6 +34,10 @@ train.model <- function(startdt= as.Date('1996-01-01'),
                         ){
   message(paste0(i, '/', N))
   # import df
+  # seed
+  set.seed(2019)
+  
+  
   if(series == ''){
     
     load('~/investment_forecasting/data/stationary_data.RData')
@@ -282,6 +286,27 @@ train.model <- function(startdt= as.Date('1996-01-01'),
                              intercept = TRUE)
       
       pred <- predict(model_fit, newdata = rbind(X.train, X.test))$yhat.gnet
+      
+    } else if (model == 'boost'){
+      
+      tune_grid <- expand.grid(nrounds = 100,
+                               max_depth = c(5),
+                               eta = c(0.2),
+                               gamma = 0,
+                               colsample_bytree = 0.3,
+                               min_child_weight = 1,
+                               subsample = 1)
+      
+      
+      train.out <- NULL
+      model_fit <- train(x = X.train,
+                         y = y.train,
+                         method = "xgbTree",
+                         metric = "RMSE",
+                         tuneGrid = tune_grid)
+      
+      pred <- predict(model_fit, newdata = rbind(X.train, X.test)) %>%
+        as.numeric
       
     }
   } else 
