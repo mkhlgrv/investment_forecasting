@@ -4,12 +4,21 @@ load('data/raw.Rdata')
 # # доходность ртс, процентные ставки на межбанковском рынке, спреды по облигациям,
 # темпы роста номинального эффективного курса, реального эффективного курса, прирост цен на нефть,
 # 4 разность логарифма ВВП и ИПЦ, отношение номинальных инвестиций к номинальному ввп + лаги
-series <- c('investment', 'mkr_1d','mkr_7d','gov_6m','GKO', #'gov_1y',
-            'reer', 'neer', 'oil', 'rts',
-            'CPI_Q_CHI', 'GDPEA_Q_DIRI',
-            'GDPEA_C_Q', 'INVFC_Q',
+series <- c('investment',
+            'mkr_1d',
+            'mkr_7d',
+            'gov_6m',
+            'GKO',
+            'reer',
+            'neer',
+            'oil',
+            'rts',
+            
+            'CPI_Q_CHI',
+            'GDPEA_Q_DIRI',
+            'GDPEA_C_Q',
+            'INVFC_Q',
             'EMPLDEC_Q',
-          
             )
 df <- rawdata[,series]
 # отношение номинальных инвестиций к номинальному ВВП
@@ -147,6 +156,12 @@ for(i in c('investment', 'CPI_Q_CHI',
   df[,i] %<>% diff.xts(lag = 4, log=TRUE)
 }
 #df['1996-01/2019-06'] %>% missmap()
+
+# lags
+df$gdplag <- lag.xts(df$GDPEA_Q_DIRI, k = 1)
+df$investmentlag <- lag.xts(df$investment, k = 1)
+df$invest2gdplag <- lag.xts(df$invest2gdp, k = 1)
+
 
 save(df, file = 'data/stationary_data_ext.RData')
 
