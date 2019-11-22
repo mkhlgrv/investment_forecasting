@@ -6,7 +6,7 @@ out_elnet <- expand.grid(startdt = c(as.Date('1996-01-01'), as.Date('2000-01-01'
                          lag = c(0L),
                          h=c(0L:8L), 
                          model = c('elnet')
-)%T>% 
+) %T>% 
   (function(x) {assign('N', nrow(x), envir = globalenv())}) %>%
   split(seq(1:nrow(.))) %>%
   
@@ -23,6 +23,8 @@ out_elnet <- expand.grid(startdt = c(as.Date('1996-01-01'), as.Date('2000-01-01'
 
 save(out_elnet,
      file = 'out/full/out_elnet.RData')
+
+
 
 short_elnet <- out_elnet %>%
   map_dfr(function(x){
