@@ -590,7 +590,15 @@ plot2 <- ggplot()+
                alpha ='Прогноз МЭР'), med_forecast %>%
              group_by(year) %>%
              filter(fctyear== max(fctyear)) %>%
-             filter(year <2019, year > 2013 )
+             filter(year <2019, year > 2013 ) %>%
+             mutate(fctname = factor(fctname,
+                                     levels = c('2013 (консервативный)',
+                                                '2013(базовый) ',
+                                                '2014',
+                                                '2015',
+                                                '2016 (базовый)',
+                                                '2016 (базовый +) ',
+                                                '2017')))
            ,
            stat="identity",
            position = 'dodge'
