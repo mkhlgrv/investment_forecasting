@@ -171,7 +171,6 @@ rm(list=ls())
 
 source('lib.R')
 source('fun.R')
-load('data/rawdata.RData')
 load('data/raw.RData')
 load('shinydata.RData')
 
@@ -188,128 +187,6 @@ choises_q <- format(seq.Date(from = as.Date("2012-01-01"),
 runApp()
 
 
-
-med_forecast <- import('data/med_forecast.csv', encoding = 'UTF-8', header = TRUE) %>%
-  melt %>%
-  set_names(c('fctname', 'year', 'value')) %>%
-  mutate(year = as.character(year) %>% as.numeric) %>%
-  mutate(fctyear = substr(fctname, 1, 4) %>% as.numeric) %>%
-  filter(fctyear < year)
-
-
-
-my_forecast <-
-  out_cumulative %>%
-  dplyr::group_by(forecastdate, model, h) %>%
-  filter(enddt == forecastdate) %>%
-  ungroup() %>%
-  filter(h!=0) %>%
-  filter(h > 1, h < 6) %>%
-  mutate(year = year(date),
-         h_year = if_else(h<=4, 1, 2)) %>%
-  dplyr::group_by(model,h_year, year, startdt, forecastdate) %>%
-  summarise(pred = sum(pred_cumulative),
-            true_lag = sum(true_lag),
-            true = sum(true_cumulative)) %>%
-  mutate(pred = 100*(pred/ true_lag - 1),
-         true = 100*(true/ true_lag - 1)) %>%
-  ungroup %>% select(-forecastdate)
-
-
-
-raw_y <- rawdata$investment %>%
-  as.data.frame() %>%
-  rownames_to_column('year') %>%
-  mutate(year = year(as.yearqtr(year))) %>%
-  group_by(year) %>%
-  summarise(investment = sum(investment)) %>%
-  mutate(investment = 100*(investment/lag(investment)-1))
-
-
-forec_vs <- my_forecast %>%
-  select(-c(true_lag, true)) %>%
-  filter(h_year ==1, startdt == max(startdt)) %>%
-  filter(!is.na(pred)) %>%
-  filter(!model %in% c('Random Walk', 'AR'))
-
-plot1 <- forec_vs %>% ggplot()+
-  geom_bar(aes(year, pred, fill = model),
-           stat="identity",
-           # fill = 'white',
-           position = 'dodge',
-           
-           #position = position_dodge2(width = 0.9, preserve = "single"),
-           color='black')+
-  scale_fill_discrete(name = "Модель")+
-  theme(legend.position="right",
-        legend.justification="left",
-        legend.margin=ggplot2::margin(0,0,0,0),
-        legend.box.margin=ggplot2::margin(10,10,10,10))
-
-plot2 <- ggplot()+
-  
-  geom_bar(aes(year, value, group=fctname,
-               fill = 'Прогноз МЭР',
-               alpha ='Прогноз МЭР'), med_forecast %>%
-             group_by(year) %>%
-             filter(fctyear== max(fctyear)) %>%
-             filter(year <2019, year > 2013 )
-           ,
-           stat="identity",
-           position = 'dodge'
-  )+
-  scale_alpha_manual(values = 0.4)+
-  scale_fill_manual(values = 'blue')+
-  guides(fill = guide_legend(" "),
-         alpha = guide_legend(" "))+
-  theme(legend.position="right",
-        legend.justification="left",
-        legend.margin=ggplot2::margin(0,0,0,0),
-        legend.box.margin=ggplot2::margin(10,10,10,10))
-
-
-p <- forec_vs %>% ggplot()+
-  geom_bar(aes(year, pred, fill = model),
-           stat="identity",
-           # fill = 'white',
-           position = 'dodge',
-           
-           #position = position_dodge2(width = 0.9, preserve = "single"),
-           color='black')+
-  
-  geom_bar(aes(year, value, group=fctname,
-  ),
-  fill = 'blue',
-  alpha =0.4,
-  med_forecast %>%
-    group_by(year) %>%
-    filter(fctyear== max(fctyear)) %>%
-    filter(year <2019, year > 2013 )
-  ,
-  stat="identity",
-  position = 'dodge'
-  )+geom_point(aes(year, investment),
-               data = raw_y %>% filter(year <2019,year >2013),
-               color = 'black', size = 2)+
-  geom_line(aes(year, investment),
-            data = raw_y %>% filter(year <2019,year >2013),
-            color = 'black')+
-  
-  scale_fill_discrete(guide="none")+
-  
-  labs(#title = 'Инвестиции в России: прогнозы МЭР и прогнозы автора',
-    subtitle = 'Горизонт прогнозирования - один год',
-    x = 'Дата',
-    y = 'Изменение валового накопления основного капитала,\n в % к прошлому году')+
-  theme_bw()
-
-
-
-grid.arrange(p,
-             arrangeGrob(g_legend(plot1),
-                         g_legend(plot2),
-                         nrow=2),
-             ncol=2,widths=c(7,3))
 
 
 
