@@ -145,7 +145,7 @@ cairo_pdf('plot/dmtest01.pdf')
 print(dmtest01)
 dev.off()
 
-
+load('data/stationary_data_ext.RData')
 # сначала надо найти sd каждой переменной в каждой тренировочной выборке и поделить на него коэффициент
 
 sddata <- expand.grid(startdt = c(as.Date('1996-01-01'), as.Date('2000-01-01')),
@@ -170,7 +170,7 @@ sddata <- expand.grid(startdt = c(as.Date('1996-01-01'), as.Date('2000-01-01')),
 
 
 # вычисление предикторов lasso ----
-source('fun.R')
+source('fun.R', encoding = 'utf-8')
 source('lib.r')
 
 load('out/full/out_lasso.RData')
@@ -272,6 +272,27 @@ lasso_p <- lasso_beta %>%
 
 plotly::ggplotly(lasso_p)
 
+# lasso coefs h <=4
+lasso_beta %>%
+  mutate(predictor = correct.names.pred(predictor)) %>%
+  group_by(predictor, h, startdt) %>%
+  
+  filter(startdt== '2000-01-01') %>%
+  filter(h<=4) %>%
+  group_by(predictor, h) %>%
+  summarise(beta = mean(beta)/100) %>%
+  ungroup %>%
+  group_by(h) %>%
+  arrange(desc(abs(beta))) %>%
+  mutate(rn = row_number(),
+         pred_beta = paste0(predictor,' ', round(beta,3))) %>%
+  filter(rn<=5) %>%
+  ungroup %>%
+  dcast(rn~h, value.var = 'pred_beta') %>%
+  xtable %>%
+  print(include.rownames = FALSE)
+
+# lasso coefs h >4
 lasso_beta %>%
   mutate(predictor = correct.names.pred(predictor)) %>%
   group_by(predictor, h, startdt) %>%
@@ -292,10 +313,7 @@ lasso_beta %>%
   print(include.rownames = FALSE)
 
 
-ggplot()+
-  #geom_line(aes(h, includes, color=predictor))
-  geom_segment(aes(x = 0, xend = includes, y = predictor, yend = predictor, color=as.factor(sign)))+
-  facet_wrap(vars(h))
+
 
 # ВВП
 
