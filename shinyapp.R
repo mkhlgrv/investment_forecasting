@@ -19,18 +19,18 @@ load('out/short_boost.RData')
 
 out_short <-do.call(rbind,
                     list(
-                       short_ss,
-                       short_boost,
-                       short_elnet,
-                       short_arima,
-                       short_adalasso,
-                       short_rw
+                      short_ss,
+                      short_boost,
+                      short_elnet,
+                      short_arima,
+                      short_adalasso,
+                      short_rw
                       ,
                       short_ridge,
                       short_postlasso,
                       short_lasso,
-                         short_rf
-                         ))
+                      short_rf
+                    ))
 
 
 
@@ -47,7 +47,7 @@ source('lib.R')
 ytrue <- rawdata$investment %>%
   rbind(xts(x = c(NA, NA),
             order.by = c('2019-12-01', '2020-01-01') %>% as.Date %>% as.yearqtr) %>%
-  set_colnames('investment'))
+          set_colnames('investment'))
 out_true <- data.frame(date = ytrue %>%
                          time %>%
                          as.Date,
@@ -102,7 +102,7 @@ scoredf_raw <- get.score(out_true %>%
 # scoredf <-
 scoredf <- get.score(out_true %>%
                        na.omit) %>%
-   filter(type == 'test') %>%
+  filter(type == 'test') %>%
   melt(id.vars = c('model', 'lag', 'h', 'type', 'startdt','enddt')) %>%
   filter(variable == 'rmse') %>%
   dcast(model+lag+h+type+startdt~variable, fun.aggregate=mean) %>%
@@ -145,10 +145,10 @@ out_hair <- out_true %>%
   mutate(forecastdate = as.Date(as.yearqtr(date) -h/4)) %>%
   #inner_join(optlag, by = c('model', 'lag', 'h', 'startdt', 'enddt')) %>%
   mutate(
-         datediff = (forecastdate - enddt) %>%
-           as.numeric,
-         pred = ifelse(h == 0, true, pred)) %>%
-   filter(datediff > 0 )
+    datediff = (forecastdate - enddt) %>%
+      as.numeric,
+    pred = ifelse(h == 0, true, pred)) %>%
+  filter(datediff > 0 )
 
 
 
@@ -176,7 +176,7 @@ load('shinydata.RData')
 
 
 
-  
+
 
 choises_q <- format(seq.Date(from = as.Date("2012-01-01"),
                              to = as.Date("2019-01-01"),
@@ -194,13 +194,13 @@ med_forecast <- import('data/med_forecast.csv', encoding = 'UTF-8', header = TRU
   mutate(year = as.character(year) %>% as.numeric) %>%
   mutate(fctyear = substr(fctname, 1, 4) %>% as.numeric) %>%
   filter(fctyear < year)
-  
+
 
 
 my_forecast <-
   out_cumulative %>%
   dplyr::group_by(forecastdate, model, h) %>%
-    filter(enddt == forecastdate) %>%
+  filter(enddt == forecastdate) %>%
   ungroup() %>% 
   filter(h!=0) %>%
   filter(h > 1, h < 6) %>%
@@ -236,7 +236,7 @@ plot1 <- forec_vs %>%   ggplot()+
            stat="identity",
            # fill = 'white',
            position = 'dodge',
-
+           
            #position = position_dodge2(width = 0.9, preserve = "single"),
            color='black')+
   scale_fill_discrete(name = "Модель")+
@@ -246,17 +246,17 @@ plot1 <- forec_vs %>%   ggplot()+
         legend.box.margin=ggplot2::margin(10,10,10,10))
 
 plot2 <- ggplot()+
-
+  
   geom_bar(aes(year, value, group=fctname,
                fill = 'Прогноз МЭР',
                alpha ='Прогноз МЭР'), med_forecast %>%
              group_by(year) %>%
-                     filter(fctyear== max(fctyear)) %>%
-               filter(year <2019, year > 2013 )
+             filter(fctyear== max(fctyear)) %>%
+             filter(year <2019, year > 2013 )
            ,
            stat="identity",
            position = 'dodge'
-           )+
+  )+
   scale_alpha_manual(values = 0.4)+
   scale_fill_manual(values = 'blue')+
   guides(fill = guide_legend(" "),
@@ -277,16 +277,16 @@ p <- forec_vs %>%   ggplot()+
            color='black')+
   
   geom_bar(aes(year, value, group=fctname,
-               ),
-           fill = 'blue',
-           alpha =0.4,
-           med_forecast %>%
-             group_by(year) %>%
-             filter(fctyear== max(fctyear)) %>%
-             filter(year <2019, year > 2013 )
-             ,
-           stat="identity",
-           position = 'dodge'
+  ),
+  fill = 'blue',
+  alpha =0.4,
+  med_forecast %>%
+    group_by(year) %>%
+    filter(fctyear== max(fctyear)) %>%
+    filter(year <2019, year > 2013 )
+  ,
+  stat="identity",
+  position = 'dodge'
   )+geom_point(aes(year, investment),
                data = raw_y %>% filter(year >2013),
                color = 'black', size = 2)+
@@ -297,20 +297,20 @@ p <- forec_vs %>%   ggplot()+
   scale_fill_discrete(guide="none")+
   
   labs(#title = 'Инвестиции в России: прогнозы МЭР и прогнозы автора',
-       subtitle = 'Горизонт прогнозирования - один год',
-       x = 'Дата',
-       y = 'Изменение валового накопления основного капитала,\n в % к прошлому году')+
+    subtitle = 'Горизонт прогнозирования - один год',
+    x = 'Дата',
+    y = 'Изменение валового накопления основного капитала,\n в % к прошлому году')+
   theme_bw()
-  
-  
-  
+
+
+
 grid.arrange(p,
              arrangeGrob(g_legend(plot1),
                          g_legend(plot2),
                          nrow=2),
              ncol=2,widths=c(7,3))
 
-  
+
 
 
 
@@ -329,13 +329,13 @@ scoredf %>%
   facet_wrap(vars(model))
 
 scoredf %>%
-    inner_join(optlag,
-               by = c("model", "lag", "h", "startdt", "enddt")) %>%
-    filter(type=='test',
-           h >=5,
-           model != 'Random Walk') %>% dcast(model~h, value.var='rmse', fun.aggregate = min) %>%
-    xtable::xtable() %>%
-    print
+  inner_join(optlag,
+             by = c("model", "lag", "h", "startdt", "enddt")) %>%
+  filter(type=='test',
+         h >=5,
+         model != 'Random Walk') %>% dcast(model~h, value.var='rmse', fun.aggregate = min) %>%
+  xtable::xtable() %>%
+  print
 
 
 
@@ -343,12 +343,12 @@ scoredf %>%
 scoredf %>%
   filter(model != 'Random Walk',
          type=='test') %>%
-    inner_join(optlag,
-               by = c('startdt', 'enddt', 'h', 'model', 'lag')) %>%
+  inner_join(optlag,
+             by = c('startdt', 'enddt', 'h', 'model', 'lag')) %>%
   mutate(startdt = as.factor(startdt)) %>%
   ggplot()+
-   stat_summary(aes(h, rmse, color= model),geom='line',size=1, fun.y=mean)#+
-  geom_boxplot(aes(model, rmse, fill=startdt))
+  stat_summary(aes(h, rmse, color= model),geom='line',size=1, fun.y=mean)#+
+geom_boxplot(aes(model, rmse, fill=startdt))
 
 
 # 2012 - 2014 полностью
@@ -361,11 +361,11 @@ scoredf %>%
 
 out_cumulative %>%
   inner_join(optlag, by = c('model', 'lag', 'h', 'startdt', 'enddt')) %>%
-    filter(startdt == max(startdt),
-           date >= as.Date('2011-07-01'),
-           !model %in% c('Random Walk', 'LASSO'),
-           model == 'Random Forest'
-         ) %>%
+  filter(startdt == max(startdt),
+         date >= as.Date('2011-07-01'),
+         !model %in% c('Random Walk', 'LASSO'),
+         model == 'Random Forest'
+  ) %>%
   mutate(fdme=paste0(forecastdate, model, enddt) %>% as.factor,
          datediff = (date - enddt) %>% as.numeric,
          pred = ifelse(h == 0, true, pred)) %>%
@@ -419,7 +419,7 @@ for(modeli in out_true$model %>% unique){
 out_true %>%
   filter(startdt == max(startdt)) %>%
   mutate(forecastdate = as.Date(as.yearqtr(date) -h/4) %>% as.factor()
-         ) %>%
+  ) %>%
   # filter(model == 'ss') %>%
   ggplot(aes(x = date, y = pred, color = model))+
   stat_summary(fun.y = 'mean', geom="line")+
@@ -466,7 +466,7 @@ scoredf %>%
   geom_line(aes(x = enddt, y = rmse, linetype = model, color=model), size = 0.703)+
   facet_wrap( vars(h), ncol = 2) +
   labs(x = 'Правая граница тренировочной выборки', y = 'RMSFE относительно RW')+
-       # title ='Ошибки прогноза относительно границы тренировочной выборки') +
+  # title ='Ошибки прогноза относительно границы тренировочной выборки') +
   guides(colour = guide_legend("Модель"),
          linetype = guide_legend("Модель"))+
   scale_x_date(limits = as.Date(c('2011-10-01', '2017-01-01')))
@@ -486,43 +486,43 @@ load('jobs/short_ss.RData')
 out_ss %<>% plyr::compact()
 ssprob <- out_ss %>%
   imap_dfr(function(x, i){
-  series <- x$series
- 
-  h <- x$h
-  lag <- x$lag
-  
-  prednames <- x$model_fit$x %>%
-    colnames
-  
-  
-  melted <- x$model_fit$model %>%
-    melt
-  if(nrow(melted) == 0){
-    prob=NA
-  } else{
+    series <- x$series
     
-    melted %<>% mutate(value = factor(as.character(value), levels = c(1:length(prednames)))) %>%
-      dcast(`L1`~value, fun.aggregate = length,fill = 0, drop = FALSE)
-    n <- nrow(melted)
+    h <- x$h
+    lag <- x$lag
     
-    prob <- (melted %>%
-               .[,-1] %>%
-               colSums())/n %>% as.numeric
+    prednames <- x$model_fit$x %>%
+      colnames
     
     
-  }
-  print(i)
-  
-  
-
-  data.frame(series = x$series,
-             h = x$h,
-             lag = x$lag,
-             startdt = x$startdt,
-             enddt = x$enddt,
-             predictor = prednames,
-             prob = prob)
-})
+    melted <- x$model_fit$model %>%
+      melt
+    if(nrow(melted) == 0){
+      prob=NA
+    } else{
+      
+      melted %<>% mutate(value = factor(as.character(value), levels = c(1:length(prednames)))) %>%
+        dcast(`L1`~value, fun.aggregate = length,fill = 0, drop = FALSE)
+      n <- nrow(melted)
+      
+      prob <- (melted %>%
+                 .[,-1] %>%
+                 colSums())/n %>% as.numeric
+      
+      
+    }
+    print(i)
+    
+    
+    
+    data.frame(series = x$series,
+               h = x$h,
+               lag = x$lag,
+               startdt = x$startdt,
+               enddt = x$enddt,
+               predictor = prednames,
+               prob = prob)
+  })
 
 
 ss_coefs <- out_ss %>%
@@ -563,9 +563,9 @@ p <- ssprob %>%
          # 'CNSTR_Q_DIRI'# индекс работ в строительств
          #)
          
-         ) %>%
-   inner_join(ss_coefs,
-                      by = c("series", "h", "lag", "startdt", "enddt", "predictor")) %>%
+  ) %>%
+  inner_join(ss_coefs,
+             by = c("series", "h", "lag", "startdt", "enddt", "predictor")) %>%
   mutate(prob = ifelse(is.na(prob), 0, prob)) %>%
   group_by(h, lag, predictor) %>%
   mutate(prob_mean = mean(prob)) %>%
@@ -586,7 +586,3 @@ plotly::ggplotly(p)
 save(ssprob, file='data/ssprob.Rda')
 
 load('data/ssprob.Rda')
-
-
-
-
