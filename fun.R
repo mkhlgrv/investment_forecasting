@@ -20,14 +20,14 @@ create_lag <- function(df, lag){
 # 4. набор переменных (только из тех, что указаны в calibrating)
 # 5. на сколько периодов вперед прогнозировать (max)
 
-train.model <- function(startdt= as.Date('2000-01-01'),
-                        enddt = as.Date('2012-01-01'),
+train.model <- function(startdt= as.Date('1996-01-01'),
+                        enddt = as.Date('2016-10-01'),
                         model,
                         # series parameter 
                         # only for regularisation and machine learning models
                         series='e',
-                        lag = 2L,
-                        h = 4L,
+                        lag = 0L,
+                        h = 1L,
                         # parameters for durable evaluations with function arguments from expand.grid table
                         i = NULL, 
                         N = NULL
@@ -35,9 +35,13 @@ train.model <- function(startdt= as.Date('2000-01-01'),
   message(paste0(i, '/', N))
   # import df
   if(series == ''){
+    
     load('~/investment_forecasting/data/stationary_data.RData')
+    
   } else if(series == 'e') {
+    
     load('~/investment_forecasting/data/stationary_data_ext.RData')
+    
   }
   
   if(!model %in% c('arima', 'rw')){
@@ -114,13 +118,15 @@ train.model <- function(startdt= as.Date('2000-01-01'),
     
     
     
-    tc <- trainControl(method = 'cv', number = 10)
+    # tc <- trainControl(method = 'cv', number = 10)
       
-      
-      # trainControl(method = "timeslice",
-      #                  initialWindow = 40,
-      #                  horizon = 8,
-      #                  fixedWindow = TRUE)
+    tc <- trainControl(method = "timeslice",
+                       initialWindow = 40,
+                       horizon = 1,
+                       skip=0,
+                       fixedWindow = TRUE)
+    
+    lambda <- seq(-8,-1,length = 200) %>% exp()
     
     if(model == 'lasso'){
       train.out <- train(x=X.train,
@@ -130,7 +136,7 @@ train.model <- function(startdt= as.Date('2000-01-01'),
                          trControl = tc,
                          tuneGrid =
                            expand.grid(.alpha = c(1),
-                                       .lambda = seq(0.05,0.0001,length = 100)))
+                                       .lambda = lambda))
       
       
       model_fit <- glmnet(X.train,
@@ -151,7 +157,8 @@ train.model <- function(startdt= as.Date('2000-01-01'),
                          trControl = tc,
                          tuneGrid =
                            expand.grid(.alpha = c(0.5),
-                                       .lambda = seq(0.05,0.0001,length = 100)))
+                                       # new
+                                       .lambda = lambda))
       
       
       model_fit <- glmnet(X.train,
@@ -168,7 +175,8 @@ train.model <- function(startdt= as.Date('2000-01-01'),
                          y=y.train,
                          method = "glmnet",
                          metric = "RMSE",trControl = tc,
-                         tuneGrid = expand.grid(.alpha = 0,.lambda = seq(0.05,0.0001,length = 100)))
+                         tuneGrid = expand.grid(.alpha = 0,
+                                                .lambda = lambda))
       model_fit <- glmnet(X.train,
                           y.train,
                           alpha = 0,
@@ -184,13 +192,12 @@ train.model <- function(startdt= as.Date('2000-01-01'),
                            y=y.train,
                            method = "glmnet",
                            metric = "RMSE",trControl = tc,
-                           tuneGrid = expand.grid(.alpha = 0,.lambda = seq(0.05,0.0001,length = 100)))
+                           tuneGrid = expand.grid(.alpha = 0,.lambda = lambda))
       
       m_ridge <- glmnet(X.train,
                         y.train,
                         alpha = 0,
                         lambda = train.ridge$bestTune[1,2])
-      
       
       w3 <- 1/abs(as.numeric(coef(m_ridge))
                   [1:(ncol(X.train))] )^0.5 ## Using gamma = 1
@@ -198,11 +205,11 @@ train.model <- function(startdt= as.Date('2000-01-01'),
       
       train.out <- train(x=X.train,
                          y=y.train,
+                         penalty.factor = w3,
                          method = "glmnet",
                          metric = "RMSE",
-                         penalty.factor = w3,
                          trControl = tc,
-                         tuneGrid = expand.grid(.alpha = 1,.lambda = seq(0.05,0.0001,length = 100)))
+                         tuneGrid = expand.grid(.alpha = 1,.lambda = lambda))
       
 
       
@@ -221,7 +228,7 @@ train.model <- function(startdt= as.Date('2000-01-01'),
                          y=y.train,
                          method = "glmnet",
                          metric = "RMSE",trControl = tc,
-                         tuneGrid = expand.grid(.alpha = c(1),.lambda = seq(0.05,0.0001,length = 100)))
+                         tuneGrid = expand.grid(.alpha = c(1),.lambda = lambda))
       
       
       model_lasso <- glmnet(X.train,
@@ -275,27 +282,6 @@ train.model <- function(startdt= as.Date('2000-01-01'),
                              intercept = TRUE)
       
       pred <- predict(model_fit, newdata = rbind(X.train, X.test))$yhat.gnet
-      
-    } else if (model == 'boost'){
-
-        tune_grid <- expand.grid(nrounds = 100,
-                                 max_depth = c(5),
-                                 eta = c(0.2),
-                                 gamma = 0,
-                                 colsample_bytree = 0.3,
-                                 min_child_weight = 1,
-                                 subsample = 1)
-        set.seed(2019)
-        
-        train.out <- NULL
-        model_fit <- train(x = X.train,
-                         y = y.train,
-                         method = "xgbTree", 
-                         metric = "RMSE",
-                         tuneGrid = tune_grid)
-        
-        pred <-  predict(model_fit, newdata = rbind(X.train, X.test)) %>%
-          as.numeric
       
     }
   } else 
@@ -412,21 +398,21 @@ get.score <- function(df){
   df %<>%
     group_by(model, startdt, enddt, lag, h)
   rbind(df %>% filter(date <= enddt) %>%
-    summarise(rmspe = RMSPE(pred, true),
-              rmse = RMSE(pred, true),
-              rrse = RRSE(pred, true),
-              mae= MAE(pred, true),
-              r2 = R2_Score(pred, true),
-              type = 'train'),
-  df %>% filter(enddt <= as.Date(as.yearqtr(as.Date('2018-10-01'))-h/4),
-                date > as.Date(as.yearqtr( enddt)+h/4),
-                date <= as.Date(as.yearqtr( enddt)+(h+1)/4)) %>%
-    summarise(rmspe = RMSPE(pred, true),
-              rmse = RMSE(pred, true),
-              rrse = RRSE(pred, true),
-              mae= MAE(pred, true),
-              r2 = R2_Score(pred, true),
-              type = 'test')
+          summarise(rmspe = RMSPE(pred, true),
+                    rmse = RMSE(pred, true),
+                    rrse = RRSE(pred, true),
+                    mae= MAE(pred, true),
+                    r2 = R2_Score(pred, true),
+                    type = 'train'),
+        df %>% filter(enddt <= as.Date(as.yearqtr(as.Date('2018-10-01'))-h/4),
+                      date > as.Date(as.yearqtr( enddt)+h/4),
+                      date <= as.Date(as.yearqtr( enddt)+(h+1)/4)) %>%
+          summarise(rmspe = RMSPE(pred, true),
+                    rmse = RMSE(pred, true),
+                    rrse = RRSE(pred, true),
+                    mae= MAE(pred, true),
+                    r2 = R2_Score(pred, true),
+                    type = 'test')
   ) %>% ungroup
 }
 
@@ -670,7 +656,7 @@ meanroundpercent <- function(x){
 }
 
 get.dm <- function(df){
-    df %>%
+  df %>%
     filter(enddt <= as.Date('2016-10-01'),
            date > as.Date(as.yearqtr( enddt)+h/4),
            date <= as.Date(as.yearqtr( enddt)+(h+1)/4)) %>%
@@ -678,17 +664,17 @@ get.dm <- function(df){
     group_by(model, h, lag) %>%
     summarise(pvalue = ifelse(all(`1996-01-01`==`2000-01-01`), 1,
                               (DM.test(`2000-01-01`,
-                                                 `1996-01-01`,
+                                       `1996-01-01`,
                                        y = true,
                                        c=TRUE,
-                                                 H1 =ifelse(
-                                                   mean((`2000-01-01`-true)^2) < 
-                                                     mean((`1996-01-01`-true)^2),
-                                                   'more',
-                                                   ifelse(mean((`2000-01-01`-true)^2) > 
-                                                            mean((`1996-01-01`-true)^2),
-                                                          'less', 'same')
-                                                 )) %>% .$p.value)),
+                                       H1 =ifelse(
+                                         mean((`2000-01-01`-true)^2) < 
+                                           mean((`1996-01-01`-true)^2),
+                                         'more',
+                                         ifelse(mean((`2000-01-01`-true)^2) > 
+                                                  mean((`1996-01-01`-true)^2),
+                                                'less', 'same')
+                                       )) %>% .$p.value)),
               stat = ifelse(all(`1996-01-01`==`2000-01-01`), 0,
                             (DM.test(`2000-01-01`,
                                      `1996-01-01`,
@@ -703,9 +689,9 @@ get.dm <- function(df){
                                               'less', 'same')
                                      )) %>% .$statistic))
               
-              ) %>%
+    ) %>%
     ungroup()
-    
+  
 }
 
 get.dm.lag <- function(df){
@@ -727,15 +713,15 @@ get.dm.lag <- function(df){
       for(i in 5:9){
         actualx <- x %>% as.data.frame %>% .[,i]
         pvalue <- c(pvalue, ifelse(all(actualx== bench), 1,
-               DM.test(bench,actualx,
-                       true,c = TRUE,
-                        
-                                 H1 = 'more'
-                                          ) %>% .$p.value
-               
-               ))
+                                   DM.test(bench,actualx,
+                                           true,c = TRUE,
+                                           
+                                           H1 = 'more'
+                                   ) %>% .$p.value
+                                   
+        ))
         
-
+        
       }
       data.frame(model=x$model %>% first,
                  startdt = x$startdt %>% first,
