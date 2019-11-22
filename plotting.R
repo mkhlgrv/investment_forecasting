@@ -108,46 +108,10 @@ print(dmsd)
 dev.off()
 
 
-dmtest97 <- get.dm.lag(out_true %>% na.omit) %>%
-  filter(!model %in% c('Random Walk', 'AR'),
-         startdt == '1997-01-01') %>%
-  # mutate(change = ifelse(pvalue > 0.01,
-  #                        '0',
-  #                        ifelse(stat < 0,
-  #                               '+',
-  #                               '-')
-  # )) %>%
-  mutate(less = ifelse(pvalue >0.05 , FALSE, TRUE)) %>%
-  ggplot(aes(lag, interaction(model))) +
-  geom_raster(aes(fill = less))+
-  facet_wrap(vars(h))
 
-cairo_pdf('plot/dmtest97.pdf')
-print(dmtest97)
-dev.off()
-
-
-dmtest01 <- get.dm.lag(out_true %>% na.omit) %>%
-  filter(!model %in% c('Random Walk', 'AR'),
-         startdt == '2001-01-01') %>%
-  # mutate(change = ifelse(pvalue > 0.01,
-  #                        '0',
-  #                        ifelse(stat < 0,
-  #                               '+',
-  #                               '-')
-  # )) %>%
-  mutate(less = ifelse(pvalue >0.05 , FALSE, TRUE)) %>%
-  ggplot(aes(lag, interaction(model))) +
-  geom_raster(aes(fill = less))+
-  facet_wrap(vars(h))
-
-cairo_pdf('plot/dmtest01.pdf')
-print(dmtest01)
-dev.off()
-
-load('data/stationary_data_ext.RData')
+# lasso coefs ----
 # сначала надо найти sd каждой переменной в каждой тренировочной выборке и поделить на него коэффициент
-
+load('data/stationary_data_ext.RData')
 sddata <- expand.grid(startdt = c(as.Date('1996-01-01'), as.Date('2000-01-01')),
                       enddt = seq(as.Date('2012-10-01'), as.Date('2018-10-01'), by = 'quarter')
 ) %>%
