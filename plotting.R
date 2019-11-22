@@ -524,7 +524,7 @@ tibble(name = df %>% names()) %>%
   print(include.rownames = FALSE)
 
 
-
+load('data/raw.RData')
 # med forecast -----
 med_forecast <- import('data/med_forecast.csv', encoding = 'UTF-8', header = TRUE) %>%
   melt %>%
@@ -642,10 +642,10 @@ p <- forec_vs %>% ggplot()+
 
 
 
-medfor <- arrangeGrob(p,
+grid.arrange(p,
                       arrangeGrob(g_legend(plot1),
                                   g_legend(plot2),
                                   nrow=2),
                       ncol=2,widths=c(7,3))
 
-ggsave(file="plot/med_forecast.pdf", medfor)
+#ggsave(file="plot/med_forecast.pdf", medfor)
