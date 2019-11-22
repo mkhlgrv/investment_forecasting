@@ -1,4 +1,3 @@
-
 rm(list = ls())
 source("lib.R")
 source("fun.R")
@@ -9,7 +8,7 @@ invest_plot <-
   ggplot(df %>% na.omit) +
   geom_line(aes(y = investment, x = time(df %>% na.omit)))+
   labs(title = "",
-      y = "Валовое накопление основного капитала",
+       y = "Валовое накопление основного капитала",
        x = "Дата") +
   theme_bw()
 cairo_pdf("plot/invest_plot.pdf", width = 10, height = 5)
@@ -83,8 +82,8 @@ dmdf <- get.dm(out_true %>%filter(lag==0) %>% na.omit)
 
 dmdf %>% 
   mutate(pvalue_sign = paste0(round(pvalue,3), '(', ifelse(stat < 0,
-                                                  '+',
-                                                  '-'),')')) %>%
+                                                           '+',
+                                                           '-'),')')) %>%
   dcast(model~h) %>%
   xtable %>%
   print(include.rownames = FALSE)
@@ -93,10 +92,10 @@ dmdf %>%
 dmsd <- dmdf %>%
   filter(model != 'Random Walk') %>%
   mutate(Изменение = ifelse(pvalue > 0.05,
-                         '0',
-                         ifelse(stat < 0,
-                                '+',
-                                '-')
+                            '0',
+                            ifelse(stat < 0,
+                                   '+',
+                                   '-')
   )) %>%
   ggplot(aes( model,factor(h))) +
   geom_tile(aes(fill = Изменение),color='grey')+
@@ -150,11 +149,11 @@ dev.off()
 # сначала надо найти sd каждой переменной в каждой тренировочной выборке и поделить на него коэффициент
 
 sddata <- expand.grid(startdt = c(as.Date('1996-01-01'), as.Date('2000-01-01')),
-            enddt = seq(as.Date('2012-10-01'), as.Date('2018-10-01'), by = 'quarter')
+                      enddt = seq(as.Date('2012-10-01'), as.Date('2018-10-01'), by = 'quarter')
 ) %>%
   split(seq(1:nrow(.))) %>%
   map_dfr(function(x){
-  
+    
     df %>% na.omit %>% as.data.frame() %>%
       rownames_to_column('date')%>%
       mutate(date = as.yearqtr(date) %>% as.Date) %>%
@@ -166,7 +165,7 @@ sddata <- expand.grid(startdt = c(as.Date('1996-01-01'), as.Date('2000-01-01')),
       as.tibble %>%
       mutate(enddt = x$enddt,
              startdt = x$startdt, .)
-      
+    
   })
 
 
@@ -179,19 +178,19 @@ lasso_beta <-
   out_lasso %>%
   plyr::compact()%>%
   map_dfr(
-
+    
     function(x, i){
       
-       if(x$h == 0){
-         actsd <- sddata %>% filter(startdt == x$startdt,
-                                    enddt == x$enddt) %>%
-           select(-c(investment, startdt, enddt, invest2gdp))
-       } else{
-         actsd <- sddata %>% filter(startdt == x$startdt,
-                                    enddt == x$enddt) %>%
-           select(-c(startdt, enddt))
+      if(x$h == 0){
+        actsd <- sddata %>% filter(startdt == x$startdt,
+                                   enddt == x$enddt) %>%
+          select(-c(investment, startdt, enddt, invest2gdp))
+      } else{
+        actsd <- sddata %>% filter(startdt == x$startdt,
+                                   enddt == x$enddt) %>%
+          select(-c(startdt, enddt))
       }
-
+      
       
       
       betaval = x$model_fit$beta
@@ -239,25 +238,25 @@ dev.off()
 lasso_p <- lasso_beta %>%
   group_by(predictor, h, startdt) %>%
   filter(
-         startdt== '2000-01-01'
-         ,
-         predictor %in% c(
-           'investment',
-            'mkr_1d',
-            'mkr_7d',
-            'gov_6m',
-            'GKO',
-            'invest2gdp',
-         'oil', 
-         'rts',
-         'GDPEA_Q_DIRI'
-         #,
-         #'RTRD_Q_DIRI',
-         #'EMPLDEC_Q',
-         #'CONI_Q_CHI', # индекс цен на строительно-монтажные работы
-         #'CNSTR_Q_DIRI'# индекс работ в строительств
-         )
-         ) %>%
+    startdt== '2000-01-01'
+    ,
+    predictor %in% c(
+      'investment',
+      'mkr_1d',
+      'mkr_7d',
+      'gov_6m',
+      'GKO',
+      'invest2gdp',
+      'oil', 
+      'rts',
+      'GDPEA_Q_DIRI'
+      #,
+      #'RTRD_Q_DIRI',
+      #'EMPLDEC_Q',
+      #'CONI_Q_CHI', # индекс цен на строительно-монтажные работы
+      #'CNSTR_Q_DIRI'# индекс работ в строительств
+    )
+  ) %>%
   ungroup%>%
   mutate(predictor = correct.names.pred(predictor)) %>%
   group_by(h, predictor) %>%
@@ -291,40 +290,40 @@ lasso_beta %>%
   dcast(rn~h, value.var = 'pred_beta') %>%
   xtable %>%
   print(include.rownames = FALSE)
-  
-  
-  ggplot()+
+
+
+ggplot()+
   #geom_line(aes(h, includes, color=predictor))
   geom_segment(aes(x = 0, xend = includes, y = predictor, yend = predictor, color=as.factor(sign)))+
   facet_wrap(vars(h))
 
 # ВВП
-  
+
 gdp <- lasso_beta %>%
-    group_by(predictor, h, startdt) %>%
-    filter(h<2,
-      startdt== '2000-01-01',
-      predictor %in% c(
-        'GDPEA_Q_DIRI'
-        #,
-        #'RTRD_Q_DIRI',
-        #'EMPLDEC_Q',
-        #'CONI_Q_CHI', # индекс цен на строительно-монтажные работы
-        #'CNSTR_Q_DIRI'# индекс работ в строительств
-      )
-    ) %>%
-    ungroup%>%
-    mutate(predictor = correct.names.pred(predictor)) %>%
-    group_by(h, predictor) %>%
-    mutate(beta_mean = mean(beta)/100) %>%
-    ungroup %>%
-    group_by(h, startdt, enddt) %>%
-    arrange(desc(abs(beta_mean))) %>% 
-    #filter(row_number()<=5) %>%
-    ungroup() %>%
-    ggplot()+
-    geom_line(aes(enddt, beta))+
-    facet_grid(rows = vars(h), scales = 'free')+
+  group_by(predictor, h, startdt) %>%
+  filter(h<2,
+         startdt== '2000-01-01',
+         predictor %in% c(
+           'GDPEA_Q_DIRI'
+           #,
+           #'RTRD_Q_DIRI',
+           #'EMPLDEC_Q',
+           #'CONI_Q_CHI', # индекс цен на строительно-монтажные работы
+           #'CNSTR_Q_DIRI'# индекс работ в строительств
+         )
+  ) %>%
+  ungroup%>%
+  mutate(predictor = correct.names.pred(predictor)) %>%
+  group_by(h, predictor) %>%
+  mutate(beta_mean = mean(beta)/100) %>%
+  ungroup %>%
+  group_by(h, startdt, enddt) %>%
+  arrange(desc(abs(beta_mean))) %>% 
+  #filter(row_number()<=5) %>%
+  ungroup() %>%
+  ggplot()+
+  geom_line(aes(enddt, beta))+
+  facet_grid(rows = vars(h), scales = 'free')+
   labs(title = "",
        y = "Коэффициент",
        x = "Дата") +
@@ -344,13 +343,13 @@ invest <- lasso_beta %>%
          ,
          predictor %in% c(
            'investment'#,
-         #    'mkr_1d',
-         #    'mkr_7d',
-         #    'gov_6m',
-         #    'GKO',
-         #    'invest2gdp',
-         # 'oil', 
-         # 'rts',
+           #    'mkr_1d',
+           #    'mkr_7d',
+           #    'gov_6m',
+           #    'GKO',
+           #    'invest2gdp',
+           # 'oil', 
+           # 'rts',
          )
   ) %>%
   ungroup%>%
@@ -366,8 +365,8 @@ invest <- lasso_beta %>%
   geom_line(aes(enddt, beta))+
   facet_grid(rows = vars(h), scales = 'free')+
   labs(title = "",
-                                           y = "Коэффициент",
-                                           x = "Дата") +
+       y = "Коэффициент",
+       x = "Дата") +
   theme_bw()
 
 cairo_pdf('plot/invest.pdf')
@@ -382,7 +381,7 @@ mkr_7d <- lasso_beta %>%
          startdt== '2000-01-01'
          ,
          predictor %in% c(
-               'mkr_7d'
+           'mkr_7d'
            #    'mkr_7d',
            #    'gov_6m',
            #    'GKO',
@@ -486,58 +485,58 @@ dev.off()
 load('data/stationary_data_ext.RData')
 tibble(name = df %>% names()) %>%
   mutate(Название = correct.names.pred(name),
-         Трансформация = ifelse(name %in% c('reer','neer','oil','rts'),
-                           '1', 
-                           ifelse(name %in% c('investment', 'CPI_Q_CHI',
-                                                'invest2gdp',
-                                                # 'deflator', только с 1996
-                                                'GDPEA_Q_DIRI',
-                                                
-                                                'EMPLDEC_Q',
-                                                'UNEMPL_Q_SH',
-                                                
-                                                'CONSTR_Q_NAT', 
-                                                ###### 'TRP_Q_PASS_DIRI', 
-                                                'WAG_Q', 
-                                                'CONI_Q_CHI', 
-                                                'CTI_Q_CHI', 
-                                                'AGR_Q_DIRI', 
-                                                'RTRD_Q_DIRI', 
-                                                'HHI_Q_DIRI',
-                                                'M0_Q', 
-                                                'M2_Q',
-                                                ####   'IR_Q',
-                                                #### 'ICR_Q',
-                                                'CBREV_Q',
-                                                'CBEX_Q',
-                                                'FBREV_Q',
-                                                'FBEX_Q',
-                                                'RDEXRO_Q',# официальный курс доллара
-                                                'RDEXRM_Q',# курс доллара на ммвб
-                                                'LIAB_T_Q',# кредиторская задолженность в среднем за период
-                                                'LIAB_UNP_Q',# просроченная кредиторская задолженность в среднем за период
-                                                'LIAB_S_Q',# кредиторская задолженность поставщикам в среднем за период
-                                                'LIAB_B_Q',# кредиторская задолженность в бюджет в среднем за период
-                                                'DBT_T_Q',#дебиторская задолженность в среднем за период
-                                                'DBT_UNP_Q',#просроченная дебиторская задолженность в среднем за период
-                                                ########## 'DBT_P_Q',# дебиторская задолженность покупателей в среднем за период
-                                                'EX_T_Q',# экспорт
-                                                'IM_T_Q',# импорт
-                                                'PPI_EA_Q' # (после 2004-01)
-                                                
-                           ), '2', '0'
-                           
-                           )),
-         Источник = ifelse(name %in% c('mkr_1d', 'mkr_7d'),
-                           'Банк России',
-                           ifelse(name %in% c('reer', 'neer',
-                                              'oil', 'rts'),
-                                  'Bloomberg',
-                                  ifelse(name == 'invest2gdp','Расчеты автора',
-                                  'Росстат'
-                                  ))
-                           
-                           )) %>% select(-name) %>%
+                 Трансформация = ifelse(name %in% c('reer','neer','oil','rts'),
+                                        '1', 
+                                        ifelse(name %in% c('investment', 'CPI_Q_CHI',
+                                                           'invest2gdp',
+                                                           # 'deflator', только с 1996
+                                                           'GDPEA_Q_DIRI',
+                                                           
+                                                           'EMPLDEC_Q',
+                                                           'UNEMPL_Q_SH',
+                                                           
+                                                           'CONSTR_Q_NAT', 
+                                                           ###### 'TRP_Q_PASS_DIRI', 
+                                                           'WAG_Q', 
+                                                           'CONI_Q_CHI', 
+                                                           'CTI_Q_CHI', 
+                                                           'AGR_Q_DIRI', 
+                                                           'RTRD_Q_DIRI', 
+                                                           'HHI_Q_DIRI',
+                                                           'M0_Q', 
+                                                           'M2_Q',
+                                                           ####   'IR_Q',
+                                                           #### 'ICR_Q',
+                                                           'CBREV_Q',
+                                                           'CBEX_Q',
+                                                           'FBREV_Q',
+                                                           'FBEX_Q',
+                                                           'RDEXRO_Q',# официальный курс доллара
+                                                           'RDEXRM_Q',# курс доллара на ммвб
+                                                           'LIAB_T_Q',# кредиторская задолженность в среднем за период
+                                                           'LIAB_UNP_Q',# просроченная кредиторская задолженность в среднем за период
+                                                           'LIAB_S_Q',# кредиторская задолженность поставщикам в среднем за период
+                                                           'LIAB_B_Q',# кредиторская задолженность в бюджет в среднем за период
+                                                           'DBT_T_Q',#дебиторская задолженность в среднем за период
+                                                           'DBT_UNP_Q',#просроченная дебиторская задолженность в среднем за период
+                                                           ########## 'DBT_P_Q',# дебиторская задолженность покупателей в среднем за период
+                                                           'EX_T_Q',# экспорт
+                                                           'IM_T_Q',# импорт
+                                                           'PPI_EA_Q' # (после 2004-01)
+                                                           
+                                        ), '2', '0'
+                                        
+                                        )),
+                 Источник = ifelse(name %in% c('mkr_1d', 'mkr_7d'),
+                                   'Банк России',
+                                   ifelse(name %in% c('reer', 'neer',
+                                                      'oil', 'rts'),
+                                          'Bloomberg',
+                                          ifelse(name == 'invest2gdp','Расчеты автора',
+                                                 'Росстат'
+                                          ))
+                                   
+                 )) %>% select(-name) %>%
   arrange(Название) %>%
   xtable %>%
   print(include.rownames = FALSE)
