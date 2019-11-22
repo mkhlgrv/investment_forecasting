@@ -62,8 +62,9 @@ eseries <- c('investment', 'mkr_1d','mkr_7d','gov_6m','GKO',
   'CPI_Q_CHI',# ипц
   'GDPEA_Q_DIRI', # ввп
   
-  'UNEMPL_Q_SH',# безработица
+  
   'EMPLDEC_Q', # заявленная потребность в работника
+  'UNEMPL_Q_SH',# безработица
   'CONSTR_Q_NAT', # индекс строительно-монтажных работ, 
   'WAG_Q', # зарплата
   'CONI_Q_CHI', # индекс цен на строительно-монтажные работы
