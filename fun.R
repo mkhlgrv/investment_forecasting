@@ -191,15 +191,20 @@ train.model <- function(startdt= as.Date('2000-01-01'),
                         alpha = 0,
                         lambda = train.ridge$bestTune[1,2])
       
-      train.out <- train(x=X.train,
-                         y=y.train,
-                         method = "glmnet",
-                         metric = "RMSE",trControl = tc,
-                         tuneGrid = expand.grid(.alpha = 1,.lambda = seq(0.05,0.0001,length = 100)))
       
       w3 <- 1/abs(as.numeric(coef(m_ridge))
                   [1:(ncol(X.train))] )^0.5 ## Using gamma = 1
       w3[which(w3 == Inf)] <- 999999999 ## Replacing values estimated as Infinite for 999999999
+      
+      train.out <- train(x=X.train,
+                         y=y.train,
+                         method = "glmnet",
+                         metric = "RMSE",
+                         penalty.factor = w3,
+                         trControl = tc,
+                         tuneGrid = expand.grid(.alpha = 1,.lambda = seq(0.05,0.0001,length = 100)))
+      
+
       
       model_fit <- glmnet(X.train,
                           y.train,
@@ -270,6 +275,27 @@ train.model <- function(startdt= as.Date('2000-01-01'),
                              intercept = TRUE)
       
       pred <- predict(model_fit, newdata = rbind(X.train, X.test))$yhat.gnet
+      
+    } else if (model == 'boost'){
+
+        tune_grid <- expand.grid(nrounds = 100,
+                                 max_depth = c(5),
+                                 eta = c(0.2),
+                                 gamma = 0,
+                                 colsample_bytree = 0.3,
+                                 min_child_weight = 1,
+                                 subsample = 1)
+        set.seed(2019)
+        
+        train.out <- NULL
+        model_fit <- train(x = X.train,
+                         y = y.train,
+                         method = "xgbTree", 
+                         metric = "RMSE",
+                         tuneGrid = tune_grid)
+        
+        pred <-  predict(model_fit, newdata = rbind(X.train, X.test)) %>%
+          as.numeric
       
     }
   } else 
@@ -393,8 +419,8 @@ get.score <- function(df){
               r2 = R2_Score(pred, true),
               type = 'train'),
   df %>% filter(enddt <= as.Date(as.yearqtr(as.Date('2018-10-01'))-h/4),
-                date > enddt,
-                date <= as.Date(enddt + 100)) %>%
+                date > as.Date(as.yearqtr( enddt)+h/4),
+                date <= as.Date(as.yearqtr( enddt)+(h+1)/4)) %>%
     summarise(rmspe = RMSPE(pred, true),
               rmse = RMSE(pred, true),
               rrse = RRSE(pred, true),
@@ -590,7 +616,53 @@ correct.names <- Vectorize(vectorize.args = "model",
                                     'rf' = 'Random Forest',
                                     'ss' = 'Spike and Slab',
                                     'arima' = 'AR',
-                                    'rw' = 'Random Walk')})
+                                    'rw' = 'Random Walk',
+                                    'boost' = 'Boosting')})
+
+
+correct.names.pred <- Vectorize(vectorize.args = "model",
+                                FUN = function(model) {
+                                  switch(as.character(model),
+                                         'investment' = 'Валовое накопление основного капитала',
+                                         'mkr_1d' = 'Ставка межбанковского рынка, 1 день (в среднем за квартал)',
+                                         'mkr_7d' = 'Ставка межбанковского рынка, 7 дней (в среднем за квартал)',
+                                         'gov_6m' = 'Доходность 6-месячных государственных облигаций (в среднем за квартал)',
+                                         'reer' = 'Реальный эффективный обменный курс (на конец квартала)',
+                                         'neer' = 'Номинальный эффективный обменный курс (на конец квартала)',
+                                         'oil' ='Цена нефти Brent (на конец квартала)',
+                                         'rts' = 'Индекс RTS/Московской биржи (на конец квартала)',
+                                         'CPI_Q_CHI' = 'Индекс потребительских цен',
+                                         'GDPEA_Q_DIRI' = 'ВВП в постоянных ценах',
+                                         'EMPLDEC_Q' = 'Заявленная потребность в работниках (в среднем за квартал)',
+                                         'UNEMPL_Q_SH' ='Норма безработицы (в среднем за квартал)',
+                                         'CONSTR_Q_NAT' = 'Ввод в действие жилых домов',
+                                         'WAG_Q' ='Индекс реальной зарплаты',
+                                         'CONI_Q_CHI'='Индекс цен на строительно-монтажные работы',
+                                         'CTI_Q_CHI'='Индекс тарифов на грузовые перевозки ',
+                                         'AGR_Q_DIRI'='Индекс реального объема сельскохозяйственного производства',
+                                         'RTRD_Q_DIRI'='Индекс реального оборота розничной торговли',
+                                         'HHI_Q_DIRI'='Индекс реальных денежных доходов населения ',
+                                         'M0_Q'='М0 (на конец квартала)',
+                                         'M2_Q'='М2 (на конец квартала)',
+                                         'CBREV_Q'='Доходы консолидированного бюджета',
+                                         'CBEX_Q'='Расходы консолидированного бюджета ',
+                                         'FBREV_Q'='Доходы федерального бюджета',
+                                         'FBEX_Q'='Расходы федерального бюджета',
+                                         'RDEXRO_Q'='Официальный курс доллара (на конец квартала)',
+                                         'RDEXRM_Q'='Курс доллара на ММВБ (на конец квартала) ',
+                                         'LIAB_T_Q'='Кредиторская задолженность (в среднем за квартал)',
+                                         'LIAB_UNP_Q'='Просроченная кредиторская задолженность (в среднем за квартал)',
+                                         'LIAB_S_Q'='Задолженность поставщикам (в среднем за квартал)',
+                                         'LIAB_B_Q'='Задолженность в бюджет (в среднем за квартал)',
+                                         'DBT_T_Q'='Дебиторская задолженность (в среднем за квартал)',
+                                         'DBT_UNP_Q'='Просроченная дебиторская задолженность (в среднем за квартал)',
+                                         'EX_T_Q'='Экспорт', 
+                                         'IM_T_Q'='Импорт',
+                                         'PPI_EA_Q'='Индекс цен производителей промышленных товаров',
+                                         'invest2gdp'='Доля валового накопления основного капитала в ВВП (номинал)')})
+
+
+
 
 # округление до 4 знаков и умножение на 100
 meanroundpercent <- function(x){
@@ -599,35 +671,35 @@ meanroundpercent <- function(x){
 
 get.dm <- function(df){
     df %>%
-  filter(enddt <= '2016-10-01',
-         date > enddt,
-         date < as.Date(enddt + 100)) %>%
+    filter(enddt <= as.Date('2016-10-01'),
+           date > as.Date(as.yearqtr( enddt)+h/4),
+           date <= as.Date(as.yearqtr( enddt)+(h+1)/4)) %>%
     dcast(model + h + lag +true+date~ startdt, value.var = 'pred') %>%
     group_by(model, h, lag) %>%
-    summarise(pvalue = ifelse(all(`1997-01-01`==`2001-01-01`), 1,
-                              (DM.test(`2001-01-01`,
-                                                 `1997-01-01`,
+    summarise(pvalue = ifelse(all(`1996-01-01`==`2000-01-01`), 1,
+                              (DM.test(`2000-01-01`,
+                                                 `1996-01-01`,
                                        y = true,
                                        c=TRUE,
                                                  H1 =ifelse(
-                                                   mean((`2001-01-01`-true)^2) < 
-                                                     mean((`1997-01-01`-true)^2),
+                                                   mean((`2000-01-01`-true)^2) < 
+                                                     mean((`1996-01-01`-true)^2),
                                                    'more',
-                                                   ifelse(mean((`2001-01-01`-true)^2) > 
-                                                            mean((`1997-01-01`-true)^2),
+                                                   ifelse(mean((`2000-01-01`-true)^2) > 
+                                                            mean((`1996-01-01`-true)^2),
                                                           'less', 'same')
                                                  )) %>% .$p.value)),
-              stat = ifelse(all(`1997-01-01`==`2001-01-01`), 0,
-                            (DM.test(`2001-01-01`,
-                                     `1997-01-01`,
+              stat = ifelse(all(`1996-01-01`==`2000-01-01`), 0,
+                            (DM.test(`2000-01-01`,
+                                     `1996-01-01`,
                                      y = true,
                                      c=TRUE,
                                      H1 =ifelse(
-                                       mean((`2001-01-01`-true)^2) < 
-                                         mean((`1997-01-01`-true)^2),
+                                       mean((`2000-01-01`-true)^2) < 
+                                         mean((`1996-01-01`-true)^2),
                                        'more',
-                                       ifelse(mean((`2001-01-01`-true)^2) > 
-                                                mean((`1997-01-01`-true)^2),
+                                       ifelse(mean((`2000-01-01`-true)^2) > 
+                                                mean((`1996-01-01`-true)^2),
                                               'less', 'same')
                                      )) %>% .$statistic))
               
@@ -638,9 +710,9 @@ get.dm <- function(df){
 
 get.dm.lag <- function(df){
   df %>%
-    filter(enddt <= '2016-10-01',
-           date > enddt,
-           date < as.Date(enddt + 100)) %>%
+    filter(enddt <= as.Date(as.yearqtr(as.Date('2018-10-01'))-h/4),
+           date > as.Date(as.yearqtr( enddt)+h/4),
+           date <= as.Date(as.yearqtr( enddt)+(h+1)/4)) %>%
     mutate(error = pred-true) %>%
     group_by(model, lag, startdt, h) %>%
     mutate(e_m = mean(error^2)) %>%

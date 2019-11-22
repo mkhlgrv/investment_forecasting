@@ -29,13 +29,16 @@ all_plot <-
          date = as.Date(as.yearqtr(date))) %>%
   ggplot() +
   geom_line(aes(date, value, group=variable,
-                alpha = ifelse(variable %in% c('GDPEA_Q_DIRI' ,'investment'), 1, 0.3)), show.legend = F)+
+                alpha = ifelse(variable %in% c('investment'), 1, 0.3)), show.legend = F)+
   labs(title = "",
        y = "",
        x = "") +
-  scale_x_date(limits = c('2001-01-01', '2019-01-01') %>% as.Date)+
+  scale_x_date(limits = c('1996-01-01', '2019-01-01') %>% as.Date)+
+  geom_vline(xintercept =c('1996-01-01','2000-01-01') %>% as.Date, linetype='dashed')+
   scale_y_continuous(limits = c(-5, 3))+
-  theme_transparent()
+  labs(x = 'Дата',
+       y='')+
+  theme_bw()
 cairo_pdf("plot/allvars.pdf", width = 10, height = 5)
 print(all_plot)
 dev.off()
@@ -47,7 +50,7 @@ load('shinydata.RData')
 
 
 scoredf$model <- factor(scoredf$model,
-                        levels = c("Random Walk","AR","Adaptive LASSO",
+                        levels = c("Random Walk","AR","Adaptive LASSO",'Boosting',
                                    "Elastic Net","LASSO","Post-LASSO",
                                    "Random Forest","Ridge","Spike and Slab"))
 
@@ -58,53 +61,17 @@ scoredf %>%
   filter(lag==0) %>%
   group_by(model, lag, h, startdt) %>%
   summarise(rmse = mean(rmse)) %>%
-  ungroup %>%
-  group_by(model, startdt, h) %>%
-  filter(rmse == min(rmse)) %>%
-  filter(lag == min(lag)) %>%
   dcast(model ~ h) %>%
   xtable %>%
   print(include.rownames = FALSE)
 
 scoredf %>%
   filter(type == 'test') %>%
-  filter(startdt == '2001-01-01') %>%
+  filter(startdt == '2000-01-01') %>%
   filter(lag==0) %>%
   group_by(model, lag, h, startdt) %>%
   summarise(rmse = mean(rmse)) %>%
-  ungroup %>%
-  group_by(model, startdt, h) %>%
-  filter(rmse == min(rmse)) %>%
-  filter(lag == min(lag)) %>%
   dcast(model ~ h) %>%
-  xtable %>%
-  print(include.rownames = FALSE)
-
-
-
-scoredf %>%
-  filter(type == 'test') %>%
-  filter(startdt == '1997-01-01') %>%
-  group_by(model, lag, h, startdt) %>%
-  summarise(rmse = mean(rmse)) %>%
-  ungroup %>%
-  group_by(model, startdt, h) %>%
-  filter(rmse == min(rmse)) %>%
-  filter(lag == min(lag)) %>%
-  dcast(model ~ h, value.var ='lag') %>%
-  xtable %>%
-  print(include.rownames = FALSE)
-
-scoredf %>%
-  filter(type == 'test') %>%
-  filter(startdt == '2001-01-01') %>%
-  group_by(model, lag, h, startdt) %>%
-  summarise(rmse = mean(rmse)) %>%
-  ungroup %>%
-  group_by(model, startdt, h) %>%
-  filter(rmse == min(rmse)) %>%
-  filter(lag == min(lag)) %>%
-  dcast(model ~ h, value.var ='lag') %>%
   xtable %>%
   print(include.rownames = FALSE)
 
@@ -113,16 +80,29 @@ scoredf %>%
 
 dmdf <- get.dm(out_true %>%filter(lag==0) %>% na.omit)
 
+
+dmdf %>% 
+  mutate(pvalue_sign = paste0(round(pvalue,3), '(', ifelse(stat < 0,
+                                                  '+',
+                                                  '-'),')')) %>%
+  dcast(model~h) %>%
+  xtable %>%
+  print(include.rownames = FALSE)
+
+
 dmsd <- dmdf %>%
   filter(model != 'Random Walk') %>%
-  mutate(change = ifelse(pvalue > 0.01,
+  mutate(Изменение = ifelse(pvalue > 0.05,
                          '0',
                          ifelse(stat < 0,
                                 '+',
                                 '-')
   )) %>%
   ggplot(aes( model,factor(h))) +
-  geom_tile(aes(fill = change),color='grey')
+  geom_tile(aes(fill = Изменение),color='grey')+
+  theme_bw()+
+  labs(x = 'Модель',
+       y = 'Горизонт прогнозирования')
 
 cairo_pdf('plot/dmsd.pdf')
 print(dmsd)
@@ -167,35 +147,66 @@ print(dmtest01)
 dev.off()
 
 
+# сначала надо найти sd каждой переменной в каждой тренировочной выборке и поделить на него коэффициент
+
+sddata <- expand.grid(startdt = c(as.Date('1996-01-01'), as.Date('2000-01-01')),
+            enddt = seq(as.Date('2012-10-01'), as.Date('2018-10-01'), by = 'quarter')
+) %>%
+  split(seq(1:nrow(.))) %>%
+  map_dfr(function(x){
+  
+    df %>% na.omit %>% as.data.frame() %>%
+      rownames_to_column('date')%>%
+      mutate(date = as.yearqtr(date) %>% as.Date) %>%
+      filter(date >= x$startdt, date <= x$enddt) %>%
+      select(-date) %>%
+      sapply( sd) %>%
+      as.data.frame %>%
+      t %>%
+      as.tibble %>%
+      mutate(enddt = x$enddt,
+             startdt = x$startdt, .)
+      
+  })
 
 
-# вычисление предикторов adalasso ----
+# вычисление предикторов lasso ----
 source('fun.R')
 source('lib.r')
 
-load('out/full/out_postlasso.RData')
-load('out/full/out_adalasso.RData')
-
-
-load('out/short_postlasso.RData')
-
-short_postlasso %>% filter(h==8, lag==4, startdt=='1997-01-01', date > enddt, date < enddt+100)%>% View
-postlasso_beta <- 
-  out_postlasso %>%
+load('out/full/out_lasso.RData')
+lasso_beta <- 
+  out_lasso %>%
   plyr::compact()%>%
   map_dfr(
+
     function(x, i){
-      if(x$h==8 &x$lag==4 & x$startdt=='1997-01-01'& x$enddt == '2014-04-01'){
-        print(x, i)
+      
+       if(x$h == 0){
+         actsd <- sddata %>% filter(startdt == x$startdt,
+                                    enddt == x$enddt) %>%
+           select(-c(investment, startdt, enddt, invest2gdp))
+       } else{
+         actsd <- sddata %>% filter(startdt == x$startdt,
+                                    enddt == x$enddt) %>%
+           select(-c(startdt, enddt))
       }
-      betaval = x$model_fit$coefficients
+
+      
+      
+      betaval = x$model_fit$beta
+      
+      if(!all((betaval%>% rownames) ==(actsd %>% colnames))){
+        print(actsd %>% colnames)
+        print(betaval%>% rownames)
+        stop()
+      }
       data.frame(model = x$model,
-                 lag = x$lag,
                  h = x$h,
                  startdt=x$startdt,
                  enddt = x$enddt,
-                 predictor = betaval%>% names(),
-                 beta = betaval%>% as.numeric
+                 predictor = betaval%>% rownames,
+                 beta = (betaval%>% as.numeric)/(actsd[1,] %>% as.numeric)
       )
       
     }
@@ -203,19 +214,18 @@ postlasso_beta <-
 
 
 
-
-rm(out_postlasso)
-postlasso_nonzero <- postlasso_beta %>%
-  filter(lag == 4) %>%
-  mutate(startdt = factor(startdt, c('2001-01-01','1997-01-01'))) %>%
-  group_by(lag, h, startdt, enddt) %>%
+lasso_nonzero <- lasso_beta %>%
+  mutate(startdt = factor(startdt, c('2000-01-01','1996-01-01'),
+                          labels = c('2000.I', '1996.I'))) %>%
+  group_by( h, startdt, enddt) %>%
   summarise(nz = sum(beta != 0)) %>%
   ggplot(aes(enddt, nz, linetype = startdt))+
   geom_line()+
   labs(title = "",
        y = "Количество переменных",
        x = "Дата",
-       color = '')+
+       color = '',
+       linetype = 'Левая граница\nвыборки')+
   facet_wrap(vars(h), scales = 'free_y')+
   theme_bw()
 
@@ -226,86 +236,51 @@ print(lasso_nonzero)
 dev.off()
 
 
-adalasso_beta <- out_adalasso %>%
-  plyr::compact()%>%
-  map_dfr(
-  function(x){
-    if(x$lag!=0){
-      NULL
-    } else{
-      betaval = x$model_fit$beta 
-      x$model_fit$beta
-      data.frame(model = x$model,
-                 lag = x$lag,
-                 h = x$h, 
-                 startdt=x$startdt,
-                 enddt = x$enddt,
-                 predictor = betaval%>% rownames(),
-                 beta = betaval%>% as.numeric
-      )
-      
-    }
-
-  }
-) %>% plyr::compact()
-
-# количество переменных
-ada_nonzero <-  adalasso_beta %>%
-  # filter(lag == 4) %>%
-  mutate(startdt = factor(startdt, c('2001-01-01','1997-01-01'))) %>%
-  group_by(lag, h, startdt, enddt) %>%
-  summarise(nz = sum(beta != 0)) %>%
-  ggplot(aes(enddt, nz, linetype = startdt))+
-  geom_line()+
-  #stat_summary(geom='line', fun.y=mean)+
-  labs(title = "",
-       y = "Количество переменных",
-       x = "Дата",
-       color = '')+
-  facet_wrap(vars(h))+
-  theme_bw()
-
-
-
-cairo_pdf('plot/ada_nonzero.pdf')
-print(ada_nonzero)
-dev.off()
-
-
-ada_p <- adalasso_beta %>%
-  group_by(predictor, lag, h, startdt) %>%
+lasso_p <- lasso_beta %>%
+  group_by(predictor, h, startdt) %>%
   filter(
-         startdt== '2001-01-01'
+         startdt== '2000-01-01'
          ,
-         predictor %in% c('investment', 'mkr_1d','mkr_7d','gov_6m','GKO',
-                          'invest2gdp',
+         predictor %in% c(
+           'investment',
+            'mkr_1d',
+            'mkr_7d',
+            'gov_6m',
+            'GKO',
+            'invest2gdp',
          'oil', 
          'rts',
-         'GDPEA_Q_DIRI',
+         'GDPEA_Q_DIRI'
+         #,
+         #'RTRD_Q_DIRI',
          #'EMPLDEC_Q',
-         'CONI_Q_CHI', # индекс цен на строительно-монтажные работы
-         'CNSTR_Q_DIRI'# индекс работ в строительств
+         #'CONI_Q_CHI', # индекс цен на строительно-монтажные работы
+         #'CNSTR_Q_DIRI'# индекс работ в строительств
          )
          ) %>%
-  group_by(h, lag, predictor) %>%
+  ungroup%>%
+  mutate(predictor = correct.names.pred(predictor)) %>%
+  group_by(h, predictor) %>%
   mutate(beta_mean = mean(beta)) %>%
   ungroup %>%
-  group_by(h, lag,  startdt, enddt) %>%
+  group_by(h, startdt, enddt) %>%
   arrange(desc(abs(beta_mean))) %>% 
   #filter(row_number()<=5) %>%
   ungroup() %>%
   ggplot()+
-  geom_line(aes(enddt, beta, color=predictor))+
+  geom_line(aes(enddt, beta, color=interaction(predictor,startdt)))+
   facet_wrap(vars(h))
 
-plotly::ggplotly(ada_p)
+plotly::ggplotly(lasso_p)
 
-
-adalasso_beta %>% group_by(predictor, lag, h, startdt) %>%
-  filter(lag==4,startdt== '2001-01-01') %>%
+lasso_beta %>%
+  mutate(predictor = correct.names.pred(predictor)) %>%
+  group_by(predictor, h, startdt) %>%
+  
+  filter(startdt== '2000-01-01') %>%
   filter(h>4) %>%
   group_by(predictor, h) %>%
-  summarise(beta = mean(beta)) %>%
+  summarise(beta = mean(beta)/100) %>%
   ungroup %>%
   group_by(h) %>%
   arrange(desc(abs(beta))) %>%
@@ -317,14 +292,252 @@ adalasso_beta %>% group_by(predictor, lag, h, startdt) %>%
   xtable %>%
   print(include.rownames = FALSE)
   
-  mutate(predictor = factor(predictor, predictor %>% unique)) %>%
   
   ggplot()+
   #geom_line(aes(h, includes, color=predictor))
   geom_segment(aes(x = 0, xend = includes, y = predictor, yend = predictor, color=as.factor(sign)))+
   facet_wrap(vars(h))
 
+# ВВП
+  
+gdp <- lasso_beta %>%
+    group_by(predictor, h, startdt) %>%
+    filter(h<2,
+      startdt== '2000-01-01',
+      predictor %in% c(
+        'GDPEA_Q_DIRI'
+        #,
+        #'RTRD_Q_DIRI',
+        #'EMPLDEC_Q',
+        #'CONI_Q_CHI', # индекс цен на строительно-монтажные работы
+        #'CNSTR_Q_DIRI'# индекс работ в строительств
+      )
+    ) %>%
+    ungroup%>%
+    mutate(predictor = correct.names.pred(predictor)) %>%
+    group_by(h, predictor) %>%
+    mutate(beta_mean = mean(beta)/100) %>%
+    ungroup %>%
+    group_by(h, startdt, enddt) %>%
+    arrange(desc(abs(beta_mean))) %>% 
+    #filter(row_number()<=5) %>%
+    ungroup() %>%
+    ggplot()+
+    geom_line(aes(enddt, beta))+
+    facet_grid(rows = vars(h), scales = 'free')+
+  labs(title = "",
+       y = "Коэффициент",
+       x = "Дата") +
+  theme_bw()
+
+cairo_pdf('plot/gdp.pdf')
+print(gdp)
+dev.off()
 
 
 
 
+invest <- lasso_beta %>%
+  group_by(predictor, h, startdt) %>%
+  filter(h==1,
+         startdt== '2000-01-01'
+         ,
+         predictor %in% c(
+           'investment'#,
+         #    'mkr_1d',
+         #    'mkr_7d',
+         #    'gov_6m',
+         #    'GKO',
+         #    'invest2gdp',
+         # 'oil', 
+         # 'rts',
+         )
+  ) %>%
+  ungroup%>%
+  mutate(predictor = correct.names.pred(predictor)) %>%
+  group_by(h, predictor) %>%
+  mutate(beta_mean = mean(beta)/100) %>%
+  ungroup %>%
+  group_by(h, startdt, enddt) %>%
+  arrange(desc(abs(beta_mean))) %>% 
+  #filter(row_number()<=5) %>%
+  ungroup() %>%
+  ggplot()+
+  geom_line(aes(enddt, beta))+
+  facet_grid(rows = vars(h), scales = 'free')+
+  labs(title = "",
+                                           y = "Коэффициент",
+                                           x = "Дата") +
+  theme_bw()
+
+cairo_pdf('plot/invest.pdf')
+print(invest)
+dev.off()
+
+
+
+mkr_7d <- lasso_beta %>%
+  group_by(predictor, h, startdt) %>%
+  filter(h>0,h<4,
+         startdt== '2000-01-01'
+         ,
+         predictor %in% c(
+               'mkr_7d'
+           #    'mkr_7d',
+           #    'gov_6m',
+           #    'GKO',
+           #    'invest2gdp',
+           # 'oil', 
+           # 'rts',
+         )
+  ) %>%
+  ungroup%>%
+  mutate(predictor = correct.names.pred(predictor)) %>%
+  group_by(h, predictor) %>%
+  mutate(beta_mean = mean(beta)/100) %>%
+  ungroup %>%
+  group_by(h, startdt, enddt) %>%
+  arrange(desc(abs(beta_mean))) %>% 
+  #filter(row_number()<=5) %>%
+  ungroup() %>%
+  ggplot()+
+  geom_line(aes(enddt, beta))+
+  facet_grid(rows = vars(h), scales = 'free')+
+  labs(title = "",
+       y = "Коэффициент",
+       x = "Дата") +
+  theme_bw()
+
+cairo_pdf('plot/mkr_7d.pdf')
+print(mkr_7d)
+dev.off()
+
+
+invest2gdp <-
+  lasso_beta %>%
+  group_by(predictor, h, startdt) %>%
+  filter(h>6,
+         startdt== '2000-01-01'
+         ,
+         predictor %in% c(
+           'invest2gdp'
+           # 'oil'
+           # 'rts'
+         )
+  ) %>%
+  ungroup%>%
+  mutate(predictor = correct.names.pred(predictor)) %>%
+  group_by(h, predictor) %>%
+  mutate(beta_mean = mean(beta)/100) %>%
+  ungroup %>%
+  group_by(h, startdt, enddt) %>%
+  arrange(desc(abs(beta_mean))) %>% 
+  #filter(row_number()<=5) %>%
+  ungroup() %>%
+  ggplot()+
+  geom_line(aes(enddt, beta))+
+  facet_grid(rows = vars(h), scales = 'free')+
+  labs(title = "",
+       y = "Коэффициент",
+       x = "Дата") +
+  theme_bw()
+
+cairo_pdf('plot/invest2gdp.pdf')
+print(invest2gdp)
+dev.off()
+
+
+
+
+rts <-   lasso_beta %>%
+  group_by(predictor, h, startdt) %>%
+  filter(h>0, h<4,
+         startdt== '2000-01-01'
+         ,
+         predictor %in% c(
+           
+           'rts'
+         )
+  ) %>%
+  ungroup%>%
+  mutate(predictor = correct.names.pred(predictor)) %>%
+  group_by(h, predictor) %>%
+  mutate(beta_mean = mean(beta)/100) %>%
+  ungroup %>%
+  group_by(h, startdt, enddt) %>%
+  arrange(desc(abs(beta_mean))) %>% 
+  #filter(row_number()<=5) %>%
+  ungroup() %>%
+  ggplot()+
+  geom_line(aes(enddt, beta))+
+  facet_grid(rows = vars(h), scales = 'free')+
+  labs(title = "",
+       y = "Коэффициент",
+       x = "Дата") +
+  theme_bw()
+
+cairo_pdf('plot/rts.pdf')
+print(rts)
+dev.off()
+
+
+# список рядов ----
+
+load('data/stationary_data_ext.RData')
+tibble(name = df %>% names()) %>%
+  mutate(Название = correct.names.pred(name),
+         Трансформация = ifelse(name %in% c('reer','neer','oil','rts'),
+                           '1', 
+                           ifelse(name %in% c('investment', 'CPI_Q_CHI',
+                                                'invest2gdp',
+                                                # 'deflator', только с 1996
+                                                'GDPEA_Q_DIRI',
+                                                
+                                                'EMPLDEC_Q',
+                                                'UNEMPL_Q_SH',
+                                                
+                                                'CONSTR_Q_NAT', 
+                                                ###### 'TRP_Q_PASS_DIRI', 
+                                                'WAG_Q', 
+                                                'CONI_Q_CHI', 
+                                                'CTI_Q_CHI', 
+                                                'AGR_Q_DIRI', 
+                                                'RTRD_Q_DIRI', 
+                                                'HHI_Q_DIRI',
+                                                'M0_Q', 
+                                                'M2_Q',
+                                                ####   'IR_Q',
+                                                #### 'ICR_Q',
+                                                'CBREV_Q',
+                                                'CBEX_Q',
+                                                'FBREV_Q',
+                                                'FBEX_Q',
+                                                'RDEXRO_Q',# официальный курс доллара
+                                                'RDEXRM_Q',# курс доллара на ммвб
+                                                'LIAB_T_Q',# кредиторская задолженность в среднем за период
+                                                'LIAB_UNP_Q',# просроченная кредиторская задолженность в среднем за период
+                                                'LIAB_S_Q',# кредиторская задолженность поставщикам в среднем за период
+                                                'LIAB_B_Q',# кредиторская задолженность в бюджет в среднем за период
+                                                'DBT_T_Q',#дебиторская задолженность в среднем за период
+                                                'DBT_UNP_Q',#просроченная дебиторская задолженность в среднем за период
+                                                ########## 'DBT_P_Q',# дебиторская задолженность покупателей в среднем за период
+                                                'EX_T_Q',# экспорт
+                                                'IM_T_Q',# импорт
+                                                'PPI_EA_Q' # (после 2004-01)
+                                                
+                           ), '2', '0'
+                           
+                           )),
+         Источник = ifelse(name %in% c('mkr_1d', 'mkr_7d'),
+                           'Банк России',
+                           ifelse(name %in% c('reer', 'neer',
+                                              'oil', 'rts'),
+                                  'Bloomberg',
+                                  ifelse(name == 'invest2gdp','Расчеты автора',
+                                  'Росстат'
+                                  ))
+                           
+                           )) %>% select(-name) %>%
+  arrange(Название) %>%
+  xtable %>%
+  print(include.rownames = FALSE)

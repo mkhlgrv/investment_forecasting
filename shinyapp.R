@@ -13,12 +13,14 @@ load('out/short_postlasso.RData')
 load('out/short_ridge.RData')
 load('out/short_rf.RData')
 load('out/short_elnet.RData')
+load('out/short_boost.RData')
 
 
 
 out_short <-do.call(rbind,
                     list(
                        short_ss,
+                       short_boost,
                        short_elnet,
                        short_arima,
                        short_adalasso,
@@ -83,10 +85,6 @@ out_true <- data.frame(date = ytrue %>%
                group_by(model, lag, startdt, enddt, h) %>%
                mutate(pred = lag(pred, first(h))),
              by = 'date')
-
-
-
-
 
 
 # таблица scoredf_raw (без деления на бенчмарки)
@@ -158,7 +156,7 @@ out_cumulative <- out_true %>%
   filter(lag==0) %>%
   mutate(forecastdate = as.Date(as.yearqtr(date) -h/4)) %>%
   #inner_join(optlag, by = c('model', 'lag', 'h', 'startdt', 'enddt')) %>% 
-  filter(quarter(forecastdate) == 4,
+  filter(quarter(forecastdate) == 3,
          year(date) >= 2012) %>% 
   mutate(pred_cumulative = exp(log(true_lag)+pred),
          true_cumulative = exp(log(true_lag)+true))
@@ -170,7 +168,7 @@ save(out_true, out_short, ytrue,scoredf, scoredf_raw,out_hair,out_cumulative,
 # # ui----
 
 rm(list=ls())
-source('lib.R')
+source('lib.R')ы
 source('fun.R')
 load('data/rawdata.RData')
 load('data/raw.RData')
@@ -202,10 +200,10 @@ med_forecast <- import('data/med_forecast.csv', encoding = 'UTF-8', header = TRU
 my_forecast <-
   out_cumulative %>%
   dplyr::group_by(forecastdate, model, h) %>%
-  mutate(end_max = max(enddt)) %>% 
-  filter(enddt == end_max) %>% 
+    filter(enddt == forecastdate) %>%
   ungroup() %>% 
   filter(h!=0) %>%
+  filter(h > 1, h < 6) %>%
   mutate(year  = year(date),
          h_year = if_else(h<=4, 1, 2)) %>%
   dplyr::group_by(model,h_year, year, startdt, forecastdate) %>%
@@ -232,6 +230,7 @@ forec_vs <- my_forecast %>%
   filter(h_year ==1, startdt == max(startdt)) %>%
   filter(!is.na(pred)) %>%
   filter(!model %in% c('Random Walk', 'AR'))
+
 plot1 <- forec_vs %>%   ggplot()+
   geom_bar(aes(year, pred, fill = model),
            stat="identity",
@@ -253,7 +252,7 @@ plot2 <- ggplot()+
                alpha ='Прогноз МЭР'), med_forecast %>%
              group_by(year) %>%
                      filter(fctyear== max(fctyear)) %>%
-               filter(year <=2019 )
+               filter(year <2019, year > 2013 )
            ,
            stat="identity",
            position = 'dodge'
@@ -284,15 +283,15 @@ p <- forec_vs %>%   ggplot()+
            med_forecast %>%
              group_by(year) %>%
              filter(fctyear== max(fctyear)) %>%
-             filter(year <=2019 )
+             filter(year <2019, year > 2013 )
              ,
            stat="identity",
            position = 'dodge'
   )+geom_point(aes(year, investment),
-               data = raw_y %>% filter(year >=2012),
+               data = raw_y %>% filter(year >2013),
                color = 'black', size = 2)+
   geom_line(aes(year, investment),
-            data = raw_y %>% filter(year >=2012),
+            data = raw_y %>% filter(year >2013),
             color = 'black')+
   
   scale_fill_discrete(guide="none")+
