@@ -140,10 +140,52 @@ scoredf <- get.score(out_true %>%
 # unique
 
 
-out_hair <- out_true %>%
-  filter(lag==0) %>%
+# out_hair <-
+  out_true %>%
+  filter(enddt < as.Date(as.yearqtr(date)-h/4)) %>%
+  group_by(date, h, model, startdt) %>%
+  filter(enddt == max(enddt)) %>%
+  ungroup %>%
   mutate(forecastdate = as.Date(as.yearqtr(date) -h/4)) %>%
-  #inner_join(optlag, by = c('model', 'lag', 'h', 'startdt', 'enddt')) %>%
+  mutate(pred = ifelse(h == 0, true, pred)) %>%
+    filter(#startdt == '2000-01-01',
+           forecastdate <='2019-01-01',
+           h>0,
+           model != 'Random Walk') %>% 
+    
+    # вариант 1 просто рисуем прогнозы
+    
+    # ggplot()+
+    # stat_summary(aes(x = date, y = true),
+    #              fun.y=mean, geom='line', alpha = 0.5, size = 4, color = 'grey')+
+    # geom_line(aes(date, pred,  color = forecastdate, 
+    #               group = interaction(startdt,
+    #                                   forecastdate),
+    #               linetype = factor(startdt)))+
+    # facet_wrap(vars(model))+
+    # scale_y_continuous(limits = c(-0.2, 0.3))
+    
+    # вариант 2 сумма квадратов ошибок на каждую дату прогноза
+    # с ростом h растет и абсолютная ошибка,
+    # поэтому делим ошибку одной модели на среднюю ошибку для каждого h
+    
+    na.omit %>%
+    filter(h<=2) %>%
+    mutate(error = (pred - true)^2) %>%
+    group_by(h) %>%
+    mutate(error = (error-mean(error))/sd(error)) %>%
+    ungroup %>%
+    group_by(forecastdate, model, startdt) %>%
+    summarise(sse = mean(error)) %>%
+    ggplot()+
+    geom_line(aes(forecastdate, sse,
+                  color = factor(startdt)))+
+    facet_wrap(vars(model))
+      
+      
+    
+  
+
   mutate(
     datediff = (forecastdate - enddt) %>%
       as.numeric,

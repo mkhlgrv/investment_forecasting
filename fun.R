@@ -46,10 +46,12 @@ train.model <- function(startdt= as.Date('1996-01-01'),
     
     load('~/investment_forecasting/data/stationary_data_ext.RData')
     
+  } else if(series == 'oil'){
+    load('~/investment_forecasting/data/stationary_data_oil.RData')
   }
   
   if(!model %in% c('arima', 'rw')){
-    if(!series %in% c('', 'e')){
+    if(!series %in% c('', 'e', 'oil')){
       df %<>% df[, c('investment',
                      series)]
     }

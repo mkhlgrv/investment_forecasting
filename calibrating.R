@@ -166,4 +166,8 @@ for(i in c('investment', 'CPI_Q_CHI',
 
 save(df, file = 'data/stationary_data_ext.RData')
 
+# oil data
+load('data/stationary_data_ext.RData')
+df <- df[,c('investment', 'oil')]
 
+save(df, file = 'data/stationary_data_oil.RData')
