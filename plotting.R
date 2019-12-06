@@ -112,6 +112,7 @@ dev.off()
 # lasso coefs ----
 # сначала надо найти sd каждой переменной в каждой тренировочной выборке и поделить на него коэффициент
 load('data/stationary_data_ext.RData')
+# load('data/stationary_data_ext.RData')
 sddata <- expand.grid(startdt = c(as.Date('1996-01-01'), as.Date('2000-01-01')),
                       enddt = seq(as.Date('2012-10-01'), as.Date('2018-10-01'), by = 'quarter')
 ) %>%
@@ -126,7 +127,7 @@ sddata <- expand.grid(startdt = c(as.Date('1996-01-01'), as.Date('2000-01-01')),
       sapply( sd) %>%
       as.data.frame %>%
       t %>%
-      as.tibble %>%
+      as_tibble %>%
       mutate(enddt = x$enddt,
              startdt = x$startdt, .)
     
@@ -169,7 +170,7 @@ lasso_beta <-
                  startdt=x$startdt,
                  enddt = x$enddt,
                  predictor = betaval%>% rownames,
-                 beta = (betaval%>% as.numeric)/(actsd[1,] %>% as.numeric)
+                 beta = (betaval%>% as.numeric)#/(actsd[1,] %>% as.numeric)
       )
       
     }
@@ -211,7 +212,7 @@ lasso_p <- lasso_beta %>%
       'gov_6m',
       'GKO',
       'invest2gdp',
-      'oil', 
+      'oil',
       'rts',
       'GDPEA_Q_DIRI'
       #,
@@ -222,7 +223,7 @@ lasso_p <- lasso_beta %>%
     )
   ) %>%
   ungroup%>%
-  mutate(predictor = correct.names.pred(predictor)) %>%
+  #mutate(predictor = correct.names.pred(predictor)) %>%
   group_by(h, predictor) %>%
   mutate(beta_mean = mean(beta)) %>%
   ungroup %>%
@@ -235,7 +236,7 @@ lasso_p <- lasso_beta %>%
   facet_wrap(vars(h))
 
 plotly::ggplotly(lasso_p)
-
+a
 # lasso coefs h <=4
 lasso_beta %>%
   mutate(predictor = correct.names.pred(predictor)) %>%
@@ -255,6 +256,10 @@ lasso_beta %>%
   dcast(rn~h, value.var = 'pred_beta') %>%
   xtable %>%
   print(include.rownames = FALSE)
+
+
+
+
 
 # lasso coefs h >4
 lasso_beta %>%
@@ -315,7 +320,35 @@ cairo_pdf('plot/gdp.pdf')
 print(gdp)
 dev.off()
 
-
+lasso_beta %>%
+  group_by(predictor, h, startdt) %>%
+  filter(h<3,
+         startdt== '2000-01-01',
+         predictor %in% c(
+           'oil'
+           #,
+           #'RTRD_Q_DIRI',
+           #'EMPLDEC_Q',
+           #'CONI_Q_CHI', # индекс цен на строительно-монтажные работы
+           #'CNSTR_Q_DIRI'# индекс работ в строительств
+         )
+  ) %>%
+  ungroup%>%
+  mutate(predictor = correct.names.pred(predictor)) %>%
+  group_by(h, predictor) %>%
+  mutate(beta_mean = mean(beta)/100) %>%
+  ungroup %>%
+  group_by(h, startdt, enddt) %>%
+  arrange(desc(abs(beta_mean))) %>% 
+  #filter(row_number()<=5) %>%
+  ungroup() %>%
+  ggplot()+
+  geom_line(aes(enddt, beta))+
+  facet_grid(rows = vars(h), scales = 'free')+
+  labs(title = "",
+       y = "Коэффициент",
+       x = "Дата") +
+  theme_bw()
 
 
 invest <- lasso_beta %>%
@@ -656,4 +689,19 @@ grid.arrange(p,
                                   nrow=2),
                       ncol=2,widths=c(7,3))
 
+
+all_for <- bind_rows(med_forecast %>%
+                       group_by(year) %>%
+                       filter(fctyear== max(fctyear)) %>%
+                       filter(year <2019, year > 2013) %>%
+                       mutate(model = 'МЭР',
+                              pred = value) %>%
+                       filter(!fctname %in% c('2013(базовый)', '2016 (базовый)')) %>%
+                       select(model, year, pred),
+                     forec_vs %>% select(model, year, pred)) %>%
+  ungroup %>%
+  inner_join(raw_y, by = 'year') %>%
+  group_by(model) %>%
+  summarise(rmse = sqrt(sum((pred-investment)^2)))
+all_for
 #ggsave(file="plot/med_forecast.pdf", medfor)
