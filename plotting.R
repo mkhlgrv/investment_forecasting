@@ -629,8 +629,9 @@ plot2 <- ggplot()+
                                                 '2013(базовый) ',
                                                 '2014',
                                                 '2015',
-                                                '2016 (базовый)',
                                                 '2016 (базовый +) ',
+                                                '2016 (базовый)',
+                                                
                                                 '2017')))
            ,
            stat="identity",
@@ -645,6 +646,22 @@ plot2 <- ggplot()+
         legend.margin=ggplot2::margin(0,0,0,0),
         legend.box.margin=ggplot2::margin(10,10,10,10))
 
+
+plot3 <- ggplot()+
+  geom_point(aes(year, investment, color = 'Наблюдаемые значения'),
+             data = raw_y %>% filter(year <2019,year >2013),
+              size = 2)+
+  geom_line(aes(year, investment, color = 'Наблюдаемые значения'),
+            data = raw_y %>% filter(year <2019,year >2013)
+            )+
+  scale_size_manual(values = 2)+
+  scale_color_manual(values = 'black')+
+  guides(size = guide_legend("  "),
+         color = guide_legend("  "))+
+  theme(legend.position="right",
+        legend.justification="left",
+        legend.margin=ggplot2::margin(0,0,0,0),
+        legend.box.margin=ggplot2::margin(10,10,10,10))
 
 p <- forec_vs %>% ggplot()+
   geom_bar(aes(year, pred, fill = model),
@@ -662,7 +679,16 @@ p <- forec_vs %>% ggplot()+
   med_forecast %>%
     group_by(year) %>%
     filter(fctyear== max(fctyear)) %>%
-    filter(year <2019, year > 2013 )
+    filter(year <2019, year > 2013 )%>%
+    mutate(fctname = factor(fctname,
+                            levels = c('2013 (консервативный)',
+                                       '2013(базовый) ',
+                                       '2014',
+                                       '2015',
+                                       '2016 (базовый +) ',
+                                       '2016 (базовый)',
+                                       
+                                       '2017')))
   ,
   stat="identity",
   position = 'dodge'
@@ -686,7 +712,8 @@ p <- forec_vs %>% ggplot()+
 grid.arrange(p,
                       arrangeGrob(g_legend(plot1),
                                   g_legend(plot2),
-                                  nrow=2),
+                                  g_legend(plot3),
+                                  nrow=3),
                       ncol=2,widths=c(7,3))
 
 
