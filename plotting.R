@@ -170,12 +170,15 @@ lasso_beta <-
                  startdt=x$startdt,
                  enddt = x$enddt,
                  predictor = betaval%>% rownames,
-                 beta = (betaval%>% as.numeric)#/(actsd[1,] %>% as.numeric)
+                 beta = (betaval%>% as.numeric)#/(actsd[1,] %>% as.numeric)*(actsd[1,1] %>% as.numeric)
       )
       
     }
   )
 
+
+h.labs <- c('h = 0',"h = 1", 'h = 2', "h = 3", 'h = 4',"h = 5", 'h = 6', "h = 7", 'h = 8')
+names(h.labs) <- c("0", "1", '2','3', '4', '5', '6', '7', '8')
 
 
 lasso_nonzero <- lasso_beta %>%
@@ -190,7 +193,8 @@ lasso_nonzero <- lasso_beta %>%
        x = "Дата",
        color = '',
        linetype = 'Левая граница\nвыборки')+
-  facet_wrap(vars(h), scales = 'free_y')+
+  facet_wrap(~h, scales = 'free',
+             labeller = labeller(h = h.labs))+
   theme_bw()
 
 # количество переменных
@@ -284,7 +288,10 @@ lasso_beta %>%
 
 
 
-# ВВП
+# ВВП -----
+
+
+
 
 gdp <- lasso_beta %>%
   group_by(predictor, h, startdt) %>%
@@ -306,11 +313,12 @@ gdp <- lasso_beta %>%
   ungroup %>%
   group_by(h, startdt, enddt) %>%
   arrange(desc(abs(beta_mean))) %>% 
-  #filter(row_number()<=5) %>%
   ungroup() %>%
+  mutate(h = as.factor(h)) %>%
   ggplot()+
   geom_line(aes(enddt, beta))+
-  facet_grid(rows = vars(h), scales = 'free')+
+  facet_grid(h~., scales = 'free',
+             labeller = labeller(h = h.labs))+
   labs(title = "",
        y = "Коэффициент",
        x = "Дата") +
@@ -344,7 +352,8 @@ lasso_beta %>%
   ungroup() %>%
   ggplot()+
   geom_line(aes(enddt, beta))+
-  facet_grid(rows = vars(h), scales = 'free')+
+  facet_grid(h~., scales = 'free',
+             labeller = labeller(h = h.labs))+
   labs(title = "",
        y = "Коэффициент",
        x = "Дата") +
@@ -378,7 +387,8 @@ invest <- lasso_beta %>%
   ungroup() %>%
   ggplot()+
   geom_line(aes(enddt, beta))+
-  facet_grid(rows = vars(h), scales = 'free')+
+  facet_grid(h~., scales = 'free',
+             labeller = labeller(h = h.labs))+
   labs(title = "",
        y = "Коэффициент",
        x = "Дата") +
@@ -387,6 +397,7 @@ invest <- lasso_beta %>%
 cairo_pdf('plot/invest.pdf')
 print(invest)
 dev.off()
+
 
 
 
@@ -416,7 +427,8 @@ mkr_7d <- lasso_beta %>%
   ungroup() %>%
   ggplot()+
   geom_line(aes(enddt, beta))+
-  facet_grid(rows = vars(h), scales = 'free')+
+  facet_grid(h~., scales = 'free',
+             labeller = labeller(h = h.labs))+
   labs(title = "",
        y = "Коэффициент",
        x = "Дата") +
@@ -450,7 +462,8 @@ invest2gdp <-
   ungroup() %>%
   ggplot()+
   geom_line(aes(enddt, beta))+
-  facet_grid(rows = vars(h), scales = 'free')+
+  facet_grid(h~., scales = 'free',
+             labeller = labeller(h = h.labs))+
   labs(title = "",
        y = "Коэффициент",
        x = "Дата") +
@@ -484,7 +497,8 @@ rts <-   lasso_beta %>%
   ungroup() %>%
   ggplot()+
   geom_line(aes(enddt, beta))+
-  facet_grid(rows = vars(h), scales = 'free')+
+  facet_grid(h~., scales = 'free',
+             labeller = labeller(h = h.labs))+
   labs(title = "",
        y = "Коэффициент",
        x = "Дата") +
@@ -709,12 +723,15 @@ p <- forec_vs %>% ggplot()+
 
 
 
+blank <- grid.rect(gp=gpar(col="white"))
 grid.arrange(p,
                       arrangeGrob(g_legend(plot1),
                                   g_legend(plot2),
                                   g_legend(plot3),
-                                  nrow=3),
+                                  blank,
+                                  nrow=4),
                       ncol=2,widths=c(7,3))
+
 
 
 all_for <- bind_rows(med_forecast %>%
@@ -732,3 +749,179 @@ all_for <- bind_rows(med_forecast %>%
   summarise(rmse = sqrt(sum((pred-investment)^2)))
 all_for
 #ggsave(file="plot/med_forecast.pdf", medfor)
+
+# волосы для всех прогнозов
+
+out_true %>%
+  filter(enddt < as.Date(as.yearqtr(date)-h/4)) %>%
+  group_by(date, h, model, startdt) %>%
+  filter(enddt == max(enddt)) %>%
+  ungroup %>%
+  mutate(forecastdate = as.Date(as.yearqtr(date) -h/4)) %>%
+  mutate(pred = ifelse(h == 0, true, pred)) %>%
+  filter(startdt == '2000-01-01',
+         forecastdate <='2019-01-01',
+         h>0,
+         model != 'Random Walk') %>% 
+  
+  # вариант 1 просто рисуем прогнозы
+  
+  ggplot()+
+  stat_summary(aes(x = date, y = true),
+               fun.y=mean, geom='line', alpha = 0.5, size = 4, color = 'grey')+
+  geom_line(aes(date, pred,  color = forecastdate,
+                group = interaction(startdt,
+                                    forecastdate)),
+                linetype = 'dashed')+
+  facet_wrap(vars(model))+
+  scale_y_continuous(limits = c(-0.2, 0.3))+
+  labs(x = 'Дата',
+       y = 'Квартальное изменение валового накопления\nосновного капитала, 4-ая разность логарифма')+
+  
+  
+  transition_time(forecastdate)+
+  ease_aes('linear')
+
+# вариант 2 сумма квадратов ошибок на каждую дату прогноза
+# с ростом h растет и абсолютная ошибка,
+# поэтому делим ошибку одной модели на среднюю ошибку для каждого h
+
+# na.omit %>%
+# filter(h<=2) %>%
+# mutate(error = (pred - true)^2) %>%
+# group_by(h) %>%
+# mutate(error = (error-mean(error))/sd(error)) %>%
+# ungroup %>%
+# group_by(forecastdate, model, startdt) %>%
+# summarise(sse = mean(error)) %>%
+# ggplot()+
+# geom_line(aes(forecastdate, sse,
+#               color = factor(startdt)))+
+# facet_wrap(vars(model))
+
+
+
+##### рисуем не прогноз, а текущее объяснение
+out_true %>%
+  filter(enddt < as.Date(as.yearqtr(date)-h/4)) %>%
+  group_by(date, h, model, startdt) %>%
+  filter(enddt == max(enddt)) %>%
+  ungroup %>%
+  mutate(forecastdate = as.Date(as.yearqtr(date) -h/4)) %>%
+  filter(#startdt == '2000-01-01',
+         forecastdate <='2019-01-01',
+         h==0,
+         model != 'Random Walk') %>% 
+  
+  # вариант 1 просто рисуем прогнозы
+  
+  ggplot()+
+  stat_summary(aes(x = date, y = true),
+               fun.y=mean, geom='line', alpha = 0.5, size = 4, color = 'grey')+
+  geom_line(aes(date, pred),
+            linetype = 'dashed')+
+  facet_wrap(vars(model))+
+  scale_y_continuous(limits = c(-0.2, 0.15))+
+  labs(x = 'Дата',
+    y = 'Квартальное изменение валового накопления\nосновного капитала, 4-ая разность логарифма')
+
+
+#### ошибки во времени
+out_true %>%
+  filter(enddt < as.Date(as.yearqtr(date)-h/4)) %>%
+  group_by(date, h, model, startdt) %>%
+  filter(enddt == max(enddt)) %>%
+  ungroup %>%
+  mutate(forecastdate = as.Date(as.yearqtr(date) -h/4)) %>%
+  mutate(pred = ifelse(h == 0, true, pred)) %>%
+  filter(#startdt == '1996-01-01',
+    model != 'AR',
+         forecastdate <='2019-01-01',
+         h>0,
+         model != 'Random Walk') %>% 
+  
+  # вариант 2 сумма квадратов ошибок на каждую дату прогноза
+  # с ростом h растет и абсолютная ошибка,
+  # поэтому делим ошибку одной модели на среднюю ошибку для каждого h
+  
+na.omit %>%
+filter(h<=2) %>%
+mutate(error = (pred - true)^2) %>%
+group_by(h) %>%
+mutate(error = (error-mean(error))/sd(error)) %>%
+ungroup %>%
+group_by(forecastdate, model, startdt) %>%
+summarise(sse = mean(error)) %>%
+ggplot()+
+geom_line(aes(forecastdate, sse,
+              color = factor(startdt)))+
+facet_wrap(vars(model))
+
+
+### gif прогнозы
+library(gapminder)
+
+# Charge libraries:
+library(gganimate)
+
+library(gapminder)
+library(gganimate)
+library(gifski)
+library(png)
+
+
+
+fordata <- out_true %>%
+  filter(enddt < as.Date(as.yearqtr(date)-h/4)) %>%
+  group_by(date, h, model, startdt) %>%
+  filter(enddt == max(enddt)) %>%
+  ungroup %>%
+  mutate(forecastdate = as.Date(as.yearqtr(date) -h/4)) %>%
+  mutate(pred = ifelse(h == 0, true, pred)) %>%
+  filter(startdt == '2000-01-01',
+         forecastdate <='2019-01-01',
+         #h>0,
+         h<5,
+         model != 'Random Walk') %>%
+  mutate(giftime =as.numeric(forecastdate)+0.24*((date -forecastdate) %>% as.numeric()))
+  
+myplot <- ggplot(fordata  %>%
+  mutate(true_na = ifelse(date <= forecastdate, true, NA)))+
+  geom_path(data = fordata  %>%
+              mutate(true_na = ifelse(date <= forecastdate, true, NA)) %>% na.omit,
+            aes(date, true_na), alpha = 0.5, size = 2, color = 'grey')+
+  geom_line(aes(date, pred,   color = forecastdate,
+                group = interaction(startdt,
+                                    forecastdate)),
+            #size = 1,
+            show.legend = FALSE,
+            linetype = 'dashed'
+            )+
+  facet_wrap(vars(model))+
+  scale_y_continuous(limits = c(-0.2, 0.3))+
+  labs(x = 'Дата',
+       y = 'Квартальное изменение валового накопления\nосновного капитала, 4-ая разность логарифма')+
+  transition_reveal(giftime) +
+  ease_aes('linear')+
+  theme_minimal()
+
+
+
+animate(myplot, duration = 10, fps = 20, width = 1000, height = 1000, renderer = gifski_renderer())
+anim_save("output.gif")
+
+
+ggplot(fordata  %>%
+         mutate(true_na = ifelse(date <= forecastdate, true, NA))%>%
+         filter(forecastdate <= '2016-01-01'))+
+  geom_path(data = fordata  %>%
+              mutate(true_na = ifelse(date <= forecastdate, true, NA))%>%
+              filter(forecastdate <= '2016-01-01') %>% na.omit,
+            aes(date, true_na), alpha = 0.5, size = 2, color = 'grey')+
+  geom_line(aes(date, pred,   color = forecastdate,
+                group = interaction(startdt,
+                                    forecastdate)),
+            size = 0.8,
+            show.legend = FALSE,
+            linetype = 'dotted')
+
