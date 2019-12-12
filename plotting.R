@@ -754,35 +754,7 @@ all_for
 
 # волосы для всех прогнозов
 
-out_true %>%
-  filter(enddt < as.Date(as.yearqtr(date)-h/4)) %>%
-  group_by(date, h, model, startdt) %>%
-  filter(enddt == max(enddt)) %>%
-  ungroup %>%
-  mutate(forecastdate = as.Date(as.yearqtr(date) -h/4)) %>%
-  mutate(pred = ifelse(h == 0, true, pred)) %>%
-  filter(startdt == '2000-01-01',
-         forecastdate <='2019-01-01',
-         h>0,
-         model != 'Random Walk') %>% 
-  
-  # вариант 1 просто рисуем прогнозы
-  
-  ggplot()+
-  stat_summary(aes(x = date, y = true),
-               fun.y=mean, geom='line', alpha = 0.5, size = 4, color = 'grey')+
-  geom_line(aes(date, pred,  color = forecastdate,
-                group = interaction(startdt,
-                                    forecastdate)),
-                linetype = 'dashed')+
-  facet_wrap(vars(model))+
-  scale_y_continuous(limits = c(-0.2, 0.3))+
-  labs(x = 'Дата',
-       y = 'Квартальное изменение валового накопления\nосновного капитала, 4-ая разность логарифма')+
-  
-  
-  transition_time(forecastdate)+
-  ease_aes('linear')
+
 
 # вариант 2 сумма квадратов ошибок на каждую дату прогноза
 # с ростом h растет и абсолютная ошибка,
@@ -916,7 +888,28 @@ for(modeli in (fordata$model %>% unique)){
   anim_save(paste0("plot/gif/",modeli,".gif"))
 }
 
+myplot <- ggplot(fordata  %>%
+                   mutate(true_na = ifelse(date <= forecastdate, true, NA)))+
+  geom_path(data = fordata  %>%
+              mutate(true_na = ifelse(date <= forecastdate, true, NA)) %>% na.omit,
+            aes(date, true_na), alpha = 0.5, size = 2, color = 'grey')+
+  geom_line(aes(date, pred,   color = forecastdate,
+                group = interaction(startdt,
+                                    forecastdate)),
+            #size = 1,
+            show.legend = FALSE,
+            linetype = 'dashed'
+  )+
+  facet_wrap(vars(model))+
+  scale_y_continuous(limits = c(-0.2, 0.3))+
+  labs(x = 'Дата',
+       y = 'Квартальное изменение валового накопления\nосновного капитала, 4-ая разность логарифма')+
+  transition_reveal(giftime) +
+  ease_aes('linear')+
+  theme_minimal()
 
+animate(myplot, duration = 10, fps = 5, width = 200, height = 200, renderer = gifski_renderer())
+anim_save(paste0("plot/gif/",modeli,".gif"))
 
  # static hair plot ----
 hair <- ggplot(fordata  %>%
@@ -961,4 +954,20 @@ cairo_pdf("plot/hair.pdf")
 print(hair)
 dev.off()
 
+
+
+p <- ggplot(
+  gapminder, 
+  aes(x = gdpPercap, y=lifeExp, size = pop, colour = country)
+) +
+  geom_point(show.legend = FALSE, alpha = 0.7) +
+  scale_color_viridis_d() +
+  scale_size(range = c(2, 12)) +
+  scale_x_log10() +
+  labs(x = "GDP per capita", y = "Life expectancy")
+p <- p + transition_time(year) +
+  labs(title = "Year: {frame_time}")
+cairo_pdf(p)
+print(p)
+dev.off()
 
