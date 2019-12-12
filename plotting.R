@@ -101,7 +101,8 @@ dmsd <- dmdf %>%
   geom_tile(aes(fill = Изменение),color='grey')+
   theme_bw()+
   labs(x = 'Модель',
-       y = 'Горизонт прогнозирования')
+       y = 'Горизонт прогнозирования')+
+  theme(legend.position="bottom")
 
 cairo_pdf('plot/dmsd.pdf')
 print(dmsd)
@@ -195,7 +196,8 @@ lasso_nonzero <- lasso_beta %>%
        linetype = 'Левая граница\nвыборки')+
   facet_wrap(~h, scales = 'free',
              labeller = labeller(h = h.labs))+
-  theme_bw()
+  theme_bw()+
+  theme(legend.position="bottom")
 
 # количество переменных
 
@@ -885,43 +887,78 @@ fordata <- out_true %>%
          model != 'Random Walk') %>%
   mutate(giftime =as.numeric(forecastdate)+0.24*((date -forecastdate) %>% as.numeric()))
   
-myplot <- ggplot(fordata  %>%
-  mutate(true_na = ifelse(date <= forecastdate, true, NA)))+
+
+
+for(modeli in (fordata$model %>% unique)){
+  myplot <- ggplot(fordata  %>%
+                     filter(model == modeli) %>%
+                     mutate(true_na = ifelse(date <= forecastdate, true, NA)))+
+    geom_path(data = fordata  %>%
+                filter(model == modeli) %>%
+                mutate(true_na = ifelse(date <= forecastdate, true, NA)) %>% na.omit,
+              aes(date, true_na), alpha = 0.5, size = 2, color = 'grey')+
+    geom_line(aes(date, pred,   color = forecastdate,
+                  group = interaction(startdt,
+                                      forecastdate)),
+              #size = 1,
+              show.legend = FALSE,
+              linetype = 'dashed'
+    )+
+    #facet_wrap(vars(model))+
+    scale_y_continuous(limits = c(-0.2, 0.3))+
+    labs(x = 'Дата',
+         y = 'Квартальное изменение валового накопления\nосновного капитала, 4-ая разность логарифма')+
+    transition_reveal(giftime) +
+    ease_aes('linear')+
+    theme_minimal()
+  
+  animate(myplot, duration = 10, fps = 20, width = 1000, height = 1000, renderer = gifski_renderer())
+  anim_save(paste0("plot/gif/",modeli,".gif"))
+}
+
+
+
+ # static hair plot ----
+hair <- ggplot(fordata  %>%
+         mutate(true_na = ifelse(date <= forecastdate, true, NA)))+
   geom_path(data = fordata  %>%
               mutate(true_na = ifelse(date <= forecastdate, true, NA)) %>% na.omit,
-            aes(date, true_na), alpha = 0.5, size = 2, color = 'grey')+
-  geom_line(aes(date, pred,   color = forecastdate,
+            
+            
+            aes(date, true_na,
+                alpha = 'Наблюдаемые\nзначения',
+                color = 'Наблюдаемые\nзначения',
+                size = 'Наблюдаемые\nзначения',
+                linetype = 'Наблюдаемые\nзначения'))+
+  geom_line(aes(date, pred,
                 group = interaction(startdt,
-                                    forecastdate)),
-            #size = 1,
-            show.legend = FALSE,
-            linetype = 'dashed'
-            )+
+                                    forecastdate),
+                                    alpha = 'Прогноз',
+                                    color = 'Прогноз',
+                                    size = 'Прогноз',
+                linetype = 'Прогноз')
+  )+
   facet_wrap(vars(model))+
-  scale_y_continuous(limits = c(-0.2, 0.3))+
+  scale_y_continuous(limits = c(-0.2, 0.15))+
   labs(x = 'Дата',
-       y = 'Квартальное изменение валового накопления\nосновного капитала, 4-ая разность логарифма')+
-  transition_reveal(giftime) +
-  ease_aes('linear')+
-  theme_minimal()
+       y = 'Квартальное изменение валового
+       накопления\nосновного капитала, 4-ая разность логарифма')+
+  theme_bw()+
+  # scale_alpha_manual(values = c(0.5, 1))+
+  # scale_size_manual(values = c(2,0.7))+
+  # scale_color_manual(values = c('grey', 'black'))+
+  scale_colour_manual(name="",
+                      values=c('grey', 'black'),
+                      guide = guide_legend(override.aes=list(linetype=c(1,2),
+                                                             alpha = c(0.5, 1),
+                                                             size = c(2, 0.6)))) + 
+  scale_size_manual(name="Size",values=c(2,0.6), guide="none") +
+  scale_alpha_manual(name="Alpha",values=c(0.5,1), guide="none") +
+  scale_linetype_manual(name="Type",values=c(1,2), guide="none") +
+  theme(legend.position="bottom")
 
+cairo_pdf("plot/hair.pdf")
+print(hair)
+dev.off()
 
-
-animate(myplot, duration = 10, fps = 20, width = 1000, height = 1000, renderer = gifski_renderer())
-anim_save("output.gif")
-
-
-ggplot(fordata  %>%
-         mutate(true_na = ifelse(date <= forecastdate, true, NA))%>%
-         filter(forecastdate <= '2016-01-01'))+
-  geom_path(data = fordata  %>%
-              mutate(true_na = ifelse(date <= forecastdate, true, NA))%>%
-              filter(forecastdate <= '2016-01-01') %>% na.omit,
-            aes(date, true_na), alpha = 0.5, size = 2, color = 'grey')+
-  geom_line(aes(date, pred,   color = forecastdate,
-                group = interaction(startdt,
-                                    forecastdate)),
-            size = 0.8,
-            show.legend = FALSE,
-            linetype = 'dotted')
 
