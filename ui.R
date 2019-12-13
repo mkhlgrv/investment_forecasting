@@ -45,41 +45,62 @@ navbarPage('Прогнозирование инвестиций',
                         dataTableOutput('score')
                       ))),
            tabPanel('Все прогнозы',
-                    sidebarLayout(sidebarPanel(
+                      sidebarLayout(sidebarPanel(
                       selectizeInput('startdt_hair', 'Выберите левую границу тренировочной выборки',
                                      out_short$startdt %>% unique %>% set_names(as.yearqtr(.)) ,
-                                     selected = out_short$startdt %>% unique %>% last),
+                                     selected = out_short$startdt %>% unique %>% last,
+                                     multiple = TRUE),
+                      radioButtons('startdt_type_hair', '',
+                                   choices = c('на отдельном графике' = 'divide',
+                                               'на одном графике' = 'together',
+                                               'среднее' = 'mean')
+                                   ),
+                      hr(),
+                      selectizeInput('model_hair', 'Выберите модель',
+                                     choices = out_short$model %>% unique,
+                                     selected = out_short$model %>% unique %>% first, 
+                                     multiple = TRUE),
+                      radioButtons('model_type_hair', '',
+                                   choices = c('на отдельном графике' = 'divide',
+                                               'на одном графике' = 'together',
+                                               'среднее' = 'mean')
+                                   ),
                       helpText('Для каждой модели используется оптимальное количество лагов'),
                       sliderInput('h_hair',
-                                   'Выберите  горизонт прогнозирования (кварталов)',
+                                   'Выберите горизонт прогнозирования (кварталов)',
                                    value =  c(out_short$h %>% min, out_short$h %>% median),
                                    min = out_short$h %>% min, 
                                    max = out_short$h %>% max,
                                   step = 1),
+                      # checkboxInput('actualforecast',
+                      #               'Показывать только наиболее актуальные прогнозы', value = TRUE),
+                      # 
+                      # selectizeInput('model_hair', 'Выберите модель',
+                      #                choices = out_short$model %>% unique,
+                      #                selected = out_short$model %>% unique %>% first, 
+                      #                
+                      #                multiple = TRUE),
+                      # radioButtons('play','Воспроизведение',
+                      #              choices = c('Статический график' = 'stat',
+                      #              'Динамический график' = 'dinamic')),
+                      # radioButtons('facet', 'Тип представления',choices = c('Каждую модель на отдельном графике' = 'divide',
+                      #                                                       'Все модели на одном графике' = 'together',
+                      #                                                       'Усредненный прогноз' = 'mean')
+                      #              , selected = 'divide'),
                       
-                      checkboxInput('actualforecast',
-                                    'Показывать только наиболее актуальные прогнозы', value = TRUE),
                       
                       
-                      selectizeInput('model_hair', 'Выберите модель',
-                                     choices = out_short$model %>% unique,
-                                     selected = out_short$model %>% unique %>% first, 
-                                     
-                                     multiple = TRUE),
-                      radioButtons('facet', 'Тип представления',choices = c('Каждую модель на отдельном графике' = 'divide',
-                                                                            'Все модели на одном графике' = 'together',
-                                                                            'Усредненный прогноз' = 'mean')
-                                   , selected = 'divide'),
              #                       selected = 'relate'),
              #          helpText("Для корректного сравнения
              # тренировочных выборок с разными границами 
              # RMSFE рассчитывается только по первым 12 наблюдениям тестовой выборки
              # (т.е. только для первых 3 лет)."),
-             sliderTextInput(inputId = "forecastdate", 
-                             label = "Дата прогноза",
-                             choices = choises_q,selected = choises_q[1],
-                             animate = animationOptions(interval = 700)
-                              ),
+             
+             # sliderTextInput(inputId = "forecastdate", 
+             #                 label = "Дата прогноза",
+             #                 choices = choises_q,selected = choises_q[1],
+             #                 animate = animationOptions(interval = 700)
+             #                  ),
       
                       hr(),
                       actionButton("update_hair", "Произвести расчёты")
@@ -87,5 +108,5 @@ navbarPage('Прогнозирование инвестиций',
                       
                       
                     ),
-                    mainPanel(plotOutput('hair') )))
+                    mainPanel(plotly::plotlyOutput('hair') )))
 )

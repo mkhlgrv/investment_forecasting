@@ -845,19 +845,23 @@ library(png)
 
 
 
-fordata <- out_true %>%
+out_hair <- out_true %>%
   filter(enddt < as.Date(as.yearqtr(date)-h/4)) %>%
   group_by(date, h, model, startdt) %>%
   filter(enddt == max(enddt)) %>%
   ungroup %>%
   mutate(forecastdate = as.Date(as.yearqtr(date) -h/4)) %>%
   mutate(pred = ifelse(h == 0, true, pred)) %>%
+  mutate(giftime =as.numeric(forecastdate)+0.24*((date -forecastdate) %>% as.numeric())) %>%
+  filter(forecastdate <='2019-01-01') %>%
+  mutate(true = ifelse(date <= forecastdate, true, NA))
+
+
+fordata <- out_hair %>%
   filter(startdt == '2000-01-01',
-         forecastdate <='2019-01-01',
          #h>0,
          h<5,
-         model != 'Random Walk') %>%
-  mutate(giftime =as.numeric(forecastdate)+0.24*((date -forecastdate) %>% as.numeric()))
+         model != 'Random Walk') 
   
 
 
@@ -971,3 +975,26 @@ cairo_pdf(p)
 print(p)
 dev.off()
 
+
+#####
+
+
+p <- fordata %>%
+  accumulate_by(~giftime) %>%
+  ggplot()+
+  
+  geom_line(aes(x = date,
+                y = true,
+                frame = frame),
+            color='grey',
+            size = 2,
+            linetype = 'solid',
+            alpha = 0.5)
+
+
+ggplotly(p) %>%
+  animation_opts(
+    frame = 100, 
+    transition = 0, 
+    redraw = FALSE
+  )

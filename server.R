@@ -20,7 +20,7 @@ function(input, output){
   df.forecast <- eventReactive(input$update,{
     
     out <- out_true %>%
-      filter(model %in% input$model,
+      dplyr::filter(model %in% input$model,
              
              startdt == input$startdt,
              enddt == input$enddt,
@@ -29,15 +29,15 @@ function(input, output){
     
     if(input$optlag){
       optlag <- scoredf_raw %>%
-        filter(type == 'train',
+        dplyr::filter(type == 'train',
                model %in% input$model,
                h == input$h,
                startdt == input$startdt,
                enddt == input$enddt
         ) %>%
         group_by(model) %>%
-        filter(rmse == min(rmse)) %>%
-        filter(lag == min(lag)) %>%
+        dplyr::filter(rmse == min(rmse)) %>%
+        dplyr::filter(lag == min(lag)) %>%
         ungroup %>%
         select(model, lag) %>%
         unique
@@ -47,7 +47,7 @@ function(input, output){
         split(.$model) %>%
         map_dfr(function(x){
           x %>%
-            filter(lag == optlag$lag[which(optlag$model ==
+            dplyr::filter(lag == optlag$lag[which(optlag$model ==
                                              (x$model %>% first))])
         })
       
@@ -56,13 +56,13 @@ function(input, output){
     } else {
       
       out  %<>%
-        filter(lag == input$lag)
+        dplyr::filter(lag == input$lag)
       
     }
     if(nrow(out) != 0){
       
       out %>%
-        filter(date >= c(ifelse(input$onlytrain,
+        dplyr::filter(date >= c(ifelse(input$onlytrain,
                                 enddt %>%
                                    as.Date %>%
                                    as.yearqtr %>%
@@ -231,7 +231,7 @@ function(input, output){
                       'absolute' = scoredf_raw,
                       'relate' = scoredf)
     scoredf %<>% 
-      filter(type == 'test',
+      dplyr::filter(type == 'test',
              model %in% input$model,
              h == input$h,
              startdt == input$startdt,
@@ -243,7 +243,7 @@ function(input, output){
                    by = c('startdt', 'enddt', 'h', 'model', 'lag'))
     } else{
       scoredf %<>%
-        filter(lag == input$lag) %>% print
+        dplyr::filter(lag == input$lag) %>% print
     }
     scoredf %>%
       select(model, rmse) 
@@ -263,42 +263,29 @@ function(input, output){
   
   df.hair <- eventReactive(input$update_hair, {
     out_hair %>%
-      mutate(qdiff = (date %>% as.yearqtr %>% as.numeric)-
-               (forecastdate %>% as.yearqtr %>% as.numeric)) %>%
-      filter(qdiff >= input$h_hair[1]/4,qdiff <=
-               input$h_hair[2]/4) %>%
-      filter(startdt == input$startdt_hair,
-             model %in% input$model_hair) %>%
-      
-      
-      (function(x) {if(input$actualforecast){
-        x %>%
-          mutate(group=paste0(forecastdate, model) %>%
-                   as.factor)
-      }  else {
-        x %>%
-          mutate(group = paste0(forecastdate, model, enddt) %>%
-                   as.factor )
-      }
-                      }) %>%
-      group_by(h, forecastdate, model) %>%
-      mutate(end_max = max(enddt)) %>%
-      ungroup %>%
-      (function(x) {if(input$actualforecast) x %>% filter(enddt == end_max) else x }) 
-      
-      
+      print %>%
+      dplyr::filter(model %in% input$model_hair,
+             startdt %in%  (input$startdt_hair %>% as.Date),
+             h >= input$h_hair[1],
+             h <= input$h_hair[2]
+             )
   })
   
-  output$hair <- renderPlot({
-    
-    print(input$forecastdate)
+  output$hair <- plotly::renderPlotly({
     {(df.hair() %>%
-      filter(forecastdate <= input$forecastdate %>% as.yearqtr %>% as.Date) %>%
-        # (function(x) {
-        #  x %>% write_rds('ssdatatest.RDS')}) %>%
+        accumulate_by(~giftime) %>%
         ggplot()+
       
-      geom_line(aes(x = date, y = true), color='black', size = 1, linetype = 'dashed')+
+      geom_line(data = df.hair() %>%
+                  accumulate_by(~giftime) %>%
+                  na.omit
+                ,mapping = aes(x = date,
+                    y = true,
+                    frame = frame),
+                color='grey',
+                size = 2,
+                linetype = 'solid',
+                alpha = 0.5)+
       
       labs(title = "",
            y = "Изменение инвестиций (log)",
@@ -307,26 +294,115 @@ function(input, output){
       guides(colour = guide_legend(""),
              size = guide_legend(""),
              linetype = guide_legend(""),
-             fill = guide_legend(" "))
+             fill = guide_legend(" "))+
+        theme(legend.position="bottom")+
+        theme_minimal()
      )} %>%
-    (function(x) {if(input$facet == 'divide') {x +
-        geom_line(aes(x = date, y = pred, group = group),
+      # два facet
+    (function(x) {if(input$startdt_type_hair == 'divide' & input$model_type_hair == 'divide')
+      {x +
+        geom_line(aes(x = date,
+                      y = pred,
+                      group = forecastdate,
+                      frame = frame),
+                  linetype = 'dashed',
                                                color = 'cornflowerblue',
                                                alpha = 0.8,
                                                size = 0.8)+
-        facet_wrap(vars(model))} 
-      else if(input$facet == 'together'){x +
-        geom_line(aes(x = date, y = pred, group = group, color = model),
+        facet_grid(startdt~model)
+      } 
+      else if(input$startdt_type_hair == 'divide' & input$model_type_hair == 'together'){x +
+        geom_line(aes(x = date, y = pred,
+                      group = interaction(forecastdate, model),
+                      color = model),
+                  linetype = 'dashed',
                   alpha = 0.8,
-                  size = 0.8)} 
-      else{x+
+                  size = 0.8)+
+          
+          facet_wrap(.~startdt)} 
+      else if(input$startdt_type_hair == 'divide' & input$model_type_hair == 'mean')
+        {x+
         stat_summary(aes(x = date, y = pred, group = forecastdate),
                      geom = 'line',
                      linetype = 'dashed',
                      color = 'cornflowerblue',
-                     fun.y=mean)
+                     alpha = 0.8,
+                     size = 0.8,
+                     fun.y=mean)+
+          facet_wrap(.~startdt)
         
-      }})
+      }
+      else if(input$startdt_type_hair == 'together' & input$model_type_hair == 'divide'){
+        x+ geom_line(aes(x = date, y = pred,
+                         group = interaction(forecastdate, startdt),
+                         linetype = as.factor(startdt)),
+                     alpha = 0.8,
+                     color = 'cornflowerblue',
+                     size = 0.8)+
+          
+          facet_wrap(model~.)+
+          scale_linetype_manual(name="Type",values=c(2,3), guide="none")
+      }
+      else if(input$startdt_type_hair == 'together' & input$model_type_hair == 'together'){
+        x+ geom_line(aes(x = date, y = pred,
+                         group = interaction(forecastdate, startdt, model),
+                         color = model,
+                         linetype = as.factor(startdt)),
+                     alpha = 0.8,
+                     size = 0.8)+
+          scale_linetype_manual(name="Type",values=c(2,3), guide="none")
+      }
+      else if(input$startdt_type_hair == 'together' & input$model_type_hair == 'mean'){
+        x+
+          stat_summary(aes(x = date, y = pred, 
+                           group = interaction(forecastdate, startdt),
+                           linetype = as.factor(startdt)),
+                       geom = 'line',
+                       alpha = 0.8,
+                       size = 0.8,
+                       color = 'cornflowerblue',
+                       fun.y=mean)+
+          scale_linetype_manual(name="Type",values=c(2,3), guide="none")
+      }
+      else if(input$startdt_type_hair == 'mean' & input$model_type_hair == 'divide'){
+        x+
+          stat_summary(aes(x = date, y = pred, group = forecastdate),
+                       geom = 'line',
+                       linetype = 'dashed',
+                       color = 'cornflowerblue',
+                       alpha = 0.8,
+                       size = 0.8,
+                       fun.y=mean)+
+          facet_wrap(model~.)
+      }
+      else if(input$startdt_type_hair == 'mean' & input$model_type_hair == 'together'){
+        x+
+          stat_summary(aes(x = date, y = pred, 
+                           group = interaction(forecastdate, model), color = model),
+                       geom = 'line',
+                       linetype = 'dashed',
+                       alpha = 0.8,
+                       size = 0.8,
+                       fun.y=mean)
+      }
+      else if(input$startdt_type_hair == 'mean' & input$model_type_hair == 'mean'){
+        x+
+          stat_summary(aes(x = date, y = pred, 
+                           group = interaction(forecastdate)),
+                       color = 'cornflowerblue',
+                       geom = 'line',
+                       linetype = 'dashed',
+                       alpha = 0.8,
+                       size = 0.8,
+                       fun.y=mean)
+      }
+      }) %>%
+      plotly::ggplotly() %>%
+      plotly::animation_opts(
+        frame = 100, 
+        transition = 0, 
+        redraw = FALSE
+      )
       
   })
   
