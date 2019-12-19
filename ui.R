@@ -72,6 +72,11 @@ navbarPage('Прогнозирование инвестиций',
                                    min = out_short$h %>% min, 
                                    max = out_short$h %>% max,
                                   step = 1),
+                      radioButtons('play','Воспроизведение',
+                                   choices = c('Статика' = 'stat',
+                                               'Динамика' = 'dinamic')),
+                      downloadButton('downloadPlot', 'Download Plot'),
+                      downloadButton("testgif"),
                       # checkboxInput('actualforecast',
                       #               'Показывать только наиболее актуальные прогнозы', value = TRUE),
                       # 
@@ -80,9 +85,7 @@ navbarPage('Прогнозирование инвестиций',
                       #                selected = out_short$model %>% unique %>% first, 
                       #                
                       #                multiple = TRUE),
-                      # radioButtons('play','Воспроизведение',
-                      #              choices = c('Статический график' = 'stat',
-                      #              'Динамический график' = 'dinamic')),
+
                       # radioButtons('facet', 'Тип представления',choices = c('Каждую модель на отдельном графике' = 'divide',
                       #                                                       'Все модели на одном графике' = 'together',
                       #                                                       'Усредненный прогноз' = 'mean')
@@ -108,5 +111,5 @@ navbarPage('Прогнозирование инвестиций',
                       
                       
                     ),
-                    mainPanel(plotly::plotlyOutput('hair') )))
+                    mainPanel(imageOutput('hair') )))
 )

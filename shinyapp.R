@@ -195,7 +195,7 @@ out_cumulative <- out_true %>%
   mutate(pred_cumulative = exp(log(true_lag)+pred),
          true_cumulative = exp(log(true_lag)+true))
 
-save(out_true, out_short, ytrue,scoredf, scoredf_raw,#out_hair,
+save(out_true, out_short, ytrue,scoredf, scoredf_raw,out_hair,
      out_cumulative,
      
      file = 'shinydata.RData')
@@ -208,7 +208,7 @@ source('lib.R')
 source('fun.R')
 load('data/raw.RData')
 load('shinydata.RData')
-
+library(gganimate)
 
 
 

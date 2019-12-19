@@ -958,7 +958,7 @@ cairo_pdf("plot/hair.pdf")
 print(hair)
 dev.off()
 
-
+library(gapminder)
 
 p <- ggplot(
   gapminder, 
