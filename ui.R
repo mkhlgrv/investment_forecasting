@@ -1,49 +1,49 @@
 navbarPage('Прогнозирование инвестиций',
-           tabPanel('Сравнение моделей',
-                    sidebarLayout(
-                      sidebarPanel(
-                        selectizeInput('startdt', 'Выберите левую границу тренировочной выборки',
-                                       out_short$startdt %>% unique %>% set_names(as.yearqtr(.)) ,
-                                       selected = out_short$startdt %>% unique %>% last),
-                        selectizeInput('enddt', 'Выберите правую границу тренировочной выборки',
-                                       out_short$enddt %>% unique %>% set_names(as.yearqtr(.))),
-                        
-                        numericInput('lag',
-                                     'Выберите количество лагов в модели (кварталов)',
-                                     value = out_short$lag %>% median,
-                                     min = out_short$lag %>% min, 
-                                     max = out_short$lag %>% max),
-                        checkboxInput('optlag', 'Использовать для каждой модели
-                  оптимальное на тренировочной выборке количество лагов', value = TRUE),
-                        numericInput('h',
-                                     'Выберите горизонт прогнозирования (кварталов)',
-                                     value =  out_short$h %>% median,
-                                     min = out_short$h %>% min, 
-                                     max = out_short$h %>% max),
-                        selectizeInput('model', 'Выберите модель',
-                                       choices = out_short$model %>% unique,
-                                       selected = out_short$model %>% unique %>% first, 
-                                       multiple = TRUE),
-                        checkboxInput('onlytrain', 'Показывать только тестовую выборку', value = TRUE),
-                        radioButtons('scoretype',
-                                     "Выберите тип представления RMSFE",
-                                     choices = c("Абсолютные значения" = 'absolute',
-                                                 "Значения относительно базовой модели" = 'relate'), 
-                                     selected = 'relate'),
-                        
-                        helpText("Для корректного сравнения
-             тренировочных выборок с разными границами 
-             RMSFE рассчитывается только по первым 12 наблюдениям тестовой выборки
-             (т.е. только для первых 3 лет)."),
-                        hr(),
-                        
-                        
-                        actionButton("update", "Произвести расчёты")
-                      ),
-                      mainPanel(
-                        plotOutput('forecast'),
-                        dataTableOutput('score')
-                      ))),
+           # tabPanel('Сравнение моделей',
+           #          sidebarLayout(
+           #            sidebarPanel(
+           #              selectizeInput('startdt', 'Выберите левую границу тренировочной выборки',
+           #                             out_short$startdt %>% unique %>% set_names(as.yearqtr(.)) ,
+           #                             selected = out_short$startdt %>% unique %>% last),
+           #              selectizeInput('enddt', 'Выберите правую границу тренировочной выборки',
+           #                             out_short$enddt %>% unique %>% set_names(as.yearqtr(.))),
+           #              
+           #              numericInput('lag',
+           #                           'Выберите количество лагов в модели (кварталов)',
+           #                           value = out_short$lag %>% median,
+           #                           min = out_short$lag %>% min, 
+           #                           max = out_short$lag %>% max),
+           #              checkboxInput('optlag', 'Использовать для каждой модели
+           #        оптимальное на тренировочной выборке количество лагов', value = TRUE),
+           #              numericInput('h',
+           #                           'Выберите горизонт прогнозирования (кварталов)',
+           #                           value =  out_short$h %>% median,
+           #                           min = out_short$h %>% min, 
+           #                           max = out_short$h %>% max),
+           #              selectizeInput('model', 'Выберите модель',
+           #                             choices = out_short$model %>% unique,
+           #                             selected = out_short$model %>% unique %>% first, 
+           #                             multiple = TRUE),
+           #              checkboxInput('onlytrain', 'Показывать только тестовую выборку', value = TRUE),
+           #              radioButtons('scoretype',
+           #                           "Выберите тип представления RMSFE",
+           #                           choices = c("Абсолютные значения" = 'absolute',
+           #                                       "Значения относительно базовой модели" = 'relate'), 
+           #                           selected = 'relate'),
+           #              
+           #              helpText("Для корректного сравнения
+           #   тренировочных выборок с разными границами 
+           #   RMSFE рассчитывается только по первым 12 наблюдениям тестовой выборки
+           #   (т.е. только для первых 3 лет)."),
+           #              hr(),
+           #              
+           #              
+           #              actionButton("update", "Произвести расчёты")
+           #            ),
+           #            mainPanel(
+           #              plotOutput('forecast'),
+           #              dataTableOutput('score')
+           #            ))),
            tabPanel('Все прогнозы',
                       sidebarLayout(sidebarPanel(
                       selectizeInput('startdt_hair', 'Выберите левую границу тренировочной выборки',
@@ -106,7 +106,7 @@ navbarPage('Прогнозирование инвестиций',
              #                  ),
       
                       hr(),
-                      actionButton("update_hair", "Произвести расчёты")
+                      actionButton("update_hair", "Обновить")
                       
                       
                       

@@ -261,7 +261,7 @@ function(input, output){
       formatRound(columns=c(2), digits=3)
   })
   
-  df.hair <- eventReactive(input$update_hair, {
+  df.hair <- function(){
     out_hair %>%
       filter(model %in% input$model_hair) %>%
     dplyr::filter(
@@ -269,135 +269,29 @@ function(input, output){
              h >= input$h_hair[1],
              h <= input$h_hair[2]
              )
-  })
-  
-  
-  hairplot <- eventReactive(input$update_hair,{
+  }
+  # реализует gif через animate
+  hairplot <- function(){
+    df <- df.hair()
     
     
-    
-    {(df.hair() %>%
-             ggplot()+
-             
-             geom_line(data = df.hair() %>%
-                         na.omit
-                       ,mapping = aes(x = date,
-                                      y = true),
-                       color='grey',
-                       size = 2,
-                       linetype = 'solid',
-                       alpha = 0.5)+
-             
-             labs(title = "",
-                  y = "Изменение инвестиций (log)",
-                  x = "Дата")+
-             scale_size_manual(values = 1) +
-             guides(colour = guide_legend(""),
-                    size = guide_legend(""),
-                    linetype = guide_legend(""),
-                    fill = guide_legend(" "))+
-             theme(legend.position="bottom")+
-             theme_minimal()
-           
+    {(df %>%
+        ggplot()+
+        
+        geom_line(data = df %>%
+                    na.omit
+                  ,mapping = aes(x = date,
+                                 y = true),
+                  color='grey',
+                  size = 2,
+                  linetype = 'solid',
+                  alpha = 0.5)
     )} %>%
+      # оформление
+      hair.theme() %>%
       # два facet
-      (function(x) {if(input$startdt_type_hair == 'divide' & input$model_type_hair == 'divide')
-      {x +
-          geom_line(aes(x = date,
-                        y = pred,
-                        group = forecastdate),
-                    linetype = 'dashed',
-                    color = 'cornflowerblue',
-                    alpha = 0.8,
-                    size = 0.8)+
-          facet_grid(startdt~model)
-      } 
-        else if(input$startdt_type_hair == 'divide' & input$model_type_hair == 'together'){x +
-            geom_line(aes(x = date, y = pred,
-                          group = interaction(forecastdate, model),
-                          color = model),
-                      linetype = 'dashed',
-                      alpha = 0.8,
-                      size = 0.8)+
-            
-            facet_wrap(.~startdt)} 
-        else if(input$startdt_type_hair == 'divide' & input$model_type_hair == 'mean')
-        {x+
-            stat_summary(aes(x = date, y = pred, group = forecastdate),
-                         geom = 'line',
-                         linetype = 'dashed',
-                         color = 'cornflowerblue',
-                         alpha = 0.8,
-                         size = 0.8,
-                         fun.y=mean)+
-            facet_wrap(.~startdt)
-          
-        }
-        else if(input$startdt_type_hair == 'together' & input$model_type_hair == 'divide'){
-          x+ geom_line(aes(x = date, y = pred,
-                           group = interaction(forecastdate, startdt),
-                           linetype = as.factor(startdt)),
-                       alpha = 0.8,
-                       color = 'cornflowerblue',
-                       size = 0.8)+
-            
-            facet_wrap(model~.)+
-            scale_linetype_manual(name="Type",values=c(2,3), guide="none")
-        }
-        else if(input$startdt_type_hair == 'together' & input$model_type_hair == 'together'){
-          x+ geom_line(aes(x = date, y = pred,
-                           group = interaction(forecastdate, startdt, model),
-                           color = model,
-                           linetype = as.factor(startdt)),
-                       alpha = 0.8,
-                       size = 0.8)+
-            scale_linetype_manual(name="Type",values=c(2,3), guide="none")
-        }
-        else if(input$startdt_type_hair == 'together' & input$model_type_hair == 'mean'){
-          x+
-            stat_summary(aes(x = date, y = pred, 
-                             group = interaction(forecastdate, startdt),
-                             linetype = as.factor(startdt)),
-                         geom = 'line',
-                         alpha = 0.8,
-                         size = 0.8,
-                         color = 'cornflowerblue',
-                         fun.y=mean)+
-            scale_linetype_manual(name="Type",values=c(2,3), guide="none")
-        }
-        else if(input$startdt_type_hair == 'mean' & input$model_type_hair == 'divide'){
-          x+
-            stat_summary(aes(x = date, y = pred, group = forecastdate),
-                         geom = 'line',
-                         linetype = 'dashed',
-                         color = 'cornflowerblue',
-                         alpha = 0.8,
-                         size = 0.8,
-                         fun.y=mean)+
-            facet_wrap(model~.)
-        }
-        else if(input$startdt_type_hair == 'mean' & input$model_type_hair == 'together'){
-          x+
-            stat_summary(aes(x = date, y = pred, 
-                             group = interaction(forecastdate, model), color = model),
-                         geom = 'line',
-                         linetype = 'dashed',
-                         alpha = 0.8,
-                         size = 0.8,
-                         fun.y=mean)
-        }
-        else if(input$startdt_type_hair == 'mean' & input$model_type_hair == 'mean'){
-          x+
-            stat_summary(aes(x = date, y = pred, 
-                             group = interaction(forecastdate)),
-                         color = 'cornflowerblue',
-                         geom = 'line',
-                         linetype = 'dashed',
-                         alpha = 0.8,
-                         size = 0.8,
-                         fun.y=mean)
-        }
-      }) %>%
+      hair.model.forecast() %>%
+      # если динамический, то через gganimate
       (function(x){
         if(input$play == 'dinamic'){
           x+ 
@@ -410,7 +304,158 @@ function(input, output){
     
     
     
-  })
+  }
+  
+  hair.model.forecast <- function(x) {if(input$startdt_type_hair == 'divide' & input$model_type_hair == 'divide')
+  {x +
+      geom_line(aes(x = date,
+                    y = pred,
+                    group = forecastdate),
+                linetype = 'dashed',
+                color = 'cornflowerblue',
+                alpha = 0.8,
+                size = 0.8)+
+      facet_grid(startdt~model)
+  } 
+    else if(input$startdt_type_hair == 'divide' & input$model_type_hair == 'together'){x +
+        geom_line(aes(x = date, y = pred,
+                      group = interaction(forecastdate, model),
+                      color = model),
+                  linetype = 'dashed',
+                  alpha = 0.8,
+                  size = 0.8)+
+        
+        facet_wrap(.~startdt)} 
+    else if(input$startdt_type_hair == 'divide' & input$model_type_hair == 'mean')
+    {x+
+        stat_summary(aes(x = date, y = pred, group = forecastdate),
+                     geom = 'line',
+                     linetype = 'dashed',
+                     color = 'cornflowerblue',
+                     alpha = 0.8,
+                     size = 0.8,
+                     fun.y=mean)+
+        facet_wrap(.~startdt)
+      
+    }
+    else if(input$startdt_type_hair == 'together' & input$model_type_hair == 'divide'){
+      x+ geom_line(aes(x = date, y = pred,
+                       group = interaction(forecastdate, startdt),
+                       linetype = as.factor(startdt)),
+                   alpha = 0.8,
+                   color = 'cornflowerblue',
+                   size = 0.8)+
+        
+        facet_wrap(model~.)+
+        scale_linetype_manual(name="Type",values=c(2,3), guide="none")
+    }
+    else if(input$startdt_type_hair == 'together' & input$model_type_hair == 'together'){
+      x+ geom_line(aes(x = date, y = pred,
+                       group = interaction(forecastdate, startdt, model),
+                       color = model,
+                       linetype = as.factor(startdt)),
+                   alpha = 0.8,
+                   size = 0.8)+
+        scale_linetype_manual(name="Type",values=c(2,3), guide="none")
+    }
+    else if(input$startdt_type_hair == 'together' & input$model_type_hair == 'mean'){
+      x+
+        stat_summary(aes(x = date, y = pred, 
+                         group = interaction(forecastdate, startdt),
+                         linetype = as.factor(startdt)),
+                     geom = 'line',
+                     alpha = 0.8,
+                     size = 0.8,
+                     color = 'cornflowerblue',
+                     fun.y=mean)+
+        scale_linetype_manual(name="Type",values=c(2,3), guide="none")
+    }
+    else if(input$startdt_type_hair == 'mean' & input$model_type_hair == 'divide'){
+      x+
+        stat_summary(aes(x = date, y = pred, group = forecastdate),
+                     geom = 'line',
+                     linetype = 'dashed',
+                     color = 'cornflowerblue',
+                     alpha = 0.8,
+                     size = 0.8,
+                     fun.y=mean)+
+        facet_wrap(model~.)
+    }
+    else if(input$startdt_type_hair == 'mean' & input$model_type_hair == 'together'){
+      x+
+        stat_summary(aes(x = date, y = pred, 
+                         group = interaction(forecastdate, model), color = model),
+                     geom = 'line',
+                     linetype = 'dashed',
+                     alpha = 0.8,
+                     size = 0.8,
+                     fun.y=mean)
+    }
+    else if(input$startdt_type_hair == 'mean' & input$model_type_hair == 'mean'){
+      x+
+        stat_summary(aes(x = date, y = pred, 
+                         group = interaction(forecastdate)),
+                     color = 'cornflowerblue',
+                     geom = 'line',
+                     linetype = 'dashed',
+                     alpha = 0.8,
+                     size = 0.8,
+                     fun.y=mean)
+    }
+  }
+  hair.theme <- function(x){
+    df <- df.hair()
+    x+
+      
+      labs(title = "",
+           y = "Изменение инвестиций (log)",
+           x = "Дата")+
+      scale_size_manual(values = 1) +
+      guides(colour = guide_legend(""),
+             size = guide_legend(""),
+             linetype = guide_legend(""),
+             fill = guide_legend(" "))+
+      theme(legend.position="bottom")+
+      theme_minimal()+
+      scale_x_date(limits = c(df %>% pull(date) %>% min,
+                              df %>% pull(date) %>% max)) +
+      scale_y_continuous(limits = c(df %>% select(true, pred) %>% unlist %>% na.omit %>% min,
+                                    df %>% select(true, pred) %>% unlist %>% na.omit %>% max))
+    
+  }
+  
+  # реализует gif для функции saveFIG в виде отдельных фреймов для использования цикла по ним
+  hair.frameplot <- function(i){
+    df <- df.hair() %>% filter(giftime <= i)
+    
+    {(df %>%
+        ggplot()+
+        
+        geom_line(data = df %>%
+                    na.omit
+                  ,mapping = aes(x = date,
+                                 y = true),
+                  color='grey',
+                  size = 2,
+                  linetype = 'solid',
+                  alpha = 0.5)
+    )} %>%
+      # оформление
+      hair.theme() %>%
+      # два facet
+      hair.model.forecast()
+  }
+  
+  #set up function to loop through the draw.a.plot() function
+  loop.animate <- function() {
+    frames <- df.hair() %>%
+      pull(giftime) %>%
+      unique %>%
+      sort()
+    lapply(frames, function(i) {
+      hair.frameplot(i) %>% print
+    })
+  }
   
   
   hairimage <- eventReactive(input$update_hair,{
@@ -420,7 +465,20 @@ function(input, output){
       outfile <- tempfile(fileext='.png')
     }
     
-    p <- hairplot()
+    p <- hairplot() %>%
+      arrangeGrob()
+    
+    class(p) <- c("gridplot", class(p))
+    
+    print.gridplot <- function(x, ...) {
+      cat("printing")
+      gridExtra::grid.arrange(x+
+                                theme(legend.position = 'none'),
+                              arrangeGrob (g_legend(x)),
+                              ncol = 2,
+                              width = 1)
+    }
+    
     
     
     if(input$play == 'dinamic'){
@@ -454,11 +512,13 @@ function(input, output){
   }, deleteFile = TRUE)
   
   output$testgif = downloadHandler(
-    filename = 'random.gif',
+    filename = 'output.gif',
     content  = function(file) {
-      p <- hairplot()
-      image_write(animate(p), 'random.gif')
+      saveGIF(
+        loop.animate(), movie.name = 'output.gif', interval = 0.1)
+      file.rename('output.gif', file)
     })
+  
   
   output$downloadPlot <- downloadHandler(
     filename = function() { 

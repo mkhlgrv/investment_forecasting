@@ -28,6 +28,7 @@ train.model <- function(startdt= as.Date('1996-01-01'),
                         series='e',
                         lag = 0L,
                         h = 1L,
+                        target = c('investment','RTRD_Q_DIRI','GDPEA_Q_DIRI','UNEMPL_Q_SH', 'CPI_Q_CHI'),
                         # parameters for durable evaluations with function arguments from expand.grid table
                         i = NULL, 
                         N = NULL
@@ -50,9 +51,11 @@ train.model <- function(startdt= as.Date('1996-01-01'),
     load('~/investment_forecasting/data/stationary_data_oil.RData')
   }
   
+  target <- match.arg(target)
+  
   if(!model %in% c('arima', 'rw')){
     if(!series %in% c('', 'e', 'oil')){
-      df %<>% df[, c('investment',
+      df %<>% df[, c(target,
                      series)]
     }
     # create lag
@@ -65,10 +68,14 @@ train.model <- function(startdt= as.Date('1996-01-01'),
       return(NULL)
     }
     
-    df$y <- lag.xts(df$investment, k = -h)
+    df$y <- lag.xts(df[,target], k = -h)
     
     if(h == 0){
-      df$investment <-df$invest2gdp <-  NULL
+      if(target == 'investment'){
+        df$investment <-df$invest2gdp <-  NULL
+      } else{
+        df %<>% .[, colnames(.) != target]
+      }
     }
     
     df %<>% .[rowSums(is.na(.[,colnames(.)!='y']))==0,]

@@ -513,6 +513,7 @@ dev.off()
 
 # список рядов ----
 
+source('fun.R', encoding = 'utf-8')
 load('data/stationary_data_ext.RData')
 tibble(name = df %>% names()) %>%
   mutate(Название = correct.names.pred(name),
@@ -571,6 +572,11 @@ tibble(name = df %>% names()) %>%
   arrange(Название) %>%
   xtable %>%
   print(include.rownames = FALSE)
+
+
+
+# investment RTRD_Q_DIRI GDPEA_Q_DIRI UNEMPL_Q_SH CPI_Q_CHI
+
 
 
 load('data/raw.RData')
@@ -852,16 +858,17 @@ out_hair <- out_true %>%
   ungroup %>%
   mutate(forecastdate = as.Date(as.yearqtr(date) -h/4)) %>%
   mutate(pred = ifelse(h == 0, true, pred)) %>%
-  mutate(giftime =as.numeric(forecastdate)+0.24*((date -forecastdate) %>% as.numeric())) %>%
+  mutate(giftime =as.numeric(forecastdate)+0.2*((date -forecastdate) %>% as.numeric())) %>%
   filter(forecastdate <='2019-01-01') %>%
   mutate(true = ifelse(date <= forecastdate, true, NA))
 
 
 fordata <- out_hair %>%
-  filter(startdt == '2000-01-01',
-         #h>0,
+  filter(startdt ==
+           '2000-01-01',
          h<5,
-         model != 'Random Walk') 
+         model !=
+           'Random Walk') 
   
 
 
