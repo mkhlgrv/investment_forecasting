@@ -261,6 +261,31 @@ function(input, output){
       formatRound(columns=c(2), digits=3)
   })
   
+  
+  image.size <- function(){
+    if(input$model_type_hair == 'divide'){
+      width = 400*length(input$model_hair) 
+    } else {
+      width = 400
+    }
+    
+    
+    if(input$startdt_type_hair == 'divide'){
+      height = 300*length(input$startdt_hair)
+      
+    } else {
+      height = 300
+    }
+    
+    
+    c(width = width, 
+      height=height)
+  }
+   #  eventReactive(input$update,{
+   #  
+   #  
+   # }) 
+   # 
   df.hair <- function(){
     out_hair %>%
       filter(model %in% input$model_hair) %>%
@@ -287,10 +312,12 @@ function(input, output){
                   linetype = 'solid',
                   alpha = 0.5)
     )} %>%
-      # оформление
-      hair.theme() %>%
       # два facet
       hair.model.forecast() %>%
+      # оформление
+      hair.theme() %>%
+      
+      
       # если динамический, то через gganimate
       (function(x){
         if(input$play == 'dinamic'){
@@ -315,7 +342,7 @@ function(input, output){
                 color = 'cornflowerblue',
                 alpha = 0.8,
                 size = 0.8)+
-      facet_grid(startdt~model)
+      facet_wrap(startdt~model)
   } 
     else if(input$startdt_type_hair == 'divide' & input$model_type_hair == 'together'){x +
         geom_line(aes(x = date, y = pred,
@@ -324,8 +351,8 @@ function(input, output){
                   linetype = 'dashed',
                   alpha = 0.8,
                   size = 0.8)+
-        
-        facet_wrap(.~startdt)} 
+        facet_wrap(startdt~.)
+      } 
     else if(input$startdt_type_hair == 'divide' & input$model_type_hair == 'mean')
     {x+
         stat_summary(aes(x = date, y = pred, group = forecastdate),
@@ -335,7 +362,7 @@ function(input, output){
                      alpha = 0.8,
                      size = 0.8,
                      fun.y=mean)+
-        facet_wrap(.~startdt)
+        facet_wrap(startdt~.)
       
     }
     else if(input$startdt_type_hair == 'together' & input$model_type_hair == 'divide'){
@@ -345,8 +372,7 @@ function(input, output){
                    alpha = 0.8,
                    color = 'cornflowerblue',
                    size = 0.8)+
-        
-        facet_wrap(model~.)+
+        facet_wrap(.~model)+
         scale_linetype_manual(name="Type",values=c(2,3), guide="none")
     }
     else if(input$startdt_type_hair == 'together' & input$model_type_hair == 'together'){
@@ -379,7 +405,7 @@ function(input, output){
                      alpha = 0.8,
                      size = 0.8,
                      fun.y=mean)+
-        facet_wrap(model~.)
+        facet_wrap(.~model)
     }
     else if(input$startdt_type_hair == 'mean' & input$model_type_hair == 'together'){
       x+
@@ -415,8 +441,8 @@ function(input, output){
              size = guide_legend(""),
              linetype = guide_legend(""),
              fill = guide_legend(" "))+
-      theme(legend.position="bottom")+
       theme_minimal()+
+      theme(legend.position = "none") +
       scale_x_date(limits = c(df %>% pull(date) %>% min,
                               df %>% pull(date) %>% max)) +
       scale_y_continuous(limits = c(df %>% select(true, pred) %>% unlist %>% na.omit %>% min,
@@ -440,10 +466,11 @@ function(input, output){
                   linetype = 'solid',
                   alpha = 0.5)
     )} %>%
-      # оформление
-      hair.theme() %>%
       # два facet
-      hair.model.forecast()
+      hair.model.forecast() %>%
+      # оформление
+      hair.theme()
+      
   }
   
   #set up function to loop through the draw.a.plot() function
@@ -465,36 +492,28 @@ function(input, output){
       outfile <- tempfile(fileext='.png')
     }
     
-    p <- hairplot() %>%
-      arrangeGrob()
+    p <- hairplot()
     
-    class(p) <- c("gridplot", class(p))
-    
-    print.gridplot <- function(x, ...) {
-      cat("printing")
-      gridExtra::grid.arrange(x+
-                                theme(legend.position = 'none'),
-                              arrangeGrob (g_legend(x)),
-                              ncol = 2,
-                              width = 1)
-    }
-    
+    sizes <- image.size()
+    sizes['width'] = 400
+    sizes['height'] = 400
     
     
     if(input$play == 'dinamic'){
       anim_save("outfile.gif", animate(p)) 
       
       list(src = "outfile.gif",
-           contentType = 'image/gif'
-           # width = 400,
-           # height = 300,
+           contentType = 'image/gif',
+           width=sizes['width'],
+           height=sizes['height']
            # alt = "This is alternate text"
       )
     } else {
       
       
       # Generate a png
-      png(outfile, width=400, height=400)
+      png(outfile,
+          width=sizes['width'], height=sizes['height'])
       print(p)
       dev.off()
       
@@ -511,65 +530,31 @@ function(input, output){
     
   }, deleteFile = TRUE)
   
-  output$testgif = downloadHandler(
-    filename = 'output.gif',
+  output$downloadgif = downloadHandler(
+    filename = 'forecast.gif',
     content  = function(file) {
+      outfile <- tempfile(fileext='.gif')
+      sizes <- image.size()
       saveGIF(
-        loop.animate(), movie.name = 'output.gif', interval = 0.1)
-      file.rename('output.gif', file)
+        loop.animate(),
+        movie.name = 'forecast.gif',
+        interval = 0.1,
+        clean = TRUE,
+        ani.width=sizes['width'],
+        ani.height=sizes['height'])
+      
+      file.rename('forecast.gif', file)
     })
   
   
-  output$downloadPlot <- downloadHandler(
-    filename = function() { 
-      paste('outfile',
-                                  if(input$play == 'dinamic'){
-                                    '.gif'
-                                  } else {
-                                    '.png'
-                                  }
-                                  , sep='')
-      },
+  output$downloadpng <- downloadHandler(
+    filename = 'forecast.png',
     content = function(file) {
-      #ggsave(file,hairplot())
-      p <- df.hair() %>%
-        ggplot()+
-        
-        geom_line(data = df.hair() %>%
-                    na.omit
-                  ,mapping = aes(x = date,
-                                 y = true),
-                  color='grey',
-                  size = 2,
-                  linetype = 'solid',
-                  alpha = 0.5)+
-        
-        labs(title = "",
-             y = "Изменение инвестиций (log)",
-             x = "Дата")+
-        scale_size_manual(values = 1) +
-        guides(colour = guide_legend(""),
-               size = guide_legend(""),
-               linetype = guide_legend(""),
-               fill = guide_legend(" "))+
-        theme(legend.position="bottom")+
-        theme_minimal()+
-        # transition_reveal(giftime) +
-        ease_aes('linear')+
-        transition_states(giftime,
-          transition_length = 2,
-          state_length = 1
-        ) +
-        enter_fade() + 
-        exit_shrink()
-      
-      image <- animate(p, nframes = 5, renderer = gifski_renderer("gganim.gif"))
-      
-      #> Linking to ImageMagick 6.9.9.39
-      #> Enabled features: cairo, fontconfig, freetype, lcms, pango, rsvg, webp
-      #> Disabled features: fftw, ghostscript, x11
-      
-      image_write(image, 'test.gif')
+      sizes <- image.size()
+      png(file, width=sizes['width'], height=sizes['height'])
+      hairplot() %>% print
+      dev.off()
+    
     }
   )
   
