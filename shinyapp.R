@@ -208,8 +208,6 @@ source('lib.R')
 source('fun.R')
 load('data/raw.RData')
 load('shinydata.RData')
-library(gganimate)
-
 
 
 
