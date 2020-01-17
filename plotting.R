@@ -151,12 +151,19 @@ lasso_beta <-
         actsd <- sddata %>% filter(startdt == x$startdt,
                                    enddt == x$enddt) %>%
           select(-c(investment, startdt, enddt, invest2gdp))
+        # s.d. of y
+        ysd <- sddata %>% filter(startdt == x$startdt,
+                                 enddt == x$enddt) %>%
+          pull(investment) %>%
+          as.numeric
+          
       } else{
         actsd <- sddata %>% filter(startdt == x$startdt,
                                    enddt == x$enddt) %>%
           select(-c(startdt, enddt))
+        ysd <- actsd[1,1] %>%
+          as.numeric
       }
-      
       
       
       betaval = x$model_fit$beta
@@ -166,12 +173,13 @@ lasso_beta <-
         print(betaval%>% rownames)
         stop()
       }
+
       data.frame(model = x$model,
                  h = x$h,
                  startdt=x$startdt,
                  enddt = x$enddt,
                  predictor = betaval%>% rownames,
-                 beta = (betaval%>% as.numeric)#/(actsd[1,] %>% as.numeric)*(actsd[1,1] %>% as.numeric)
+                 beta = (betaval%>% as.numeric)/(actsd[1,] %>% as.numeric)*(ysd)
       )
       
     }
@@ -242,7 +250,7 @@ lasso_p <- lasso_beta %>%
   facet_wrap(vars(h))
 
 plotly::ggplotly(lasso_p)
-a
+
 # lasso coefs h <=4
 lasso_beta %>%
   mutate(predictor = correct.names.pred(predictor)) %>%
@@ -251,7 +259,7 @@ lasso_beta %>%
   filter(startdt== '2000-01-01') %>%
   filter(h<=4) %>%
   group_by(predictor, h) %>%
-  summarise(beta = mean(beta)/100) %>%
+  summarise(beta = mean(beta)) %>%
   ungroup %>%
   group_by(h) %>%
   arrange(desc(abs(beta))) %>%
@@ -289,6 +297,25 @@ lasso_beta %>%
 
 
 
+
+lasso_beta %>%
+  mutate(predictor = correct.names.pred(predictor)) %>%
+  group_by(predictor, h, startdt) %>%
+  
+  filter(startdt== '2000-01-01') %>%
+  filter(h %in% c(0,1,2,7,8 )) %>%
+  group_by(predictor, h) %>%
+  summarise(beta = mean(beta)/100) %>%
+  ungroup %>%
+  group_by(h) %>%
+  arrange(desc(abs(beta))) %>%
+  mutate(rn = row_number(),
+         pred_beta = paste0(predictor,' ', round(beta,3))) %>%
+  filter(rn<=5) %>%
+  ungroup %>%
+  dcast(rn~h, value.var = 'pred_beta') %>%
+  xtable %>%
+  print(include.rownames = FALSE)
 
 # ВВП -----
 
@@ -510,6 +537,381 @@ cairo_pdf('plot/rts.pdf')
 print(rts)
 dev.off()
 
+
+
+# in 9
+
+gdp <- lasso_beta %>%
+  group_by(predictor, h, startdt) %>%
+  filter(
+         startdt== '2000-01-01',
+         #' predictor %in% c(
+         #'   'GDPEA_Q_DIRI'
+         #'   #,
+         #'   #'RTRD_Q_DIRI',
+         #'   #'EMPLDEC_Q',
+         #'   #'CONI_Q_CHI', # индекс цен на строительно-монтажные работы
+         #'   #'CNSTR_Q_DIRI'# индекс работ в строительств
+         #' )
+  ) %>%
+  ungroup%>%
+  mutate(predictor = correct.names.pred(predictor)) %>%
+  group_by(h, predictor) %>%
+  mutate(beta_mean = mean(beta)) %>%
+  ungroup %>%
+  group_by(h, startdt, enddt) %>%
+  arrange(desc(abs(beta_mean))) %>% 
+  ungroup() %>%
+  group_by(h, predictor, startdt) %>%
+  filter(mean(abs(beta))>0) %>%
+  ungroup %>%
+  mutate(h = as.factor(h)) %>%
+  ggplot()+
+  geom_line(aes(enddt, beta, group = predictor),
+            alpha = 0.1)+
+  facet_wrap(h~.,
+             labeller = labeller(h = h.labs))+
+  labs(title = "",
+       y = "Коэффициент",
+       x = "Дата") +
+  theme_bw()+
+  theme(axis.title.y=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank(),         panel.grid.major = element_blank(),         panel.grid.minor = element_blank())+
+  scale_y_continuous(trans= 'asinh')+
+  
+  
+    geom_line(data = lasso_beta %>%
+                group_by(predictor, h, startdt) %>%
+                filter(
+                  startdt== '2000-01-01',
+                  predictor %in% c(
+                    'GDPEA_Q_DIRI'
+                    #,
+                    #'RTRD_Q_DIRI',
+                    #'EMPLDEC_Q',
+                    #'CONI_Q_CHI', # индекс цен на строительно-монтажные работы
+                    #'CNSTR_Q_DIRI'# индекс работ в строительств
+                  )
+                ) %>%
+                ungroup%>%
+                mutate(predictor = correct.names.pred(predictor)) %>%
+                group_by(h, predictor) %>%
+                mutate(beta_mean = mean(beta)) %>%
+                ungroup %>%
+                group_by(h, startdt, enddt) %>%
+                arrange(desc(abs(beta_mean))) %>% 
+                ungroup() %>%
+                group_by(h, predictor, startdt) %>%
+                filter(mean(abs(beta))>0) %>%
+                ungroup %>%
+                mutate(h = as.factor(h)),
+                mapping = aes(enddt, beta),
+              size =1)
+  
+cairo_pdf('plot/gdp9.pdf')
+print(gdp)
+dev.off()
+
+
+invest <- lasso_beta %>%
+  group_by(predictor, h, startdt) %>%
+  filter(
+    startdt== '2000-01-01',
+    #' )
+  ) %>%
+  ungroup%>%
+  mutate(predictor = correct.names.pred(predictor)) %>%
+  group_by(h, predictor) %>%
+  mutate(beta_mean = mean(beta)) %>%
+  ungroup %>%
+  group_by(h, startdt, enddt) %>%
+  arrange(desc(abs(beta_mean))) %>% 
+  ungroup() %>%
+  group_by(h, predictor, startdt) %>%
+  filter(mean(abs(beta))>0) %>%
+  ungroup %>%
+  mutate(h = as.factor(h)) %>%
+  ggplot()+
+  geom_line(aes(enddt, beta, group = predictor),
+            alpha = 0.1)+
+  facet_wrap(h~., 
+             labeller = labeller(h = h.labs))+
+  labs(title = "",
+       y = "Коэффициент",
+       x = "Дата") +
+  theme_bw()+
+  theme(axis.title.y=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank(),         panel.grid.major = element_blank(),         panel.grid.minor = element_blank())+
+  scale_y_continuous(trans= 'asinh')+
+  
+  
+  geom_line(data = lasso_beta %>%
+              group_by(predictor, h, startdt) %>%
+              filter(
+                startdt== '2000-01-01',
+                predictor %in% c(
+                  'investment'
+                  #,
+                  #'RTRD_Q_DIRI',
+                  #'EMPLDEC_Q',
+                  #'CONI_Q_CHI', # индекс цен на строительно-монтажные работы
+                  #'CNSTR_Q_DIRI'# индекс работ в строительств
+                )
+              ) %>%
+              ungroup%>%
+              mutate(predictor = correct.names.pred(predictor)) %>%
+              group_by(h, predictor) %>%
+              mutate(beta_mean = mean(beta)) %>%
+              ungroup %>%
+              group_by(h, startdt, enddt) %>%
+              arrange(desc(abs(beta_mean))) %>% 
+              ungroup() %>%
+              group_by(h, predictor, startdt) %>%
+              filter(mean(abs(beta))>0) %>%
+              ungroup %>%
+              mutate(h = as.factor(h)),
+            mapping = aes(enddt, beta),
+            size =1)
+
+cairo_pdf('plot/invest9.pdf')
+print(invest)
+dev.off()
+
+
+
+invest2gdp <- lasso_beta %>%
+  group_by(predictor, h, startdt) %>%
+  filter(
+    startdt== '2000-01-01',
+    #' predictor %in% c(
+    #'   'GDPEA_Q_DIRI'
+    #'   #,
+    #'   #'RTRD_Q_DIRI',
+    #'   #'EMPLDEC_Q',
+    #'   #'CONI_Q_CHI', # индекс цен на строительно-монтажные работы
+    #'   #'CNSTR_Q_DIRI'# индекс работ в строительств
+    #' )
+  ) %>%
+  ungroup%>%
+  mutate(predictor = correct.names.pred(predictor)) %>%
+  group_by(h, predictor) %>%
+  mutate(beta_mean = mean(beta)) %>%
+  ungroup %>%
+  group_by(h, startdt, enddt) %>%
+  arrange(desc(abs(beta_mean))) %>% 
+  ungroup() %>%
+  group_by(h, predictor, startdt) %>%
+  filter(mean(abs(beta))>0) %>%
+  ungroup %>%
+  mutate(h = as.factor(h)) %>%
+  ggplot()+
+  geom_line(aes(enddt, beta, group = predictor),
+            alpha = 0.1)+
+  facet_wrap(h~., 
+             labeller = labeller(h = h.labs))+
+  labs(title = "",
+       y = "Коэффициент",
+       x = "Дата") +
+  theme_bw()+
+  theme(axis.title.y=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank()
+        )+
+  scale_y_continuous(trans= 'asinh')+
+  
+  
+  geom_line(data = lasso_beta %>%
+              group_by(predictor, h, startdt) %>%
+              filter(
+                startdt== '2000-01-01',
+                predictor %in% c(
+                  'invest2gdp'
+                  #,
+                  #'RTRD_Q_DIRI',
+                  #'EMPLDEC_Q',
+                  #'CONI_Q_CHI', # индекс цен на строительно-монтажные работы
+                  #'CNSTR_Q_DIRI'# индекс работ в строительств
+                )
+              ) %>%
+              ungroup%>%
+              mutate(predictor = correct.names.pred(predictor)) %>%
+              group_by(h, predictor) %>%
+              mutate(beta_mean = mean(beta)) %>%
+              ungroup %>%
+              group_by(h, startdt, enddt) %>%
+              arrange(desc(abs(beta_mean))) %>% 
+              ungroup() %>%
+              group_by(h, predictor, startdt) %>%
+              filter(mean(abs(beta))>0) %>%
+              ungroup %>%
+              mutate(h = as.factor(h)),
+            mapping = aes(enddt, beta),
+            size =1)
+
+cairo_pdf('plot/invest2gdp9.pdf')
+print(invest2gdp)
+dev.off()
+
+
+
+rts <- lasso_beta %>%
+  group_by(predictor, h, startdt) %>%
+  filter(
+    startdt== '2000-01-01',
+    #' predictor %in% c(
+    #'   'GDPEA_Q_DIRI'
+    #'   #,
+    #'   #'RTRD_Q_DIRI',
+    #'   #'EMPLDEC_Q',
+    #'   #'CONI_Q_CHI', # индекс цен на строительно-монтажные работы
+    #'   #'CNSTR_Q_DIRI'# индекс работ в строительств
+    #' )
+  ) %>%
+  ungroup%>%
+  mutate(predictor = correct.names.pred(predictor)) %>%
+  group_by(h, predictor) %>%
+  mutate(beta_mean = mean(beta)) %>%
+  ungroup %>%
+  group_by(h, startdt, enddt) %>%
+  arrange(desc(abs(beta_mean))) %>%
+  ungroup() %>%
+  group_by(h, predictor, startdt) %>%
+  filter(mean(abs(beta))>0) %>%
+  ungroup %>%
+  mutate(h = as.factor(h)) %>%
+  ggplot()+
+  geom_line(aes(enddt, beta, group = predictor),
+            alpha = 0.1)+
+  facet_wrap(h~.,
+             labeller = labeller(h = h.labs))+
+  labs(title = "",
+       y = "Коэффициент",
+       x = "Дата") +
+  theme_bw()+
+  theme(axis.title.y=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank(),         panel.grid.major = element_blank(),         panel.grid.minor = element_blank())+
+  scale_y_continuous(trans= 'asinh')+
+
+
+  geom_line(data = lasso_beta %>%
+              group_by(predictor, h, startdt) %>%
+              filter(
+                startdt== '2000-01-01',
+                predictor %in% c(
+                  'rts'
+                  #,
+                  #'RTRD_Q_DIRI',
+                  #'EMPLDEC_Q',
+                  #'CONI_Q_CHI', # индекс цен на строительно-монтажные работы
+                  #'CNSTR_Q_DIRI'# индекс работ в строительств
+                )
+              ) %>%
+              ungroup%>%
+              mutate(predictor = correct.names.pred(predictor)) %>%
+              group_by(h, predictor) %>%
+              mutate(beta_mean = mean(beta)) %>%
+              ungroup %>%
+              group_by(h, startdt, enddt) %>%
+              arrange(desc(abs(beta_mean))) %>%
+              ungroup() %>%
+              group_by(h, predictor, startdt) %>%
+              filter(mean(abs(beta))>0) %>%
+              ungroup %>%
+              mutate(h = as.factor(h)),
+            mapping = aes(enddt, beta),
+            size =1)
+
+cairo_pdf('plot/rts9.pdf')
+print(rts)
+dev.off()
+
+
+
+mkr <- lasso_beta %>%
+  group_by(predictor, h, startdt) %>%
+  filter(
+    startdt== '2000-01-01',
+    #' predictor %in% c(
+    #'   'GDPEA_Q_DIRI'
+    #'   #,
+    #'   #'RTRD_Q_DIRI',
+    #'   #'EMPLDEC_Q',
+    #'   #'CONI_Q_CHI', # индекс цен на строительно-монтажные работы
+    #'   #'CNSTR_Q_DIRI'# индекс работ в строительств
+    #' )
+  ) %>%
+  ungroup%>%
+  mutate(predictor = correct.names.pred(predictor)) %>%
+  group_by(h, predictor) %>%
+  mutate(beta_mean = mean(beta)) %>%
+  ungroup %>%
+  group_by(h, startdt, enddt) %>%
+  arrange(desc(abs(beta_mean))) %>%
+  ungroup() %>%
+  group_by(h, predictor, startdt) %>%
+  filter(mean(abs(beta))>0) %>%
+  ungroup %>%
+  mutate(h = as.factor(h)) %>%
+  ggplot()+
+  geom_line(aes(enddt, beta, group = predictor),
+            alpha = 0.1)+
+  facet_wrap(h~.,
+             labeller = labeller(h = h.labs))+
+  labs(title = "",
+       y = "Коэффициент",
+       x = "Дата") +
+  theme_bw()+
+  theme(axis.title.y=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank(),         panel.grid.major = element_blank(),         panel.grid.minor = element_blank())+
+  scale_y_continuous(trans= 'asinh')+
+
+
+  geom_line(data = lasso_beta %>%
+              group_by(predictor, h, startdt) %>%
+              filter(
+                startdt== '2000-01-01',
+                predictor %in% c(
+                  'mkr_7d'
+                  #,
+                  #'RTRD_Q_DIRI',
+                  #'EMPLDEC_Q',
+                  #'CONI_Q_CHI', # индекс цен на строительно-монтажные работы
+                  #'CNSTR_Q_DIRI'# индекс работ в строительств
+                )
+              ) %>%
+              ungroup%>%
+              mutate(predictor = correct.names.pred(predictor)) %>%
+              group_by(h, predictor) %>%
+              mutate(beta_mean = mean(beta)) %>%
+              ungroup %>%
+              group_by(h, startdt, enddt) %>%
+              arrange(desc(abs(beta_mean))) %>%
+              ungroup() %>%
+              group_by(h, predictor, startdt) %>%
+              filter(mean(abs(beta))>0) %>%
+              ungroup %>%
+              mutate(h = as.factor(h)),
+            mapping = aes(enddt, beta),
+            size =1)
+
+cairo_pdf('plot/mkr9.pdf')
+print(mkr)
+dev.off()
+
+
+
+
+library(scales)
+asinh_trans <- function(){
+  trans_new(name = 'asinh', transform = function(x) asinh(x), 
+            inverse = function(x) sinh(x))
+}
 
 # список рядов ----
 

@@ -342,7 +342,7 @@ function(input, output){
                 color = 'cornflowerblue',
                 alpha = 0.8,
                 size = 0.8)+
-      facet_wrap(startdt~model)
+      facet_grid(startdt~model)
   } 
     else if(input$startdt_type_hair == 'divide' & input$model_type_hair == 'together'){x +
         geom_line(aes(x = date, y = pred,
@@ -351,7 +351,7 @@ function(input, output){
                   linetype = 'dashed',
                   alpha = 0.8,
                   size = 0.8)+
-        facet_wrap(startdt~.)
+        facet_grid(startdt~.)
       } 
     else if(input$startdt_type_hair == 'divide' & input$model_type_hair == 'mean')
     {x+
@@ -362,7 +362,7 @@ function(input, output){
                      alpha = 0.8,
                      size = 0.8,
                      fun.y=mean)+
-        facet_wrap(startdt~.)
+        facet_grid(startdt~.)
       
     }
     else if(input$startdt_type_hair == 'together' & input$model_type_hair == 'divide'){
@@ -372,7 +372,7 @@ function(input, output){
                    alpha = 0.8,
                    color = 'cornflowerblue',
                    size = 0.8)+
-        facet_wrap(.~model)+
+        facet_grid(.~model)+
         scale_linetype_manual(name="Type",values=c(2,3), guide="none")
     }
     else if(input$startdt_type_hair == 'together' & input$model_type_hair == 'together'){
@@ -405,7 +405,7 @@ function(input, output){
                      alpha = 0.8,
                      size = 0.8,
                      fun.y=mean)+
-        facet_wrap(.~model)
+        facet_grid(.~model)
     }
     else if(input$startdt_type_hair == 'mean' & input$model_type_hair == 'together'){
       x+
@@ -495,8 +495,8 @@ function(input, output){
     p <- hairplot()
     
     sizes <- image.size()
-    sizes['width'] = 400
-    sizes['height'] = 400
+    #sizes['width'] = 400
+    #sizes['height'] = 400
     
     
     if(input$play == 'dinamic'){
