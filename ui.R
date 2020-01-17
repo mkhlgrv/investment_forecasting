@@ -50,22 +50,29 @@ navbarPage('Прогнозирование инвестиций',
                                      out_short$startdt %>% unique %>% set_names(as.yearqtr(.)) ,
                                      selected = out_short$startdt %>% unique %>% last,
                                      multiple = TRUE),
+                      conditionalPanel('false',
                       radioButtons('startdt_type_hair', '',
                                    choices = c('на отдельном графике' = 'divide',
                                                'на одном графике' = 'together',
                                                'среднее' = 'mean')
+                      )
                                    ),
                       hr(),
                       selectizeInput('model_hair', 'Выберите модель',
                                      choices = out_short$model %>% unique,
                                      selected = out_short$model %>% unique %>% first, 
-                                     multiple = TRUE),
+                                     multiple = TRUE,
+                                     options = list(maxItems = 2)),
+                      helpText('Можно выбрать не больше 2 моделей'),
+                      conditionalPanel('false',
                       radioButtons('model_type_hair', '',
                                    choices = c('на отдельном графике' = 'divide',
                                                'на одном графике' = 'together',
-                                               'среднее' = 'mean')
-                                   ),
-                      helpText('Для каждой модели используется оптимальное количество лагов'),
+                                               'среднее' = 'mean'),
+                                   selected = 'divide'
+                                   )
+                      ),
+                      
                       sliderInput('h_hair',
                                    'Выберите горизонт прогнозирования (кварталов)',
                                    value =  c(out_short$h %>% min, out_short$h %>% median),

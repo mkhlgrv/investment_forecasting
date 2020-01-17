@@ -295,16 +295,26 @@ function(input, output){
              h <= input$h_hair[2]
              )
   }
+  
+  df.true <- function(){
+    out_hair %>%
+      filter(model %in% input$model_hair) %>%
+      dplyr::filter(
+        startdt %in%  (input$startdt_hair %>% as.Date),
+        h ==0
+      ) %>%
+      na.omit
+  }
   # реализует gif через animate
-  hairplot <- function(){
+  hairplot <- function(static_direct = FALSE){
     df <- df.hair()
+    df_true <- df.true()
     
     
     {(df %>%
         ggplot()+
         
-        geom_line(data = df %>%
-                    na.omit
+        geom_line(data = df_true
                   ,mapping = aes(x = date,
                                  y = true),
                   color='grey',
@@ -320,12 +330,13 @@ function(input, output){
       
       # если динамический, то через gganimate
       (function(x){
-        if(input$play == 'dinamic'){
+        
+        if(input$play == 'stat'| static_direct){
+          x
+        } else {
           x+ 
             transition_reveal(giftime) +
             ease_aes('linear')
-        } else {
-          x
         }
       })
     
@@ -431,6 +442,7 @@ function(input, output){
   }
   hair.theme <- function(x){
     df <- df.hair()
+    df_true <- df.true()
     x+
       
       labs(title = "",
@@ -443,22 +455,24 @@ function(input, output){
              fill = guide_legend(" "))+
       theme_minimal()+
       theme(legend.position = "none") +
-      scale_x_date(limits = c(df %>% pull(date) %>% min,
+      scale_x_date(limits = c(df_true %>% pull(date) %>% min,
                               df %>% pull(date) %>% max)) +
-      scale_y_continuous(limits = c(df %>% select(true, pred) %>% unlist %>% na.omit %>% min,
-                                    df %>% select(true, pred) %>% unlist %>% na.omit %>% max))
+      scale_y_continuous(limits = c(min(df %>% pull(pred) %>% as.numeric %>% na.omit %>% min,
+                                        df_true %>% pull(true) %>% as.numeric %>% na.omit %>% min),
+                                    max(df %>% pull(pred) %>% as.numeric %>% na.omit %>% max,
+                                        df_true %>% pull(true) %>% as.numeric %>% na.omit %>% max)))
     
   }
   
   # реализует gif для функции saveFIG в виде отдельных фреймов для использования цикла по ним
   hair.frameplot <- function(i){
     df <- df.hair() %>% filter(giftime <= i)
+    df_true <- df.true()
     
     {(df %>%
         ggplot()+
         
-        geom_line(data = df %>%
-                    na.omit
+        geom_line(data = df_true 
                   ,mapping = aes(x = date,
                                  y = true),
                   color='grey',
@@ -552,9 +566,9 @@ function(input, output){
     content = function(file) {
       sizes <- image.size()
       png(file, width=sizes['width'], height=sizes['height'])
-      hairplot() %>% print
+      hairplot(static_direct = TRUE) %>% print
       dev.off()
-    
+      
     }
   )
   
