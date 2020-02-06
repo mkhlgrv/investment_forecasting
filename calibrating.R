@@ -159,9 +159,9 @@ for(i in c('investment', 'CPI_Q_CHI',
 #df['1996-01/2019-06'] %>% missmap()
 
 # lags
-# df$gdplag <- lag.xts(df$GDPEA_Q_DIRI, k = 1)
-# df$investmentlag <- lag.xts(df$investment, k = 1)
-# df$invest2gdplag <- lag.xts(df$invest2gdp, k = 1)
+df$gdplag <- lag.xts(df$GDPEA_Q_DIRI, k = 1)
+df$investmentlag <- lag.xts(df$investment, k = 1)
+df$invest2gdplag <- lag.xts(df$invest2gdp, k = 1)
 
 
 save(df, file = 'data/stationary_data_ext.RData')
