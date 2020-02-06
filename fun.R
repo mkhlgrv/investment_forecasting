@@ -72,10 +72,12 @@ train.model <- function(startdt= as.Date('1996-01-01'),
     
     if(h == 0){
       if(target == 'investment'){
-        df$investment <-df$invest2gdp <-  NULL
+        df$investment <-df$invest2gdp <- df$GDPEA_Q_DIRI <-  NULL
       } else{
         df %<>% .[, colnames(.) != target]
       }
+    } else{
+      df$gdplag <- df$investmentlag <- df$invest2gdplag <- NULL
     }
     
     df %<>% .[rowSums(is.na(.[,colnames(.)!='y']))==0,]
@@ -633,11 +635,11 @@ correct.names <- Vectorize(vectorize.args = "model",
                                     'adalasso' = 'Adaptive LASSO',
                                     'ridge' = 'Ridge',
                                     'elnet' = 'Elastic Net',
-                                    'rf' = 'Random Forest',
+                                    'rf' = 'Случайный лес',
                                     'ss' = 'Spike and Slab',
                                     'arima' = 'AR',
-                                    'rw' = 'Random Walk',
-                                    'boost' = 'Boosting')})
+                                    'rw' = 'Случайное блуждание',
+                                    'boost' = 'Бустинг')})
 
 
 correct.names.pred <- Vectorize(vectorize.args = "model",
@@ -679,7 +681,12 @@ correct.names.pred <- Vectorize(vectorize.args = "model",
                                          'EX_T_Q'='Экспорт', 
                                          'IM_T_Q'='Импорт',
                                          'PPI_EA_Q'='Индекс цен производителей промышленных товаров',
-                                         'invest2gdp'='Доля валового накопления основного капитала в ВВП (номинал)')})
+                                         'invest2gdp'='Доля валового накопления основного капитала в ВВП (номинал)',
+                                         ###########
+                                         'gdplag' = 'ВВП в постоянных ценах, лаг',
+                                         'investmentlag' = 'Валовое накопление основного капитала, лаг',
+                                         'invest2gdplag' = 'Доля валового накопления основного капитала в ВВП (номинал), лаг'
+                                         )})
 
 
 

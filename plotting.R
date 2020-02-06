@@ -49,9 +49,15 @@ load('shinydata.RData')
 
 
 scoredf$model <- factor(scoredf$model,
-                        levels = c("Random Walk","AR","Adaptive LASSO",'Boosting',
-                                   "Elastic Net","LASSO","Post-LASSO",
-                                   "Random Forest","Ridge","Spike and Slab"))
+                        levels = c("Случайное блуждание","AR",
+                                   "Adaptive LASSO",
+                                   "Elastic Net",
+                                   "LASSO",
+                                   "Post-LASSO",
+                                   "Ridge",
+                                   "Spike and Slab",
+                                   'Бустинг',
+                                   "Случайный лес"))
 
 
 scoredf %>%
@@ -110,6 +116,125 @@ dev.off()
 
 
 
+
+
+#### dm test 2 (между разными моделями) ----
+IMat <-out_true%>%
+  na.omit %>%
+  filter(date > as.Date(as.yearqtr( enddt)+h/4),
+    date <= as.Date(as.yearqtr( enddt)+(h+1)/4))
+
+
+outmat <- expand.grid(i = 1:10,
+            j = 1:10,
+            startdt = c('1996-01-01','2000-01-01'),
+            h = 0L:8L) %>%
+  split(1:nrow(.)) %>%
+  map_dfr(function(x){
+    
+    i <- x$i
+    j <- x$j
+    
+    inmat <- IMat %>%
+      filter(h == x$h,
+             startdt == as.character(x$startdt)) %>%
+      dcast(date~ model, value.var = 'pred') %>%
+      select(-date) %>%
+      as.matrix
+    
+    realized <- IMat %>%
+      filter(h == x$h,
+             startdt == as.character(x$startdt),
+             model == 'LASSO') %>%
+      na.omit %>% 
+      pull(true)
+    
+    
+    h1 <- ifelse((inmat[,i]-realized)^2 <
+                   (inmat[ ,j]-realized)^2, 'more', 'less')
+    if(i != j){
+      data.frame(model_column = colnames(inmat)[j],
+                 model_row = colnames(inmat)[i],
+                 h1 = h1,
+                 pvalue =DM.test(inmat[, i],inmat[, j],
+                                 realized,loss.type="SE",
+                                 c=TRUE,H1=h1)  %>%
+                   .$p.value ,
+                 h = x$h,
+                 startdt = x$startdt)
+
+    } else{
+      data.frame(model_column = colnames(inmat)[j],
+                 model_row = colnames(inmat)[i],
+                 h1 = 'same',
+                 pvalue =1,
+                 h = x$h,
+                 startdt = x$startdt)
+    }
+    
+  }
+)
+
+h.labs <- c('h = 0',"h = 1", 'h = 2', "h = 3", 'h = 4',"h = 5", 'h = 6', "h = 7", 'h = 8')
+names(h.labs) <- c("0", "1", '2','3', '4', '5', '6', '7', '8')
+
+dm_96 <- outmat %>%
+  filter(startdt == '1996-01-01',
+         model_column != 'Случайное блуждание',
+         model_row != 'Случайное блуждание') %>%
+  mutate(Изменение = ifelse(pvalue > 0.05,
+                            ifelse(pvalue == 1,
+                                   '0', 
+                                   '0'),
+                            ifelse(h1 == 'less', '-', '+')),
+                  model_column=factor(model_column, levels = unique(model_column)),
+                  model_row=factor(model_row,
+                                   levels = rev(unique(model_row)))) %>%
+  
+  ggplot(aes(model_column, model_row)) +
+  geom_tile(aes(fill = Изменение),color='grey')+
+  theme_bw()+
+  labs(x = '',
+       y = 'Горизонт прогнозирования')+
+  theme(legend.position="bottom",
+        axis.text.x = element_text(angle = 90))+
+  facet_wrap(~h,
+             labeller = labeller(h = h.labs))
+
+
+cairo_pdf('plot/dm96.pdf')
+print(dm_96)
+dev.off()
+
+
+dm_00 <- outmat %>%
+  filter(startdt == '2000-01-01',
+         model_column != 'Случайное блуждание',
+         model_row != 'Случайное блуждание') %>%
+  mutate(Изменение = ifelse(pvalue > 0.05,
+                            ifelse(pvalue == 1,
+                                   '0', 
+                                   '0'),
+                            ifelse(h1 == 'less', '-', '+')),
+                  model_column=factor(model_column, levels = unique(model_column)),
+                  model_row=factor(model_row,
+                                   levels = rev(unique(model_row)))) %>%
+  
+  ggplot(aes(model_column, model_row)) +
+  geom_tile(aes(fill = Изменение),color='grey')+
+  theme_bw()+
+  labs(x = '',
+       y = 'Горизонт прогнозирования')+
+  theme(legend.position="bottom",
+        axis.text.x = element_text(angle = 90))+
+  facet_wrap(~h,
+             labeller = labeller(h = h.labs))
+
+
+cairo_pdf('plot/dm00.pdf')
+print(dm_00)
+dev.off()
+
 # lasso coefs ----
 # сначала надо найти sd каждой переменной в каждой тренировочной выборке и поделить на него коэффициент
 load('data/stationary_data_ext.RData')
@@ -140,17 +265,27 @@ source('fun.R', encoding = 'utf-8')
 source('lib.r')
 
 load('out/full/out_lasso.RData')
+
+load('out/full/out_zero.RData')
+
+
+
 lasso_beta <- 
-  out_lasso %>%
+  c(out_zero[151:200],
+    out_lasso[-c(1:50)]
+    ) %>%
   plyr::compact()%>%
   map_dfr(
     
     function(x, i){
+      x$startdt = as.character(x$startdt)
+      x$startdt = ifelse(x$startdt == '1996-04-01', '1996-01-01', x$startdt)
+      x$startdt = as.Date(x$startdt)
       
       if(x$h == 0){
         actsd <- sddata %>% filter(startdt == x$startdt,
                                    enddt == x$enddt) %>%
-          select(-c(investment, startdt, enddt, invest2gdp))
+          select(-c(investment, startdt, enddt, invest2gdp, GDPEA_Q_DIRI))
         # s.d. of y
         ysd <- sddata %>% filter(startdt == x$startdt,
                                  enddt == x$enddt) %>%
@@ -160,7 +295,7 @@ lasso_beta <-
       } else{
         actsd <- sddata %>% filter(startdt == x$startdt,
                                    enddt == x$enddt) %>%
-          select(-c(startdt, enddt))
+          select(-c(startdt, enddt, gdplag, investmentlag, invest2gdplag))
         ysd <- actsd[1,1] %>%
           as.numeric
       }
@@ -171,6 +306,15 @@ lasso_beta <-
       if(!all((betaval%>% rownames) ==(actsd %>% colnames))){
         print(actsd %>% colnames)
         print(betaval%>% rownames)
+        stop()
+      }
+      if(length(x$model) == 0|
+         length(x$h) == 0|
+         length(x$startdt) == 0|
+         length(x$enddt) == 0|
+         length(betaval%>% rownames)==0|
+         length((betaval%>% as.numeric)/(actsd[1,] %>% as.numeric)*(ysd)) == 0){
+        print(actsd[1,])
         stop()
       }
 
@@ -228,7 +372,8 @@ lasso_p <- lasso_beta %>%
       'invest2gdp',
       'oil',
       'rts',
-      'GDPEA_Q_DIRI'
+      'GDPEA_Q_DIRI',
+      'gdplag', 'investmentlag', 'invest2gdplag'
       #,
       #'RTRD_Q_DIRI',
       #'EMPLDEC_Q',
@@ -327,7 +472,8 @@ gdp <- lasso_beta %>%
   filter(h<2,
          startdt== '2000-01-01',
          predictor %in% c(
-           'GDPEA_Q_DIRI'
+           'GDPEA_Q_DIRI',
+           'gdplag'
            #,
            #'RTRD_Q_DIRI',
            #'EMPLDEC_Q',
@@ -391,11 +537,12 @@ lasso_beta %>%
 
 invest <- lasso_beta %>%
   group_by(predictor, h, startdt) %>%
-  filter(h==1,
+  filter(h < 2,
          startdt== '2000-01-01'
          ,
          predictor %in% c(
-           'investment'#,
+           'investment',
+           'investmentlag'
            #    'mkr_1d',
            #    'mkr_7d',
            #    'gov_6m',
@@ -475,7 +622,8 @@ invest2gdp <-
          startdt== '2000-01-01'
          ,
          predictor %in% c(
-           'invest2gdp'
+           'invest2gdp',
+           'invest2gdplag'
            # 'oil'
            # 'rts'
          )
@@ -983,6 +1131,21 @@ tibble(name = df %>% names()) %>%
 
 load('data/raw.RData')
 # med forecast -----
+
+out_cumulative_med <- out_cumulative
+out_cumulative_med$model <- factor(out_cumulative_med$model,
+                        levels = c("Случайное блуждание","AR",
+                                   "Adaptive LASSO",
+                                   "Elastic Net",
+                                   "LASSO",
+                                   "Post-LASSO",
+                                   "Ridge",
+                                   "Spike and Slab",
+                                   'Бустинг',
+                                   "Случайный лес"))
+
+
+
 med_forecast <- import('data/med_forecast.csv', encoding = 'UTF-8', header = TRUE) %>%
   melt %>%
   set_names(c('fctname', 'year', 'value')) %>%
@@ -1024,7 +1187,7 @@ forec_vs <- my_forecast %>%
   select(-c(true_lag, true)) %>%
   filter(h_year ==1, startdt == max(startdt)) %>%
   filter(!is.na(pred)) %>%
-  filter(!model %in% c('Random Walk', 'AR'))
+  filter(!model %in% c('Случайное блуждание', 'AR'))
 
 plot1 <- forec_vs %>% ggplot()+
   geom_bar(aes(year, pred, fill = model),
@@ -1205,7 +1368,7 @@ out_true %>%
   facet_wrap(vars(model))+
   scale_y_continuous(limits = c(-0.2, 0.15))+
   labs(x = 'Дата',
-    y = 'Квартальное изменение валового накопления\nосновного капитала, 4-ая разность логарифма')
+    y = 'Квартальное изменение валового накопления\nосновного капитала')
 
 
 #### ошибки во времени
@@ -1270,7 +1433,17 @@ fordata <- out_hair %>%
            '2000-01-01',
          h<5,
          model !=
-           'Random Walk') 
+           'Случайное блуждание') 
+fordata$model <-  factor(fordata$model,
+                       levels = c("Случайное блуждание","AR",
+                                  "Adaptive LASSO",
+                                  "Elastic Net",
+                                  "LASSO",
+                                  "Post-LASSO",
+                                  "Ridge",
+                                  "Spike and Slab",
+                                  'Бустинг',
+                                  "Случайный лес"))
   
 
 
@@ -1292,7 +1465,7 @@ for(modeli in (fordata$model %>% unique)){
     #facet_wrap(vars(model))+
     scale_y_continuous(limits = c(-0.2, 0.3))+
     labs(x = 'Дата',
-         y = 'Квартальное изменение валового накопления\nосновного капитала, 4-ая разность логарифма')+
+         y = 'Квартальное изменение валового накопления\nосновного капитала (разность логарифмов)')+
     transition_reveal(giftime) +
     ease_aes('linear')+
     theme_minimal()
@@ -1316,7 +1489,7 @@ myplot <- ggplot(fordata  %>%
   facet_wrap(vars(model))+
   scale_y_continuous(limits = c(-0.2, 0.3))+
   labs(x = 'Дата',
-       y = 'Квартальное изменение валового накопления\nосновного капитала, 4-ая разность логарифма')+
+       y = 'Квартальное изменение валового накопления\nосновного капитала (разность логарифмов)')+
   transition_reveal(giftime) +
   ease_aes('linear')+
   theme_minimal()
@@ -1348,7 +1521,7 @@ hair <- ggplot(fordata  %>%
   scale_y_continuous(limits = c(-0.2, 0.15))+
   labs(x = 'Дата',
        y = 'Квартальное изменение валового
-       накопления\nосновного капитала, 4-ая разность логарифма')+
+       накопления\nосновного капитала (разность логарифмов)')+
   theme_bw()+
   # scale_alpha_manual(values = c(0.5, 1))+
   # scale_size_manual(values = c(2,0.7))+

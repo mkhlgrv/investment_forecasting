@@ -1,6 +1,6 @@
 rm(list=ls())
 
-source('fun.R')
+source('fun.R', encoding = 'utf-8')
 source('lib.R')
 
 getwd()
@@ -30,8 +30,12 @@ out_short <-do.call(rbind,
                       short_postlasso,
                       short_lasso,
                       short_rf
-                    ))
-
+                    )) %>%
+  filter(h!=0) %>%
+  rbind(short_zero %>%
+          mutate(startdt = as.character(startdt)) %>%
+          mutate(startdt = ifelse(startdt == '1996-04-01', '1996-01-01', startdt)) %>%
+          mutate(startdt = as.Date(startdt)))
 
 
 out_short$model <- correct.names(model = out_short$model)
@@ -99,7 +103,7 @@ scoredf_raw <- get.score(out_true %>%
   mutate(h = h %>% as.character %>% as.numeric)
 
 # таблица scoredf (rmse даны относительно rw)
-# scoredf <-
+
 scoredf <- get.score(out_true %>%
                        na.omit) %>%
   filter(type == 'test') %>%
@@ -113,9 +117,9 @@ scoredf <- get.score(out_true %>%
     # if(x$h %>% first == 0){
     # x$rmse = x$rmse/ x$rmse[which(x$model == 'AR')]
     # }
-    #
-    # else {
-    x$rmse = x$rmse/x$rmse[which(x$model == 'Random Walk')]
+    # else
+    # {
+    x$rmse = x$rmse/x$rmse[which(x$model == 'Случайное блуждание')]
     # }
     x %>% select(-hls)
   })
