@@ -16,7 +16,6 @@ out_arima <- expand.grid(startdt = c(as.Date('1996-01-01'), as.Date('2000-01-01'
                 model = x$model,
                 lag=x$lag,
                 h=x$h,
-                target = 'CPI_Q_CHI',
                 i = i,
                 N = N
     )
