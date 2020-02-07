@@ -635,11 +635,20 @@ correct.names <- Vectorize(vectorize.args = "model",
                                     'adalasso' = 'Adaptive LASSO',
                                     'ridge' = 'Ridge',
                                     'elnet' = 'Elastic Net',
-                                    'rf' = 'Случайный лес',
+                                    'rf' = 'Случайный лес (N = 100)',
+                                    'rf_100' = 'Случайный лес (N = 100)',
+                                    'rf_500' = 'Случайный лес (N = 500)',
+                                    'rf_1000' = 'Случайный лес (N = 1000)',
+                                    
                                     'ss' = 'Spike and Slab',
                                     'arima' = 'AR',
                                     'rw' = 'Случайное блуждание',
-                                    'boost' = 'Бустинг')})
+                                    
+                                    'boost' = 'Бустинг (N = 100)',
+                                    'boost_100' = 'Бустинг (N = 100)',
+                                    'boost_500' = 'Бустинг (N = 500)',
+                                    'boost_1000' = 'Бустинг (N = 1000)',
+                                    )})
 
 
 correct.names.pred <- Vectorize(vectorize.args = "model",

@@ -124,9 +124,10 @@ IMat <-out_true%>%
   filter(date > as.Date(as.yearqtr( enddt)+h/4),
     date <= as.Date(as.yearqtr( enddt)+(h+1)/4))
 
+n_models <- IMat$model %>% unique %>% length
 
-outmat <- expand.grid(i = 1:10,
-            j = 1:10,
+outmat <- expand.grid(i = 1:n_models,
+            j = 1:n_models,
             startdt = c('1996-01-01','2000-01-01'),
             h = 0L:8L) %>%
   split(1:nrow(.)) %>%
