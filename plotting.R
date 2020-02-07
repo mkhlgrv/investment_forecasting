@@ -56,8 +56,15 @@ scoredf$model <- factor(scoredf$model,
                                    "Post-LASSO",
                                    "Ridge",
                                    "Spike and Slab",
-                                   'Бустинг',
-                                   "Случайный лес"))
+                                   
+                                   'Бустинг (N = 100)',
+                                   'Бустинг (N = 500)',
+                                   'Бустинг (N = 1000)',
+                                   
+                                   
+                                   'Случайный лес (N = 100)',
+                                   'Случайный лес (N = 500)',
+                                   'Случайный лес (N = 1000)'))
 
 
 scoredf %>%
@@ -83,7 +90,9 @@ scoredf %>%
 #### dm test ----
 
 
-dmdf <- get.dm(out_true %>%filter(lag==0) %>% na.omit)
+dmdf <- get.dm(out_true %>%
+                 filter(lag==0) %>%
+                 na.omit)
 
 
 dmdf %>% 
@@ -96,18 +105,18 @@ dmdf %>%
 
 
 dmsd <- dmdf %>%
-  filter(model != 'Random Walk') %>%
+  filter(model != 'Случайное блуждание') %>%
   mutate(Изменение = ifelse(pvalue > 0.05,
                             '0',
                             ifelse(stat < 0,
                                    '+',
                                    '-')
   )) %>%
-  ggplot(aes( model,factor(h))) +
+  ggplot(aes(factor(h), factor(model, levels = rev(unique(model))))) +
   geom_tile(aes(fill = Изменение),color='grey')+
   theme_bw()+
-  labs(x = 'Модель',
-       y = 'Горизонт прогнозирования')+
+  labs(y = 'Модель',
+       x = 'Горизонт прогнозирования')+
   theme(legend.position="bottom")
 
 cairo_pdf('plot/dmsd.pdf')
@@ -180,6 +189,7 @@ h.labs <- c('h = 0',"h = 1", 'h = 2', "h = 3", 'h = 4',"h = 5", 'h = 6', "h = 7"
 names(h.labs) <- c("0", "1", '2','3', '4', '5', '6', '7', '8')
 
 dm_96 <- outmat %>%
+  mutate(pvalue = ifelse(is.nan(pvalue), 1, pvalue)) %>%
   filter(startdt == '1996-01-01',
          model_column != 'Случайное блуждание',
          model_row != 'Случайное блуждание') %>%
@@ -209,6 +219,7 @@ dev.off()
 
 
 dm_00 <- outmat %>%
+  mutate(pvalue = ifelse(is.nan(pvalue), 1, pvalue)) %>%
   filter(startdt == '2000-01-01',
          model_column != 'Случайное блуждание',
          model_row != 'Случайное блуждание') %>%
@@ -1142,8 +1153,15 @@ out_cumulative_med$model <- factor(out_cumulative_med$model,
                                    "Post-LASSO",
                                    "Ridge",
                                    "Spike and Slab",
-                                   'Бустинг',
-                                   "Случайный лес"))
+                                   
+                                   'Бустинг (N = 100)',
+                                   'Бустинг (N = 500)',
+                                   'Бустинг (N = 1000)',
+                                   
+                                   
+                                   'Случайный лес (N = 100)',
+                                   'Случайный лес (N = 500)',
+                                   'Случайный лес (N = 1000)'))
 
 
 
@@ -1188,7 +1206,15 @@ forec_vs <- my_forecast %>%
   select(-c(true_lag, true)) %>%
   filter(h_year ==1, startdt == max(startdt)) %>%
   filter(!is.na(pred)) %>%
-  filter(!model %in% c('Случайное блуждание', 'AR'))
+  filter(!model %in% c('Случайное блуждание', 'AR',
+                       'Бустинг (N = 500)',
+                       'Бустинг (N = 1000)',
+                       'Случайный лес (N = 500)',
+                       'Случайный лес (N = 1000)'
+
+                       
+                       
+                       ))
 
 plot1 <- forec_vs %>% ggplot()+
   geom_bar(aes(year, pred, fill = model),
@@ -1433,8 +1459,12 @@ fordata <- out_hair %>%
   filter(startdt ==
            '2000-01-01',
          h<5,
-         model !=
-           'Случайное блуждание') 
+         ! model %in%
+           c('Случайное блуждание',
+             'Бустинг (N = 500)',
+             'Бустинг (N = 1000)',
+             'Случайный лес (N = 500)',
+             'Случайный лес (N = 1000)')) 
 fordata$model <-  factor(fordata$model,
                        levels = c("Случайное блуждание","AR",
                                   "Adaptive LASSO",
@@ -1443,8 +1473,17 @@ fordata$model <-  factor(fordata$model,
                                   "Post-LASSO",
                                   "Ridge",
                                   "Spike and Slab",
-                                  'Бустинг',
-                                  "Случайный лес"))
+                                  
+                                  'Бустинг (N = 100)',
+                                  # 'Бустинг (N = 500)',
+                                  # 'Бустинг (N = 1000)',
+                                  
+                                  
+                                  'Случайный лес (N = 100)'
+                                  #,
+                                  # 'Случайный лес (N = 500)',
+                                  # 'Случайный лес (N = 1000)'
+                                  ))
   
 
 

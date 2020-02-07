@@ -4,6 +4,18 @@ source('fun.R', encoding = 'utf-8')
 source('lib.R')
 
 getwd()
+load('out/short_rf_100.RData')
+load('out/short_rf_500.RData')
+load('out/short_rf_1000.RData')
+
+load('out/short_boost_100.RData')
+load('out/short_boost_500.RData')
+load('out/short_boost_1000.RData')
+
+
+#load('out/short_rf.RData')
+#load('out/short_boost.RData')
+
 load('out/short_arima.RData')
 load('out/short_rw.RData')
 load('out/short_ss.RData')
@@ -13,29 +25,41 @@ load('out/short_postlasso.RData')
 load('out/short_ridge.RData')
 load('out/short_rf.RData')
 load('out/short_elnet.RData')
-load('out/short_boost.RData')
+load('out/short_zero.RData')
+
 
 
 
 out_short <-do.call(rbind,
                     list(
                       short_ss,
-                      short_boost,
+                      #short_boost,
+                      #short_rf,
                       short_elnet,
                       short_arima,
                       short_adalasso,
-                      short_rw
-                      ,
+                      short_rw,
                       short_ridge,
                       short_postlasso,
-                      short_lasso,
-                      short_rf
+                      short_lasso
                     )) %>%
   filter(h!=0) %>%
   rbind(short_zero %>%
+          filter(!model %in%c('rf', 'boost')) %>%
           mutate(startdt = as.character(startdt)) %>%
           mutate(startdt = ifelse(startdt == '1996-04-01', '1996-01-01', startdt)) %>%
-          mutate(startdt = as.Date(startdt)))
+          mutate(startdt = as.Date(startdt))) %>%
+  rbind(do.call(rbind,
+                list(
+                  short_boost_100,
+                  short_boost_500,
+                  short_boost_1000,
+                  short_rf_100,
+                  short_rf_500,
+                  short_rf_1000
+                )
+        ))
+
 
 
 out_short$model <- correct.names(model = out_short$model)
@@ -111,7 +135,7 @@ scoredf <- get.score(out_true %>%
   filter(variable == 'rmse') %>%
   dcast(model+lag+h+type+startdt~variable, fun.aggregate=mean) %>%
   mutate(hls = paste0(h,lag, startdt)) %>%
-  # filter(h !=0) %>%
+  #filter(h !=0) %>%
   split(.$hls) %>%
   map_dfr(function(x){
     # if(x$h %>% first == 0){
@@ -199,7 +223,7 @@ out_cumulative <- out_true %>%
   mutate(pred_cumulative = exp(log(true_lag)+pred),
          true_cumulative = exp(log(true_lag)+true))
 
-save(out_true, out_short, ytrue,scoredf, scoredf_raw,out_hair,
+save(out_true, out_short, ytrue,scoredf, scoredf_raw,#out_hair,
      out_cumulative,
      
      file = 'shinydata.RData')

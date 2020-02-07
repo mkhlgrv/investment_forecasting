@@ -710,6 +710,7 @@ get.dm <- function(df){
     filter(enddt <= as.Date('2016-10-01'),
            date > as.Date(as.yearqtr( enddt)+h/4),
            date <= as.Date(as.yearqtr( enddt)+(h+1)/4)) %>%
+    
     dcast(model + h + lag +true+date~ startdt, value.var = 'pred') %>%
     group_by(model, h, lag) %>%
     summarise(pvalue = ifelse(all(`1996-01-01`==`2000-01-01`), 1,
