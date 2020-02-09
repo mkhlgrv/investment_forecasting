@@ -6,14 +6,18 @@ source('lib.R')
 getwd()
 load('out/short_rf_100.RData')
 load('out/short_rf_500.RData')
-# load('out/short_rf_1000.RData')
+load('out/short_rf_1000.RData')
 load('out/short_rf_2000.RData')
 
 load('out/short_boost_100.RData')
-load('out/short_boost_500.RData')
+# load('out/short_boost_500.RData')
 
 load('out/short_boost_100_2.RData')
-load('out/short_boost_500_2.RData')
+# load('out/short_boost_500_2.RData')
+
+load('out/short_boost_100_1.RData')
+
+load('out/short_boost_100_4.RData')
 
 
 #load('out/short_rf.RData')
@@ -55,11 +59,13 @@ out_short <-do.call(rbind,
   rbind(do.call(rbind,
                 list(
                   short_boost_100,
-                  short_boost_500,
-                  short_boost_1000,
+                  short_boost_100_2,
+                  short_boost_100_4,
+                  short_boost_100_1,
                   short_rf_100,
                   short_rf_500,
-                  short_rf_1000
+                  short_rf_1000,
+                  short_rf_2000
                 )
         ))
 
@@ -172,29 +178,29 @@ scoredf <- get.score(out_true %>%
 
 
 # out_hair <-
-  out_true %>%
-  filter(enddt < as.Date(as.yearqtr(date)-h/4)) %>%
-  group_by(date, h, model, startdt) %>%
-  filter(enddt == max(enddt)) %>%
-  ungroup %>%
-  mutate(forecastdate = as.Date(as.yearqtr(date) -h/4)) %>%
-  mutate(pred = ifelse(h == 0, true, pred)) %>%
-    filter(startdt == '2000-01-01',
-           forecastdate <='2019-01-01',
-           h>0,
-           model != 'Random Walk') %>% 
-    
-    # вариант 1 просто рисуем прогнозы
-    
-    ggplot()+
-    stat_summary(aes(x = date, y = true),
-                 fun.y=mean, geom='line', alpha = 0.5, size = 4, color = 'grey')+
-    geom_line(aes(date, pred,  color = forecastdate,
-                  group = interaction(startdt,
-                                      forecastdate),
-                  linetype = factor(startdt)))+
-    facet_wrap(vars(model))+
-    scale_y_continuous(limits = c(-0.2, 0.3))
+  # out_true %>%
+  # filter(enddt < as.Date(as.yearqtr(date)-h/4)) %>%
+  # group_by(date, h, model, startdt) %>%
+  # filter(enddt == max(enddt)) %>%
+  # ungroup %>%
+  # mutate(forecastdate = as.Date(as.yearqtr(date) -h/4)) %>%
+  # mutate(pred = ifelse(h == 0, true, pred)) %>%
+  #   filter(startdt == '2000-01-01',
+  #          forecastdate <='2019-01-01',
+  #          h>0,
+  #          model != 'Random Walk') %>% 
+  #   
+  #   # вариант 1 просто рисуем прогнозы
+  #   
+  #   ggplot()+
+  #   stat_summary(aes(x = date, y = true),
+  #                fun.y=mean, geom='line', alpha = 0.5, size = 4, color = 'grey')+
+  #   geom_line(aes(date, pred,  color = forecastdate,
+  #                 group = interaction(startdt,
+  #                                     forecastdate),
+  #                 linetype = factor(startdt)))+
+  #   facet_wrap(vars(model))+
+  #   scale_y_continuous(limits = c(-0.2, 0.3))
     
     # вариант 2 сумма квадратов ошибок на каждую дату прогноза
     # с ростом h растет и абсолютная ошибка,

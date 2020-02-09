@@ -57,14 +57,18 @@ scoredf$model <- factor(scoredf$model,
                                    "Ridge",
                                    "Spike and Slab",
                                    
-                                   'Бустинг (N = 100)',
-                                   'Бустинг (N = 500)',
-                                   'Бустинг (N = 1000)',
-                                   
+                                   'Бустинг (eta = 0,1)',
+                                   'Бустинг (eta = 0,2)',
+                                   'Бустинг (eta = 0,3)',
+                                   'Бустинг (eta = 0,4)',
                                    
                                    'Случайный лес (N = 100)',
                                    'Случайный лес (N = 500)',
-                                   'Случайный лес (N = 1000)'))
+                                   'Случайный лес (N = 1000)',
+                                   'Случайный лес (N = 2000)'
+                                   
+                                  
+                                   ))
 
 
 scoredf %>%
@@ -102,12 +106,23 @@ dmdiff <- scoredf %>%
   inner_join(dmdf, by =c('model', 'lag', 'h'))
 
 dmdiff %>%
-  mutate(pvalue_sign = paste0(round(diff,3),' (',round(pvalue,3),
-                              ifelse(pvalue <= 0.1,
-                                     ifelse(pvalue > 0.05, '*',
-                                            ifelse (pvalue > 0.01, "**", '***')), ''),
-                              ')')) %>%
-  dcast(model~h) %>%
+  filter(!model %in% c('Случайное блуждание')) %>%
+  mutate(diff = paste0(format(round(diff,3), nsmall = 2),
+                       
+                       ifelse(pvalue <= 0.1,
+                                                   ifelse(pvalue > 0.05, '.',
+                                                          ifelse (pvalue > 0.01, "*", 
+                                                                  ifelse(pvalue > 0.001, '**', '***'))),'')),
+                       pvalue = paste0(' (',format(round(pvalue,3), nsmall = 2),')'),
+         lastrow = '') %>%
+  melt(id.vars = c('model', 'h'), measure.vars = c('diff', 'pvalue', 'lastrow')) %>%
+  mutate(model_id = model,
+         model = ifelse(variable == 'diff',model, ifelse(variable == 'pvalue', ' ', ''))) %>%
+  mutate(model = factor(model, levels = model %>% unique %>% sort %>% rev)) %>%
+  dcast(model_id+model~h) %>%
+  select(-model_id) %>%
+  # select(-model) %>%
+  # add_column('h =' = '', .after = 1) %>%
   xtable %>%
   print(include.rownames = FALSE)
 
@@ -115,11 +130,7 @@ dmdiff %>%
 
 
 dmsd <- dmdf %>%
-  filter(!model %in% c('Случайное блуждание',
-                      'Бустинг (N = 500)',
-                      'Бустинг (N = 1000)',
-                      'Случайный лес (N = 500)',
-                      'Случайный лес (N = 1000)')) %>%
+  filter(!model %in% c('Случайное блуждание')) %>%
   mutate(Изменение = ifelse(pvalue > 0.05,
                             '0',
                             ifelse(stat < 0,
@@ -202,29 +213,80 @@ outmat <- expand.grid(i = 1:n_models,
 h.labs <- c('h = 0',"h = 1", 'h = 2', "h = 3", 'h = 4',"h = 5", 'h = 6', "h = 7", 'h = 8')
 names(h.labs) <- c("0", "1", '2','3', '4', '5', '6', '7', '8')
 
-dm_96 <- outmat %>%
+dm_96_toplot <- outmat %>%
   mutate(pvalue = ifelse(is.nan(pvalue), 1, pvalue)) %>%
   filter(startdt == '1996-01-01',
          model_column != 'Случайное блуждание',
          model_row != 'Случайное блуждание') %>%
-  mutate(Изменение = ifelse(pvalue > 0.05,
-                            ifelse(pvalue == 1,
-                                   '0', 
-                                   '0'),
-                            ifelse(h1 == 'less', '-', '+')),
-                  model_column=factor(model_column, levels = unique(model_column)),
+  mutate(
+    # Изменение = ifelse(pvalue > 0.05,
+    #                         ifelse(pvalue == 1,
+    #                                '0', 
+    #                                '0'),
+    #                         ifelse(h1 == 'less', '-', '+')),
+    Изменение = ifelse(pvalue > 0.1,
+                       'не значимо',
+                       ifelse(pvalue > 0.05,
+                              ifelse(h1 == 'less', '-.','+.'),
+                              ifelse(
+                              pvalue > 0.01,
+                              ifelse(h1 == 'less', '-*','+*'), ifelse(h1 == 'less', '-**','+**')))
+                       ),
+    
+                  
+                  model_column=factor(model_column, 
+                                      
+                                      levels = c("Adaptive LASSO","AR","Elastic Net","LASSO","Post-LASSO","Ridge",
+                                                 "Spike and Slab",
+                                                 "Бустинг (eta = 0,1)",
+                                                 "Бустинг (eta = 0,2)",
+                                                 "Бустинг (eta = 0,3)",
+                                                 "Бустинг (eta = 0,4)",
+                                                 "Случайный лес (N = 100)","Случайный лес (N = 500)" 
+                                                 ,"Случайный лес (N = 1000)",
+                                                 "Случайный лес (N = 2000)")),
                   model_row=factor(model_row,
-                                   levels = rev(unique(model_row)))) %>%
-  
+                                   
+                                   
+                                   levels =  c("Adaptive LASSO","AR","Elastic Net","LASSO","Post-LASSO","Ridge",
+                                                       "Spike and Slab",
+                                                       "Бустинг (eta = 0,1)",
+                                                       "Бустинг (eta = 0,2)",
+                                                       "Бустинг (eta = 0,3)",
+                                                       "Бустинг (eta = 0,4)",
+                                                       "Случайный лес (N = 100)","Случайный лес (N = 500)" 
+                                                       ,"Случайный лес (N = 1000)",
+                                                       "Случайный лес (N = 2000)") %>% rev)) %>%
+  mutate(Изменение = factor(Изменение, levels = c('+.', '-.', '+*','-*', '+**', '-**', 'не значимо')))
+dm_96 <- dm_96_toplot%>%
+
   ggplot(aes(model_column, model_row)) +
   geom_tile(aes(fill = Изменение),color='grey')+
   theme_bw()+
   labs(x = '',
-       y = 'Горизонт прогнозирования')+
+       y = '')+
   theme(legend.position="bottom",
         axis.text.x = element_text(angle = 90))+
   facet_wrap(~h,
-             labeller = labeller(h = h.labs))
+             labeller = labeller(h = h.labs))+
+  scale_x_discrete(labels = c("Adaptive LASSO","AR","Elastic Net","LASSO","Post-LASSO","Ridge",
+                              "Spike and Slab",
+                              "Бустинг (0,1)",
+                              "Бустинг (0,2)",
+                              "Бустинг (0,3)",
+                              "Бустинг (0,4)",
+                              "Случайный лес (100)" ,"Случайный лес (500)" 
+                              ,"Случайный лес (1000)",
+                              "Случайный лес (2000)") %>% rev)+
+  scale_y_discrete(labels = c("Adaptive LASSO","AR","Elastic Net","LASSO","Post-LASSO","Ridge",
+                              "Spike and Slab",
+                              "Бустинг (0,1)",
+                              "Бустинг (0,2)",
+                              "Бустинг (0,3)",
+                              "Бустинг (0,4)",
+                              "Случайный лес (100)" ,"Случайный лес (500)" 
+                              ,"Случайный лес (1000)",
+                              "Случайный лес (2000)"))
 
 
 cairo_pdf('plot/dm96.pdf')
@@ -232,34 +294,93 @@ print(dm_96)
 dev.off()
 
 
-dm_00 <- outmat %>%
+dm_00_toplot <- outmat %>%
   mutate(pvalue = ifelse(is.nan(pvalue), 1, pvalue)) %>%
   filter(startdt == '2000-01-01',
          model_column != 'Случайное блуждание',
          model_row != 'Случайное блуждание') %>%
-  mutate(Изменение = ifelse(pvalue > 0.05,
-                            ifelse(pvalue == 1,
-                                   '0', 
-                                   '0'),
-                            ifelse(h1 == 'less', '-', '+')),
-                  model_column=factor(model_column, levels = unique(model_column)),
-                  model_row=factor(model_row,
-                                   levels = rev(unique(model_row)))) %>%
+  mutate(
+    # Изменение = ifelse(pvalue > 0.05,
+    #                         ifelse(pvalue == 1,
+    #                                '0', 
+    #                                '0'),
+    #                         ifelse(h1 == 'less', '-', '+')),
+    Изменение = ifelse(pvalue > 0.1,
+                       'не значимо',
+                       ifelse(pvalue > 0.05,
+                              ifelse(h1 == 'less', '-.','+.'),
+                              ifelse(
+                                pvalue > 0.01,
+                                ifelse(h1 == 'less', '-*','+*'), ifelse(h1 == 'less', '-**','+**')))
+    ),
+    
+    
+    model_column=factor(model_column, 
+                        
+                        levels = c("Adaptive LASSO","AR","Elastic Net","LASSO","Post-LASSO","Ridge",
+                                   "Spike and Slab",
+                                   "Бустинг (eta = 0,1)",
+                                   "Бустинг (eta = 0,2)",
+                                   "Бустинг (eta = 0,3)",
+                                   "Бустинг (eta = 0,4)",
+                                   "Случайный лес (N = 100)","Случайный лес (N = 500)" 
+                                   ,"Случайный лес (N = 1000)",
+                                   "Случайный лес (N = 2000)")),
+    model_row=factor(model_row,
+                     
+                     
+                     levels =  c("Adaptive LASSO","AR","Elastic Net","LASSO","Post-LASSO","Ridge",
+                                 "Spike and Slab",
+                                 "Бустинг (eta = 0,1)",
+                                 "Бустинг (eta = 0,2)",
+                                 "Бустинг (eta = 0,3)",
+                                 "Бустинг (eta = 0,4)",
+                                 "Случайный лес (N = 100)","Случайный лес (N = 500)" 
+                                 ,"Случайный лес (N = 1000)",
+                                 "Случайный лес (N = 2000)") %>% rev)) %>%
+  mutate(Изменение = factor(Изменение, levels = c('+.', '-.', '+*','-*', '+**', '-**', 'не значимо')))
+dm_00 <- dm_00_toplot%>%
   
   ggplot(aes(model_column, model_row)) +
   geom_tile(aes(fill = Изменение),color='grey')+
   theme_bw()+
   labs(x = '',
-       y = 'Горизонт прогнозирования')+
+       y = '')+
   theme(legend.position="bottom",
         axis.text.x = element_text(angle = 90))+
   facet_wrap(~h,
-             labeller = labeller(h = h.labs))
+             labeller = labeller(h = h.labs))+
+  scale_fill_manual(values = c("#add1a9",
+                               '#db696f',
+                               '#71d466',
+                               '#d9454d',
+                               "#2bd918",
+                               '#d60f1a',
+                               'white'))+
+  scale_x_discrete(labels = c("Adaptive LASSO","AR","Elastic Net","LASSO","Post-LASSO","Ridge",
+                              "Spike and Slab",
+                              "Бустинг (0,1)",
+                              "Бустинг (0,2)",
+                              "Бустинг (0,3)",
+                              "Бустинг (0,4)",
+                              "Случайный лес (100)" ,"Случайный лес (500)" 
+                              ,"Случайный лес (1000)",
+                              "Случайный лес (2000)") %>% rev)+
+  scale_y_discrete(labels = c("Adaptive LASSO","AR","Elastic Net","LASSO","Post-LASSO","Ridge",
+                              "Spike and Slab",
+                              "Бустинг (0,1)",
+                              "Бустинг (0,2)",
+                              "Бустинг (0,3)",
+                              "Бустинг (0,4)",
+                              "Случайный лес (100)" ,"Случайный лес (500)" 
+                              ,"Случайный лес (1000)",
+                              "Случайный лес (2000)"))
 
 
 cairo_pdf('plot/dm00.pdf')
 print(dm_00)
 dev.off()
+
 
 # lasso coefs ----
 # сначала надо найти sd каждой переменной в каждой тренировочной выборке и поделить на него коэффициент
@@ -1634,3 +1755,52 @@ ggplotly(p) %>%
     transition = 0, 
     redraw = FALSE
   )
+
+### штрафная функция для методов регуляризации ----
+load('out/full/out_adalasso.RData')
+load('out/full/out_elnet.RData')
+load('out/full/out_lasso.RData')
+load('out/full/out_postlasso.RData')
+load('out/full/out_ridge.RData')
+
+load('out/full/out_zero.RData')
+
+
+
+regular_norm <- 
+  c(out_zero[c(1:50, 101:250, 301:350)],
+    out_adalasso[-c(1:50)],
+    out_elnet[-c(1:50)],
+    out_lasso[-c(1:50)],
+    out_postlasso[-c(1:50)],
+    out_ridge[-c(1:50)]
+    
+  ) %>%
+  plyr::compact()%>%
+  map_dfr(function(x){
+    
+      if(x$model=='postlasso'){
+    norm <-  x$model_fit$coefficients %>% abs %>% sum
+      } else if(x$model %in% c('lasso', 'adalasso')){
+        norm <-  x$model_fit$beta %>% abs %>% sum
+      } else if(x$model == 'ridge'){
+        norm <-  x$model_fit$beta^2 %>% sum
+      } else if(x$model == 'elnet'){
+        norm <- 0.5*(x$model_fit$beta^2 %>% sum +
+          x$model_fit$beta %>% abs %>% sum)
+        }
+      data.frame(
+        model = x$model,
+          startdt =x$startdt,
+        enddt =x$enddt,
+        h = x$h,
+        norm =  norm
+      )
+     
+    })
+
+regular_norm %>%
+  ggplot()+
+  geom_line(aes(enddt, norm, color = factor(startdt)))+
+  facet_grid(model~h, scales = 'free_y')
+# вывод не оч
