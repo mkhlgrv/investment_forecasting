@@ -94,18 +94,32 @@ dmdf <- get.dm(out_true %>%
                  filter(lag==0) %>%
                  na.omit)
 
+dmdiff <- scoredf %>%
+  filter(type == 'test') %>%
+  group_by(model, lag, h) %>%
+  arrange(startdt) %>%
+  summarise(diff = rmse[1]-rmse[2]) %>%
+  inner_join(dmdf, by =c('model', 'lag', 'h'))
 
-dmdf %>% 
-  mutate(pvalue_sign = paste0(round(pvalue,3), '(', ifelse(stat < 0,
-                                                           '+',
-                                                           '-'),')')) %>%
+dmdiff %>%
+  mutate(pvalue_sign = paste0(round(diff,3),' (',round(pvalue,3),
+                              ifelse(pvalue <= 0.1,
+                                     ifelse(pvalue > 0.05, '*',
+                                            ifelse (pvalue > 0.01, "**", '***')), ''),
+                              ')')) %>%
   dcast(model~h) %>%
   xtable %>%
   print(include.rownames = FALSE)
 
 
+
+
 dmsd <- dmdf %>%
-  filter(model != 'Случайное блуждание') %>%
+  filter(!model %in% c('Случайное блуждание',
+                      'Бустинг (N = 500)',
+                      'Бустинг (N = 1000)',
+                      'Случайный лес (N = 500)',
+                      'Случайный лес (N = 1000)')) %>%
   mutate(Изменение = ifelse(pvalue > 0.05,
                             '0',
                             ifelse(stat < 0,

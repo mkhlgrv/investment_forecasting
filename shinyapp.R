@@ -6,11 +6,14 @@ source('lib.R')
 getwd()
 load('out/short_rf_100.RData')
 load('out/short_rf_500.RData')
-load('out/short_rf_1000.RData')
+# load('out/short_rf_1000.RData')
+load('out/short_rf_2000.RData')
 
 load('out/short_boost_100.RData')
 load('out/short_boost_500.RData')
-load('out/short_boost_1000.RData')
+
+load('out/short_boost_100_2.RData')
+load('out/short_boost_500_2.RData')
 
 
 #load('out/short_rf.RData')

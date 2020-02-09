@@ -281,7 +281,10 @@ train.model <- function(startdt= as.Date('1996-01-01'),
       
       
       train.out <- NULL
-      model_fit <- randomForest(x = X.train, y = y.train, ntree = 100)
+      model_fit <- randomForest(x = X.train,
+                                y = y.train,
+                                ntree = 100,
+                                nodesize = 5)
       
       pred <-  predict(model_fit, newdata = rbind(X.train, X.test)) %>%
         as.numeric
@@ -302,7 +305,7 @@ train.model <- function(startdt= as.Date('1996-01-01'),
       
       tune_grid <- expand.grid(nrounds = 100,
                                max_depth = c(5),
-                               eta = c(0.2),
+                               eta = c(0.3),
                                gamma = 0,
                                colsample_bytree = 0.3,
                                min_child_weight = 1,
@@ -639,15 +642,20 @@ correct.names <- Vectorize(vectorize.args = "model",
                                     'rf_100' = 'Случайный лес (N = 100)',
                                     'rf_500' = 'Случайный лес (N = 500)',
                                     'rf_1000' = 'Случайный лес (N = 1000)',
+                                    'rf_1000' = 'Случайный лес (N = 2000)',
                                     
                                     'ss' = 'Spike and Slab',
                                     'arima' = 'AR',
                                     'rw' = 'Случайное блуждание',
                                     
-                                    'boost' = 'Бустинг (N = 100)',
-                                    'boost_100' = 'Бустинг (N = 100)',
-                                    'boost_500' = 'Бустинг (N = 500)',
-                                    'boost_1000' = 'Бустинг (N = 1000)',
+                                    'boost' = 'Бустинг (N = 100, eta = 0,3)',
+                                    'boost_100' = 'Бустинг (N = 100, eta = 0,3)',
+                                    'boost_500' = 'Бустинг (N = 500, eta = 0,3)',
+                                    'boost_1000' = 'Бустинг (N = 1000, eta = 0,3)',
+                                    
+                                    'boost_100_2' = 'Бустинг (N = 100, eta = 0,2)',
+                                    'boost_500_2' = 'Бустинг (N = 500, eta = 0,2)',
+                                    'boost_1000_2' = 'Бустинг (N = 1000, eta = 0,2)'
                                     )})
 
 
