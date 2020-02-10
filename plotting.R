@@ -74,7 +74,7 @@ scoredf$model <- factor(scoredf$model,
 scoredf %>%
   filter(type == 'test') %>%
   filter(startdt == '1996-01-01') %>%
-  filter(lag==0) %>%
+  filter(lag==0, h > 0) %>%
   group_by(model, lag, h, startdt) %>%
   summarise(rmse = mean(rmse)) %>%
   dcast(model ~ h) %>%
@@ -84,7 +84,7 @@ scoredf %>%
 scoredf %>%
   filter(type == 'test') %>%
   filter(startdt == '2000-01-01') %>%
-  filter(lag==0) %>%
+  filter(lag==0, h > 0) %>%
   group_by(model, lag, h, startdt) %>%
   summarise(rmse = mean(rmse)) %>%
   dcast(model ~ h) %>%
@@ -95,7 +95,7 @@ scoredf %>%
 
 
 dmdf <- get.dm(out_true %>%
-                 filter(lag==0) %>%
+                 filter(lag==0, h > 0) %>%
                  na.omit)
 
 dmdiff <- scoredf %>%
@@ -130,7 +130,7 @@ dmdiff %>%
 
 
 dmsd <- dmdf %>%
-  filter(!model %in% c('Случайное блуждание')) %>%
+  filter(!model %in% c('Случайное блуждание'), h>0) %>%
   mutate(Изменение = ifelse(pvalue > 0.05,
                             '0',
                             ifelse(stat < 0,
@@ -154,6 +154,7 @@ dev.off()
 
 #### dm test 2 (между разными моделями) ----
 IMat <-out_true%>%
+  filter(h > 0) %>%
   na.omit %>%
   filter(date > as.Date(as.yearqtr( enddt)+h/4),
     date <= as.Date(as.yearqtr( enddt)+(h+1)/4))
@@ -163,7 +164,7 @@ n_models <- IMat$model %>% unique %>% length
 outmat <- expand.grid(i = 1:n_models,
             j = 1:n_models,
             startdt = c('1996-01-01','2000-01-01'),
-            h = 0L:8L) %>%
+            h = 1L:8L) %>%
   split(1:nrow(.)) %>%
   map_dfr(function(x){
     
@@ -210,14 +211,17 @@ outmat <- expand.grid(i = 1:n_models,
   }
 )
 
-h.labs <- c('h = 0',"h = 1", 'h = 2', "h = 3", 'h = 4',"h = 5", 'h = 6', "h = 7", 'h = 8')
-names(h.labs) <- c("0", "1", '2','3', '4', '5', '6', '7', '8')
+h.labs <- c(#'h = 0',
+            "h = 1", 'h = 2', "h = 3", 'h = 4',"h = 5", 'h = 6', "h = 7", 'h = 8')
+names(h.labs) <- c(#"0",
+                   "1", '2','3', '4', '5', '6', '7', '8')
 
 dm_96_toplot <- outmat %>%
   mutate(pvalue = ifelse(is.nan(pvalue), 1, pvalue)) %>%
-  filter(startdt == '1996-01-01',
-         model_column != 'Случайное блуждание',
-         model_row != 'Случайное блуждание') %>%
+  filter(startdt == '1996-01-01'#,
+         # model_column != 'Случайное блуждание',
+         # model_row != 'Случайное блуждание'
+         ) %>%
   mutate(
     # Изменение = ifelse(pvalue > 0.05,
     #                         ifelse(pvalue == 1,
@@ -236,7 +240,9 @@ dm_96_toplot <- outmat %>%
                   
                   model_column=factor(model_column, 
                                       
-                                      levels = c("Adaptive LASSO","AR","Elastic Net","LASSO","Post-LASSO","Ridge",
+                                      levels = c('Случайное блуждание',
+                                                 "AR","Adaptive LASSO",
+                                                 "Elastic Net","LASSO","Post-LASSO","Ridge",
                                                  "Spike and Slab",
                                                  "Бустинг (eta = 0,1)",
                                                  "Бустинг (eta = 0,2)",
@@ -248,7 +254,8 @@ dm_96_toplot <- outmat %>%
                   model_row=factor(model_row,
                                    
                                    
-                                   levels =  c("Adaptive LASSO","AR","Elastic Net","LASSO","Post-LASSO","Ridge",
+                                   levels =  c('Случайное блуждание',
+                                               "AR","Adaptive LASSO","Elastic Net","LASSO","Post-LASSO","Ridge",
                                                        "Spike and Slab",
                                                        "Бустинг (eta = 0,1)",
                                                        "Бустинг (eta = 0,2)",
@@ -269,7 +276,14 @@ dm_96 <- dm_96_toplot%>%
         axis.text.x = element_text(angle = 90))+
   facet_wrap(~h,
              labeller = labeller(h = h.labs))+
-  scale_x_discrete(labels = c("Adaptive LASSO","AR","Elastic Net","LASSO","Post-LASSO","Ridge",
+  scale_fill_manual(values = c("#add1a9",
+                               '#db696f',
+                               '#71d466',
+                               '#d9454d',
+                               "#2bd918",
+                               '#d60f1a',
+                               'white'))+
+  scale_x_discrete(labels = c('Случайное блуждание',"AR","Adaptive LASSO","Elastic Net","LASSO","Post-LASSO","Ridge",
                               "Spike and Slab",
                               "Бустинг (0,1)",
                               "Бустинг (0,2)",
@@ -277,8 +291,8 @@ dm_96 <- dm_96_toplot%>%
                               "Бустинг (0,4)",
                               "Случайный лес (100)" ,"Случайный лес (500)" 
                               ,"Случайный лес (1000)",
-                              "Случайный лес (2000)") %>% rev)+
-  scale_y_discrete(labels = c("Adaptive LASSO","AR","Elastic Net","LASSO","Post-LASSO","Ridge",
+                              "Случайный лес (2000)"))+
+  scale_y_discrete(labels = c('Случайное блуждание',"AR","Adaptive LASSO","Elastic Net","LASSO","Post-LASSO","Ridge",
                               "Spike and Slab",
                               "Бустинг (0,1)",
                               "Бустинг (0,2)",
@@ -286,7 +300,7 @@ dm_96 <- dm_96_toplot%>%
                               "Бустинг (0,4)",
                               "Случайный лес (100)" ,"Случайный лес (500)" 
                               ,"Случайный лес (1000)",
-                              "Случайный лес (2000)"))
+                              "Случайный лес (2000)") %>% rev)
 
 
 cairo_pdf('plot/dm96.pdf')
@@ -296,9 +310,10 @@ dev.off()
 
 dm_00_toplot <- outmat %>%
   mutate(pvalue = ifelse(is.nan(pvalue), 1, pvalue)) %>%
-  filter(startdt == '2000-01-01',
-         model_column != 'Случайное блуждание',
-         model_row != 'Случайное блуждание') %>%
+  filter(startdt == '2000-01-01'#,
+         # model_column != 'Случайное блуждание',
+         # model_row != 'Случайное блуждание'
+  ) %>%
   mutate(
     # Изменение = ifelse(pvalue > 0.05,
     #                         ifelse(pvalue == 1,
@@ -317,7 +332,9 @@ dm_00_toplot <- outmat %>%
     
     model_column=factor(model_column, 
                         
-                        levels = c("Adaptive LASSO","AR","Elastic Net","LASSO","Post-LASSO","Ridge",
+                        levels = c('Случайное блуждание',
+                                   "AR","Adaptive LASSO",
+                                   "Elastic Net","LASSO","Post-LASSO","Ridge",
                                    "Spike and Slab",
                                    "Бустинг (eta = 0,1)",
                                    "Бустинг (eta = 0,2)",
@@ -329,7 +346,8 @@ dm_00_toplot <- outmat %>%
     model_row=factor(model_row,
                      
                      
-                     levels =  c("Adaptive LASSO","AR","Elastic Net","LASSO","Post-LASSO","Ridge",
+                     levels =  c('Случайное блуждание',
+                                 "AR","Adaptive LASSO","Elastic Net","LASSO","Post-LASSO","Ridge",
                                  "Spike and Slab",
                                  "Бустинг (eta = 0,1)",
                                  "Бустинг (eta = 0,2)",
@@ -357,7 +375,7 @@ dm_00 <- dm_00_toplot%>%
                                "#2bd918",
                                '#d60f1a',
                                'white'))+
-  scale_x_discrete(labels = c("Adaptive LASSO","AR","Elastic Net","LASSO","Post-LASSO","Ridge",
+  scale_x_discrete(labels = c('Случайное блуждание',"AR","Adaptive LASSO","Elastic Net","LASSO","Post-LASSO","Ridge",
                               "Spike and Slab",
                               "Бустинг (0,1)",
                               "Бустинг (0,2)",
@@ -365,8 +383,8 @@ dm_00 <- dm_00_toplot%>%
                               "Бустинг (0,4)",
                               "Случайный лес (100)" ,"Случайный лес (500)" 
                               ,"Случайный лес (1000)",
-                              "Случайный лес (2000)") %>% rev)+
-  scale_y_discrete(labels = c("Adaptive LASSO","AR","Elastic Net","LASSO","Post-LASSO","Ridge",
+                              "Случайный лес (2000)"))+
+  scale_y_discrete(labels = c('Случайное блуждание',"AR","Adaptive LASSO","Elastic Net","LASSO","Post-LASSO","Ridge",
                               "Spike and Slab",
                               "Бустинг (0,1)",
                               "Бустинг (0,2)",
@@ -374,7 +392,8 @@ dm_00 <- dm_00_toplot%>%
                               "Бустинг (0,4)",
                               "Случайный лес (100)" ,"Случайный лес (500)" 
                               ,"Случайный лес (1000)",
-                              "Случайный лес (2000)"))
+                              "Случайный лес (2000)") %>% rev)
+
 
 
 cairo_pdf('plot/dm00.pdf')
@@ -418,7 +437,7 @@ load('out/full/out_zero.RData')
 
 
 lasso_beta <- 
-  c(out_zero[151:200],
+  c(#out_zero[151:200],
     out_lasso[-c(1:50)]
     ) %>%
   plyr::compact()%>%
@@ -477,8 +496,10 @@ lasso_beta <-
   )
 
 
-h.labs <- c('h = 0',"h = 1", 'h = 2', "h = 3", 'h = 4',"h = 5", 'h = 6', "h = 7", 'h = 8')
-names(h.labs) <- c("0", "1", '2','3', '4', '5', '6', '7', '8')
+h.labs <- c(#'h = 0',
+            "h = 1", 'h = 2', "h = 3", 'h = 4',"h = 5", 'h = 6', "h = 7", 'h = 8')
+names(h.labs) <- c(#"0",
+                   "1", '2','3', '4', '5', '6', '7', '8')
 
 
 lasso_nonzero <- lasso_beta %>%
