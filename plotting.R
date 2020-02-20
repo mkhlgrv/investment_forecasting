@@ -236,7 +236,7 @@ dm_96_toplot <- outmat %>%
                   
                   model_column=factor(model_column, 
                                       
-                                      levels = c("Adaptive LASSO","AR","Elastic Net","LASSO","Post-LASSO","Ridge",
+                                      levels = c("AR","Adaptive LASSO","Elastic Net","LASSO","Post-LASSO","Ridge",
                                                  "Spike and Slab",
                                                  "Бустинг (eta = 0,1)",
                                                  "Бустинг (eta = 0,2)",
@@ -248,7 +248,7 @@ dm_96_toplot <- outmat %>%
                   model_row=factor(model_row,
                                    
                                    
-                                   levels =  c("Adaptive LASSO","AR","Elastic Net","LASSO","Post-LASSO","Ridge",
+                                   levels =  c("AR","Adaptive LASSO","Elastic Net","LASSO","Post-LASSO","Ridge",
                                                        "Spike and Slab",
                                                        "Бустинг (eta = 0,1)",
                                                        "Бустинг (eta = 0,2)",
@@ -266,27 +266,38 @@ dm_96 <- dm_96_toplot%>%
   labs(x = '',
        y = '')+
   theme(legend.position="bottom",
-        axis.text.x = element_text(angle = 90))+
+        legend.title=element_blank(),
+        axis.text.y = element_text(size=8),
+        axis.text.x = element_text(angle = 90, size=8))+
   facet_wrap(~h,
              labeller = labeller(h = h.labs))+
-  scale_x_discrete(labels = c("Adaptive LASSO","AR","Elastic Net","LASSO","Post-LASSO","Ridge",
+  scale_fill_manual(values = c("#add1a9",
+                               '#db696f',
+                               '#71d466',
+                               '#d9454d',
+                               "#2bd918",
+                               '#d60f1a',
+                               'white'))+
+  scale_x_discrete(labels = c("AR","Adaptive LASSO","Elastic Net","LASSO","Post-LASSO","Ridge",
                               "Spike and Slab",
-                              "Бустинг (0,1)",
-                              "Бустинг (0,2)",
-                              "Бустинг (0,3)",
-                              "Бустинг (0,4)",
+                              "Бустинг (0.1)",
+                              "Бустинг (0.2)",
+                              "Бустинг (0.3)",
+                              "Бустинг (0.4)",
                               "Случайный лес (100)" ,"Случайный лес (500)" 
                               ,"Случайный лес (1000)",
-                              "Случайный лес (2000)") %>% rev)+
+                              "Случайный лес (2000)"))+
   scale_y_discrete(labels = c("Adaptive LASSO","AR","Elastic Net","LASSO","Post-LASSO","Ridge",
                               "Spike and Slab",
-                              "Бустинг (0,1)",
-                              "Бустинг (0,2)",
-                              "Бустинг (0,3)",
-                              "Бустинг (0,4)",
-                              "Случайный лес (100)" ,"Случайный лес (500)" 
+                              "Бустинг (0.1)",
+                              "Бустинг (0.2)",
+                              "Бустинг (0.3)",
+                              "Бустинг (0.4)",
+                              "Случайный лес (100)" ,
+                              "Случайный лес (500)" 
                               ,"Случайный лес (1000)",
-                              "Случайный лес (2000)"))
+                              "Случайный лес (2000)") %>% rev)
+
 
 
 cairo_pdf('plot/dm96.pdf')
@@ -317,7 +328,7 @@ dm_00_toplot <- outmat %>%
     
     model_column=factor(model_column, 
                         
-                        levels = c("Adaptive LASSO","AR","Elastic Net","LASSO","Post-LASSO","Ridge",
+                        levels = c("AR","Adaptive LASSO","Elastic Net","LASSO","Post-LASSO","Ridge",
                                    "Spike and Slab",
                                    "Бустинг (eta = 0,1)",
                                    "Бустинг (eta = 0,2)",
@@ -329,7 +340,7 @@ dm_00_toplot <- outmat %>%
     model_row=factor(model_row,
                      
                      
-                     levels =  c("Adaptive LASSO","AR","Elastic Net","LASSO","Post-LASSO","Ridge",
+                     levels =  c("AR","Adaptive LASSO","Elastic Net","LASSO","Post-LASSO","Ridge",
                                  "Spike and Slab",
                                  "Бустинг (eta = 0,1)",
                                  "Бустинг (eta = 0,2)",
@@ -347,7 +358,9 @@ dm_00 <- dm_00_toplot%>%
   labs(x = '',
        y = '')+
   theme(legend.position="bottom",
-        axis.text.x = element_text(angle = 90))+
+        legend.title=element_blank(),
+        axis.text.y = element_text(size=8),
+        axis.text.x = element_text(angle = 90, size=8))+
   facet_wrap(~h,
              labeller = labeller(h = h.labs))+
   scale_fill_manual(values = c("#add1a9",
@@ -357,24 +370,25 @@ dm_00 <- dm_00_toplot%>%
                                "#2bd918",
                                '#d60f1a',
                                'white'))+
-  scale_x_discrete(labels = c("Adaptive LASSO","AR","Elastic Net","LASSO","Post-LASSO","Ridge",
+  scale_x_discrete(labels = c("AR","Adaptive LASSO","Elastic Net","LASSO","Post-LASSO","Ridge",
                               "Spike and Slab",
-                              "Бустинг (0,1)",
-                              "Бустинг (0,2)",
-                              "Бустинг (0,3)",
-                              "Бустинг (0,4)",
+                              "Бустинг (0.1)",
+                              "Бустинг (0.2)",
+                              "Бустинг (0.3)",
+                              "Бустинг (0.4)",
                               "Случайный лес (100)" ,"Случайный лес (500)" 
                               ,"Случайный лес (1000)",
-                              "Случайный лес (2000)") %>% rev)+
-  scale_y_discrete(labels = c("Adaptive LASSO","AR","Elastic Net","LASSO","Post-LASSO","Ridge",
+                              "Случайный лес (2000)"))+
+  scale_y_discrete(labels = c("AR","Adaptive LASSO","Elastic Net","LASSO","Post-LASSO","Ridge",
                               "Spike and Slab",
-                              "Бустинг (0,1)",
-                              "Бустинг (0,2)",
-                              "Бустинг (0,3)",
-                              "Бустинг (0,4)",
-                              "Случайный лес (100)" ,"Случайный лес (500)" 
+                              "Бустинг (0.1)",
+                              "Бустинг (0.2)",
+                              "Бустинг (0.3)",
+                              "Бустинг (0.4)",
+                              "Случайный лес (100)" ,
+                              "Случайный лес (500)" 
                               ,"Случайный лес (1000)",
-                              "Случайный лес (2000)"))
+                              "Случайный лес (2000)") %>% rev)
 
 
 cairo_pdf('plot/dm00.pdf')
@@ -1280,6 +1294,7 @@ load('data/raw.RData')
 # med forecast -----
 
 out_cumulative_med <- out_cumulative
+
 out_cumulative_med$model <- factor(out_cumulative_med$model,
                         levels = c("Случайное блуждание","AR",
                                    "Adaptive LASSO",
@@ -1289,15 +1304,49 @@ out_cumulative_med$model <- factor(out_cumulative_med$model,
                                    "Ridge",
                                    "Spike and Slab",
                                    
-                                   'Бустинг (N = 100)',
-                                   'Бустинг (N = 500)',
-                                   'Бустинг (N = 1000)',
-                                   
+                                   'Бустинг (eta = 0,1)',
+                                   'Бустинг (eta = 0,2)',
+                                   'Бустинг (eta = 0,3)',
+                                   'Бустинг (eta = 0,4)',
                                    
                                    'Случайный лес (N = 100)',
                                    'Случайный лес (N = 500)',
-                                   'Случайный лес (N = 1000)'))
+                                   'Случайный лес (N = 1000)',
+                                   'Случайный лес (N = 2000)'))
 
+out_cumulative_med$model <- plyr::mapvalues(out_cumulative_med$model, from = c("Случайное блуждание","AR",
+                            "Adaptive LASSO",
+                            "Elastic Net",
+                            "LASSO",
+                            "Post-LASSO",
+                            "Ridge",
+                            "Spike and Slab",
+                            
+                            'Бустинг (eta = 0,1)',
+                            'Бустинг (eta = 0,2)',
+                            'Бустинг (eta = 0,3)',
+                            'Бустинг (eta = 0,4)',
+                            
+                            'Случайный лес (N = 100)',
+                            'Случайный лес (N = 500)',
+                            'Случайный лес (N = 1000)',
+                            'Случайный лес (N = 2000)'), to = c("Случайное блуждание","AR",
+                                                                "Adaptive LASSO",
+                                                                "Elastic Net",
+                                                                "LASSO",
+                                                                "Post-LASSO",
+                                                                "Ridge",
+                                                                "Spike and Slab",
+                                                                
+                                                                'Бустинг (0,1)',
+                                                                'Бустинг (0,2)',
+                                                                'Бустинг (0,3)',
+                                                                'Бустинг (0,4)',
+                                                                
+                                                                'Случайный лес (100)',
+                                                                'Случайный лес (500)',
+                                                                'Случайный лес (1000)',
+                                                                'Случайный лес (2000)'))
 
 
 med_forecast <- import('data/med_forecast.csv', encoding = 'UTF-8', header = TRUE) %>%
@@ -1310,7 +1359,7 @@ med_forecast <- import('data/med_forecast.csv', encoding = 'UTF-8', header = TRU
 
 
 my_forecast <-
-  out_cumulative %>%
+  out_cumulative_med %>%
   dplyr::group_by(forecastdate, model, h) %>%
   filter(enddt == forecastdate) %>%
   ungroup() %>%
@@ -1342,10 +1391,13 @@ forec_vs <- my_forecast %>%
   filter(h_year ==1, startdt == max(startdt)) %>%
   filter(!is.na(pred)) %>%
   filter(!model %in% c('Случайное блуждание', 'AR',
-                       'Бустинг (N = 500)',
-                       'Бустинг (N = 1000)',
-                       'Случайный лес (N = 500)',
-                       'Случайный лес (N = 1000)'
+                       'Бустинг (0,1)',
+                       'Бустинг (0,3)',
+                       'Бустинг (0,4)',
+                       
+                       'Случайный лес (100)',
+                       'Случайный лес (500)',
+                       'Случайный лес (1000)'
 
                        
                        
@@ -1596,29 +1648,64 @@ fordata <- out_hair %>%
          h<5,
          ! model %in%
            c('Случайное блуждание',
-             'Бустинг (N = 500)',
-             'Бустинг (N = 1000)',
-             'Случайный лес (N = 500)',
-             'Случайный лес (N = 1000)')) 
-fordata$model <-  factor(fordata$model,
-                       levels = c("Случайное блуждание","AR",
-                                  "Adaptive LASSO",
-                                  "Elastic Net",
-                                  "LASSO",
-                                  "Post-LASSO",
-                                  "Ridge",
-                                  "Spike and Slab",
-                                  
-                                  'Бустинг (N = 100)',
-                                  # 'Бустинг (N = 500)',
-                                  # 'Бустинг (N = 1000)',
-                                  
-                                  
-                                  'Случайный лес (N = 100)'
-                                  #,
-                                  # 'Случайный лес (N = 500)',
-                                  # 'Случайный лес (N = 1000)'
-                                  ))
+             'Бустинг (eta = 0,1)','Бустинг (eta = 0,3)',
+                                       'Бустинг (eta = 0,4)',
+             'Случайный лес (N = 100)',
+                                               'Случайный лес (N = 500)',
+                                               'Случайный лес (N = 1000)'))
+fordata$model <- factor(fordata$model,
+                                   levels = c("Случайное блуждание","AR",
+                                              "Adaptive LASSO",
+                                              "Elastic Net",
+                                              "LASSO",
+                                              "Post-LASSO",
+                                              "Ridge",
+                                              "Spike and Slab",
+                                              
+                                              # 'Бустинг (eta = 0,1)',
+                                              'Бустинг (eta = 0,2)',
+                                              # 'Бустинг (eta = 0,3)',
+                                              # 'Бустинг (eta = 0,4)',
+                                              
+                                              # 'Случайный лес (N = 100)',
+                                              # 'Случайный лес (N = 500)',
+                                              # 'Случайный лес (N = 1000)',
+                                              'Случайный лес (N = 2000)'))
+
+fordata$model <- plyr::mapvalues(fordata$model, from = c("Случайное блуждание","AR",
+                                                                               "Adaptive LASSO",
+                                                                               "Elastic Net",
+                                                                               "LASSO",
+                                                                               "Post-LASSO",
+                                                                               "Ridge",
+                                                                               "Spike and Slab",
+                                                                               
+                                                                               # 'Бустинг (eta = 0,1)',
+                                                                               'Бустинг (eta = 0,2)',
+                                                                               # 'Бустинг (eta = 0,3)',
+                                                                               # 'Бустинг (eta = 0,4)',
+                                                                               # 
+                                                                               # 'Случайный лес (N = 100)',
+                                                                               # 'Случайный лес (N = 500)',
+                                                                               # 'Случайный лес (N = 1000)',
+                                                                               'Случайный лес (N = 2000)'), 
+                                 to = c("Случайное блуждание","AR",
+                                                                                                                   "Adaptive LASSO",
+                                                                                                                   "Elastic Net",
+                                                                                                                   "LASSO",
+                                                                                                                   "Post-LASSO",
+                                                                                                                   "Ridge",
+                                                                                                                   "Spike and Slab",
+                                                                                                                   
+                                                                                                                   # 'Бустинг (0,1)',
+                                                                                                                   'Бустинг (0,2)',
+                                                                                                                   # 'Бустинг (0,3)',
+                                                                                                                   # 'Бустинг (0,4)',
+                                                                                                                   # 
+                                                                                                                   # 'Случайный лес (100)',
+                                                                                                                   # 'Случайный лес (500)',
+                                                                                                                   # 'Случайный лес (1000)',
+                                                                                                                   'Случайный лес (2000)'))
   
 
 
@@ -1673,8 +1760,9 @@ animate(myplot, duration = 10, fps = 5, width = 200, height = 200, renderer = gi
 anim_save(paste0("plot/gif/",modeli,".gif"))
 
  # static hair plot ----
-hair <- ggplot(fordata  %>%
-         mutate(true_na = ifelse(date <= forecastdate, true, NA)))+
+hair <- ggplot(fordata%>%
+         mutate(true_na = ifelse(date <= forecastdate, true, NA)) %>%
+           filter())+
   geom_path(data = fordata  %>%
               mutate(true_na = ifelse(date <= forecastdate, true, NA)) %>% na.omit,
             

@@ -147,7 +147,7 @@ inv2[,1] <- (inv2[,1])*(inv3['2011-01',1] %>% as.numeric)/(inv2['2011-01',1] %>%
 inv1[,1] <- (inv1[,1])*(inv2['2003-01',1] %>% as.numeric)/(inv1['2003-01',1] %>% as.numeric)
 
 inv <- rbind(inv1['1995-01/2002-12'], inv2['2003-01/2010-12'],inv3['2011-01/2013-12'],
-             inv4['2014-01/2020-1'])
+             inv4[paste0('2014-01/',(date(inv4) %>%max %>% year())+1,'-1')])
 
 inv <- inv*100/(inv %>% first %>% as.numeric)
 
@@ -198,6 +198,7 @@ def <- xts(c(def1, def2),
 # (в процентах годовых для рублевых кредитов)
 # -Средневзвешанные фактические 
 
+
 mkr1 <- import('data/mkr_old.csv') %>%
   set_colnames(c("date", '1d', '3d', '7d','14d', '21d', '30d', '60d', '90d')) %>%
   mutate(date=as.Date(date,format = '%d.%m.%Y')) %>%
@@ -215,10 +216,42 @@ mkr1 <- import('data/mkr_old.csv') %>%
 # Средневзвешенные фактические ставки по кредитам,
 # предоставленным московскими банками (MIACR) с 01.08.2000
 
-mkr2 <- import('data/mkr.csv') %>%
-  set_colnames(c("date", '1d', '2-7d', '8-30d','31-90d', '91-180d', '181-365d')) %>%
-  mutate(date=as.Date(date,format = '%d.%m.%Y')) %>%
-  xts(x = .[,-1],order.by =  .[,1])
+
+
+library(XML)
+library(RCurl)
+library(rlist)
+theurl <- getURL("https://www.cbr.ru/hd_base/mkr/mkr_base/",.opts = list(ssl.verifypeer = FALSE) )
+tables <- readHTMLTable(theurl)
+tables <- list.clean(tables, fun = is.null, recursive = FALSE)
+n.rows <- unlist(lapply(tables, function(t) dim(t)[1]))
+
+
+library(tidyverse)
+library(httr)
+library(readxl)
+httr::GET('https://www.cbr.ru/hd_base/mkr/mkr_base/',
+          write_disk(tf <- tempfile(fileext = ".xlsx")))
+
+
+
+url <- paste0('https://www.cbr.ru/hd_base/mkr/mkr_base/?UniDbQuery.Posted=True&UniDbQuery.st=SF&UniDbQuery.Currency=1&UniDbQuery.sk=Dd1_&UniDbQuery.sk=Dd7&UniDbQuery.FromDate=01.08.2000&UniDbQuery.ToDate=',
+              format(today()-1,"%d.%m.%Y"))
+download.file(url,'quote.html')
+
+x = readLines('quote.html', encoding = 'utf-8')
+
+start <- grep(pattern = 'table class="data"', x)
+end <- grep(pattern = ' </table>', x)
+
+out <- readHTMLTable(x[start:end]) %>%
+  .[[1]] %>%
+  set_colnames(c("date", '1d', '2-7d'))
+out %<>%
+  mutate(`1d` = gsub(",", ".", x = out$`1d`) %>% as.numeric(),
+         `2-7d` = gsub(",", ".", x = out$`2-7d`)%>% as.numeric(),
+         date = as.Date(date, format = "%d.%m.%Y"))%>%
+   xts(x = .[,-1],order.by =  .[,1])
 
 
 # без серьезных пропусков есть только данные:
@@ -226,7 +259,7 @@ mkr2 <- import('data/mkr.csv') %>%
 # от 8 до 365 данные обновляются очень редко (или почти никогда)
 
 # совмещать имеет смысл только по 1d -- 1d и 7d -- 2-7d
-mkr <- merge(mkr1[,c('1d', '7d')],mkr2[,c('1d', '2-7d')]) %>%
+mkr <- merge(mkr1[,c('1d', '7d')],out[,c('1d', '2-7d')]) %>%
   set_colnames(c('1d', '7d', '1d_old', '2-7_old'))
 # склейка
 mkr$`1d`[which(is.na(mkr$`1d`))] <- mkr$`1d_old`[which(is.na(mkr$`1d`))]
@@ -291,15 +324,15 @@ gov_6m <- import('data/gov_6m.csv') %>%
 # 3. ; -> ,
 # 4. " -> 
 # 5. % -> 
-gov_1y <- import('data/gov_1y.csv') %>%
-  set_colnames(c("date", 'close', 'open', 'max','min', 'change')) %>%
-  mutate(date = as.Date(date, format = "%d.%m.%Y")) %>%
-  as.data.frame %>%
-  group_by(as.yearqtr(date)) %>%
-  filter(row_number() == min(row_number())) %>%
-  as.data.frame %>%
-  xts(x=.[,2],order.by=.[,1] %>% as.yearqtr) %>%
-  set_colnames('gov_1y')
+# gov_1y <- import('data/gov_1y.csv') %>%
+#   set_colnames(c("date", 'close', 'open', 'max','min', 'change')) %>%
+#   mutate(date = as.Date(date, format = "%d.%m.%Y")) %>%
+#   as.data.frame %>%
+#   group_by(as.yearqtr(date)) %>%
+#   filter(row_number() == min(row_number())) %>%
+#   as.data.frame %>%
+#   xts(x=.[,2],order.by=.[,1] %>% as.yearqtr) %>%
+#   set_colnames('gov_1y')
 
 
 
@@ -312,17 +345,18 @@ gov_1y <- import('data/gov_1y.csv') %>%
 # 4. " -> 
 # 5. % -> 
 
-gov_3y <- import('data/gov_3y.csv') %>%
-  set_colnames(c("date", 'close', 'open', 'max','min', 'change')) %>%
-  mutate(date = as.Date(date, format = "%d.%m.%Y")) %>%
-  as.data.frame %>%
-  group_by(as.yearqtr(date)) %>%
-  filter(row_number() == min(row_number())) %>%
-  as.data.frame %>%
-  xts(x=.[,2],order.by=.[,1] %>% as.yearqtr) %>%
-  set_colnames('gov_3y')
-gov <- merge.xts(gov_6m, gov_1y, gov_3y)
+# gov_3y <- import('data/gov_3y.csv') %>%
+#   set_colnames(c("date", 'close', 'open', 'max','min', 'change')) %>%
+#   mutate(date = as.Date(date, format = "%d.%m.%Y")) %>%
+#   as.data.frame %>%
+#   group_by(as.yearqtr(date)) %>%
+#   filter(row_number() == min(row_number())) %>%
+#   as.data.frame %>%
+#   xts(x=.[,2],order.by=.[,1] %>% as.yearqtr) %>%
+#   set_colnames('gov_3y')
+# gov <- merge.xts(gov_6m, gov_1y, gov_3y)
 
+gov <- merge.xts(gov_6m)
 
 # загрузка данных из bloomberg (цена нефти, эффективный обменный курс и индекс RTS) ----
 # Квартальные данные
