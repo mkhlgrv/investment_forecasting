@@ -461,7 +461,9 @@ model_fit <- randomForest(x = X.train,
              ntree = 10000,
              nodesize = 5, 
              eta = 0.1)
-pred <-  predict(model_fit, newdata = rbind(X.train, X.test)) %>%
+
+pred <-  predict(model_fit,
+                 newdata = rbind(X.train, X.test)) %>%
   as.numeric
 
 ggplot(aes(x = little_data %>% time), data = NULL)+
