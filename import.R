@@ -305,15 +305,15 @@ gko['2004-01/2019-12'] <- NA
 # 4. " -> 
 # 5. % -> 
 
-gov_6m <- import('data/gov_6m.csv') %>%
-  set_colnames(c("date", 'close', 'open', 'max','min', 'change')) %>%
-  mutate(date = as.Date(date, format = "%d.%m.%Y")) %>%
-  as.data.frame %>%
-  group_by(as.yearqtr(date)) %>%
-  filter(row_number() == min(row_number())) %>%
-  as.data.frame %>%
-  xts(x=.[,2],order.by=.[,1] %>% as.yearqtr) %>%
-  set_colnames('gov_6m')
+# gov_6m <- import('data/gov_6m.csv') %>%
+#   set_colnames(c("date", 'close', 'open', 'max','min', 'change')) %>%
+#   mutate(date = as.Date(date, format = "%d.%m.%Y")) %>%
+#   as.data.frame %>%
+#   group_by(as.yearqtr(date)) %>%
+#   filter(row_number() == min(row_number())) %>%
+#   as.data.frame %>%
+#   xts(x=.[,2],order.by=.[,1] %>% as.yearqtr) %>%
+#   set_colnames('gov_6m')
 
 
 # данные по доходности годовых облигаций --- с 2001-08
@@ -356,7 +356,7 @@ gov_6m <- import('data/gov_6m.csv') %>%
 #   set_colnames('gov_3y')
 # gov <- merge.xts(gov_6m, gov_1y, gov_3y)
 
-gov <- merge.xts(gov_6m)
+# gov <- merge.xts(gov_6m)
 
 # загрузка данных из bloomberg (цена нефти, эффективный обменный курс и индекс RTS) ----
 # Квартальные данные
@@ -371,15 +371,99 @@ gov <- merge.xts(gov_6m)
 # действия:
 # 1. , -> .
 # 2. ; -> ,
-bloomberg <- import('data/bloomberg.csv') %>%
-  set_colnames(c("date", 'reer', 'neer', 'oil','rts')) %>%
-  mutate(date = as.Date(date, format = "%d.%m.%Y") %>% as.yearqtr) %>%
-  xts(x=.[,-1],order.by=.[,1])
+# bloomberg <- import('data/bloomberg.csv') %>%
+#   set_colnames(c("date", 'reer', 'neer', 'oil','rts')) %>%
+#   mutate(date = as.Date(date, format = "%d.%m.%Y") %>% as.yearqtr)# %>%
+#   xts(x=.[,-1],order.by=.[,1])
+
+library(fredr)
+# доступ https://fred.stlouisfed.org/series/SERIES_ID
+fredr_set_key('b3253be67e9b6d9dfc03967a568b820f')
+fred_data <- map_dfr(c('RBRUBIS',# Russia Real Effective Exchange Rate Broad
+          'NBRUBIS',# Russia Nominal Effecive Exchange Rate 
+          'POILBREUSDM', #Global price of Brent Crude
+          'IR3TIB01RUM156N'), # 3-Month or 90-day Rates and Yields: Interbank Rates for the Russian Federation
+        fredr,
+        frequency = 'q',
+        observation_start = as.Date('1996-01-01')) %>%
+  mutate(date = as.yearqtr(date)) %>%
+  dcast(date~series_id) %>%
+  set_colnames(c('date','gov3m', 'neer','oil', 'reer')) %>%
+  xts(x = .[,-1],order.by =  .[,1])
+
+
+# rts ----
+# MOEX 
+url <- paste0('https://iss.moex.com/iss/engines/stock/markets/index/securities/RTSI/candles.xml?iss.only=history&interval=31&iss.reverse=true&from=1995-09-01&till=',
+              format(today()-1,"%Y-%m-%d"),
+              '&iss.json=extended&callback=JSON_CALLBACK&lang=en&limit=100&start=0&sort_order=TRADEDATE&sort_order_desc=desc&_=1582302152388')
+download.file(url,'quote.html')
+x = readLines('quote.html', encoding = 'utf-8')
+
+start <- grep(pattern = '<rows>', x)
+end <- grep(pattern = '</rows>', x)
+# MOEX (RTS) close price ----
+
+rts <- xmlParse(x[start:end]) %>%
+  xmlToList %>%
+  as.data.frame() %>%
+  t %>%as.data.frame() %>%
+  select(begin, end, close) %>%
+  mutate(begin=as.Date(begin),
+         end = as.Date(end),
+         close = as.numeric(as.character(close))) %>%
+  filter(begin==as.Date(as.yearqtr(begin))) %>%
+  # некоторые даты begin повторяются
+  group_by(begin) %>%
+  unique %>%
+  filter(end == max(end)) %>%
+  ungroup() %>%
+  select(begin, close) %>%
+  mutate(begin = as.yearqtr(begin)) %>%
+  as.data.frame %>%
+  xts(x = .[,-1],order.by =  .[,1]) %>%
+  set_colnames('rts')
 
 
 # конечная склейка данных ----
 
-rawdata <- merge.xts(inv,sophistdata, def, mkr, gov,gko, bloomberg)
+# sophishse перестал работать, нужно сделать автоматическое обновление данных с сайта росстата
+
+rawdata <- merge.xts(inv,#sophistdata,
+                     #def, 
+                     mkr, #gko,
+                     fred_data,rts)
 save(rawdata, file = "data/raw.RData")
 rio::export(rawdata, 'data/raw.csv', 'csv', row.names = TRUE)
 rm(list=ls())
+
+# отдельные данные -----
+specialraw <- merge.xts(inv,
+                        mkr,
+                        fred_data,rts)
+little_data <- specialraw
+little_data[,'investment'] %<>% log %>% diff.xts(4)
+little_data[,c('neer','oil','reer','rts')] %<>% log %>% diff.xts
+little_data['2000-01/2020-01'] %>% scale %>%plot
+little_data$y <- lag.xts(little_data$investment, k = -1)
+little_data %<>% na.omit
+X.matrix <- model.matrix(y~0+., data = little_data)
+X.train <- X.matrix[1:60,]
+
+X.test <- X.matrix[61:90,]
+
+y.train <- little_data$y[1:60] %>% as.numeric
+
+y.test <- little_data$y[61:90] %>% as.numeric
+
+model_fit <- randomForest(x = X.train,
+             y = y.train,
+             ntree = 10000,
+             nodesize = 5, 
+             eta = 0.1)
+pred <-  predict(model_fit, newdata = rbind(X.train, X.test)) %>%
+  as.numeric
+
+ggplot(aes(x = little_data %>% time), data = NULL)+
+  geom_line(aes(y = little_data$investment))+
+  geom_line(aes(y = pred, color='pred'))

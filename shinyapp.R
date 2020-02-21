@@ -177,35 +177,36 @@ scoredf <- get.score(out_true %>%
 # unique
 
 
-# out_hair <-
-  # out_true %>%
-  # filter(enddt < as.Date(as.yearqtr(date)-h/4)) %>%
-  # group_by(date, h, model, startdt) %>%
-  # filter(enddt == max(enddt)) %>%
-  # ungroup %>%
-  # mutate(forecastdate = as.Date(as.yearqtr(date) -h/4)) %>%
-  # mutate(pred = ifelse(h == 0, true, pred)) %>%
-  #   filter(startdt == '2000-01-01',
-  #          forecastdate <='2019-01-01',
-  #          h>0,
-  #          model != 'Random Walk') %>% 
-  #   
-  #   # вариант 1 просто рисуем прогнозы
-  #   
-  #   ggplot()+
-  #   stat_summary(aes(x = date, y = true),
-  #                fun.y=mean, geom='line', alpha = 0.5, size = 4, color = 'grey')+
-  #   geom_line(aes(date, pred,  color = forecastdate,
-  #                 group = interaction(startdt,
-  #                                     forecastdate),
-  #                 linetype = factor(startdt)))+
-  #   facet_wrap(vars(model))+
-  #   scale_y_continuous(limits = c(-0.2, 0.3))
-    
+out_hair <-
+  out_true %>%
+  group_by(date, h, model, startdt) %>%
+  filter(enddt < as.Date(as.yearqtr(date)-h/4)) %>%
+  group_by(date, h, model, startdt) %>%
+  filter(enddt == max(enddt)) %>%
+  ungroup %>%
+  mutate(forecastdate = as.Date(as.yearqtr(date) -h/4)) %>%
+  mutate(pred = ifelse(h == 0, true, pred)) %>%
+    filter(
+           forecastdate <='2019-01-01',
+           #h>0,
+           model != 'Random Walk')# %>%
+
+    # вариант 1 просто рисуем прогнозы
+
+    # ggplot()+
+    # stat_summary(aes(x = date, y = true),
+    #              fun.y=mean, geom='line', alpha = 0.5, size = 4, color = 'grey')+
+    # geom_line(aes(date, pred,  color = forecastdate,
+    #               group = interaction(startdt,
+    #                                   forecastdate),
+    #               linetype = factor(startdt)))+
+    # facet_wrap(vars(model))+
+    # scale_y_continuous(limits = c(-0.2, 0.3))
+
     # вариант 2 сумма квадратов ошибок на каждую дату прогноза
     # с ростом h растет и абсолютная ошибка,
     # поэтому делим ошибку одной модели на среднюю ошибку для каждого h
-    
+
     # na.omit %>%
     # filter(h<=2) %>%
     # mutate(error = (pred - true)^2) %>%
@@ -218,7 +219,7 @@ scoredf <- get.score(out_true %>%
     # geom_line(aes(forecastdate, sse,
     #               color = factor(startdt)))+
     # facet_wrap(vars(model))
-    #   
+    #
       
 
 
@@ -232,7 +233,7 @@ out_cumulative <- out_true %>%
   mutate(pred_cumulative = exp(log(true_lag)+pred),
          true_cumulative = exp(log(true_lag)+true))
 
-save(out_true, out_short, ytrue,scoredf, scoredf_raw,#out_hair,
+save(out_true, out_short, ytrue,scoredf, scoredf_raw,out_hair,
      out_cumulative,
      
      file = 'shinydata.RData')

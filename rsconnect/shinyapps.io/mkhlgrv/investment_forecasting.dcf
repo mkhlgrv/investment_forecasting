@@ -5,9 +5,9 @@ account: mkhlgrv
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 1158444
-bundleId: 2727777
+bundleId: 2817966
 url: https://mkhlgrv.shinyapps.io/investment_forecasting/
-when: 1579008853.59101
+when: 1582291135.99943
 asMultiple: FALSE
 asStatic: FALSE
-ignoredFiles: .gitattributes|.RData|calibrating.R|fun.R|import.R|med_forecast.pdf|naming.R|plotting.R|rawdata.RData|README.md|shinyapp.R|training.R|upgrade.R|eng/article1.pdf|data|jobs|out|plot|public|ref|report
+ignoredFiles: .gitattributes|.RData|calibrating.R|creategif.R|fun.R|import.R|naming.R|plotting.R|quote.html|rawdata.RData|README.md|shinyapp.R|training.R|upgrade.R|data|jobs|out|plot|public|ref|report
