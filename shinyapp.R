@@ -236,7 +236,10 @@ out_cumulative <- out_true %>%
 save(out_true, out_short, ytrue,scoredf, scoredf_raw,out_hair,
      out_cumulative,
      
-     file = 'shinydata.RData')
+     file = 'shinydata.RData', version = 2)
+
+
+
 
 # # ui--—
 
@@ -246,6 +249,13 @@ source('lib.R')
 source('fun.R')
 load('data/raw.RData')
 load('shinydata.RData')
+
+fread(file = 'out_hair.csv',encoding="UTF-8")
+con<-file('out_hair.csv',encoding="UTF-8")
+write.csv(out_hair,file=con, row.names = FALSE)
+
+
+
 
 
 
