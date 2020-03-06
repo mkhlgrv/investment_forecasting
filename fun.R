@@ -31,7 +31,9 @@ train.model <- function(startdt= as.Date('1996-01-01'),
                         target = c('investment','RTRD_Q_DIRI','GDPEA_Q_DIRI','UNEMPL_Q_SH', 'CPI_Q_CHI'),
                         # parameters for durable evaluations with function arguments from expand.grid table
                         i = NULL, 
-                        N = NULL
+                        N = NULL,
+                        ntree = NULL,
+                        eta = NULL
                         ){
   message(paste0(i, '/', N))
   # import df
@@ -51,6 +53,7 @@ train.model <- function(startdt= as.Date('1996-01-01'),
     load('~/investment_forecasting/data/stationary_data_oil.RData')
   }
   
+  print(target)
   target <- match.arg(target)
   
   if(!model %in% c('arima', 'rw')){
@@ -283,7 +286,7 @@ train.model <- function(startdt= as.Date('1996-01-01'),
       train.out <- NULL
       model_fit <- randomForest(x = X.train,
                                 y = y.train,
-                                ntree = 100,
+                                ntree = ntree,
                                 nodesize = 5)
       
       pred <-  predict(model_fit, newdata = rbind(X.train, X.test)) %>%
@@ -303,9 +306,10 @@ train.model <- function(startdt= as.Date('1996-01-01'),
       
     } else if (model == 'boost'){
       
+      print(eta)
       tune_grid <- expand.grid(nrounds = 100,
                                max_depth = c(5),
-                               eta = c(0.3),
+                               eta = eta,
                                gamma = 0,
                                colsample_bytree = 0.3,
                                min_child_weight = 1,
@@ -410,10 +414,14 @@ train.model <- function(startdt= as.Date('1996-01-01'),
 
   list(
     model = model,
+    target = target,
+    eta = eta,
+    ntree = ntree,
     series = series,
     lag = lag,
     startdt = startdt,
     enddt = enddt,
+    
     date = time(df)[c(train_n,test_n)] %>% as.Date,
     h = h,
     pred = pred,
