@@ -240,13 +240,12 @@ dm_96_toplot <- outmat %>%
                   
                   model_column=factor(model_column, 
                                       
-<<<<<<< HEAD
+
                                       levels = c("AR","Adaptive LASSO","Elastic Net","LASSO","Post-LASSO","Ridge",
-=======
                                       levels = c('Случайное блуждание',
                                                  "AR","Adaptive LASSO",
                                                  "Elastic Net","LASSO","Post-LASSO","Ridge",
->>>>>>> d14211c34802880f78a6cb6a2e67c77fe3f6bdd4
+
                                                  "Spike and Slab",
                                                  "Бустинг (eta = 0,1)",
                                                  "Бустинг (eta = 0,2)",
@@ -254,16 +253,15 @@ dm_96_toplot <- outmat %>%
                                                  "Бустинг (eta = 0,4)",
                                                  "Случайный лес (N = 100)","Случайный лес (N = 500)" 
                                                  ,"Случайный лес (N = 1000)",
-                                                 "Случайный лес (N = 2000)")),
+                                                 "Случайный лес (N = 2000)"))),
                   model_row=factor(model_row,
                                    
                                    
-<<<<<<< HEAD
+
                                    levels =  c("AR","Adaptive LASSO","Elastic Net","LASSO","Post-LASSO","Ridge",
-=======
-                                   levels =  c('Случайное блуждание',
+                                 levels =  c('Случайное блуждание',
                                                "AR","Adaptive LASSO","Elastic Net","LASSO","Post-LASSO","Ridge",
->>>>>>> d14211c34802880f78a6cb6a2e67c77fe3f6bdd4
+
                                                        "Spike and Slab",
                                                        "Бустинг (eta = 0,1)",
                                                        "Бустинг (eta = 0,2)",
@@ -271,7 +269,7 @@ dm_96_toplot <- outmat %>%
                                                        "Бустинг (eta = 0,4)",
                                                        "Случайный лес (N = 100)","Случайный лес (N = 500)" 
                                                        ,"Случайный лес (N = 1000)",
-                                                       "Случайный лес (N = 2000)") %>% rev)) %>%
+                                                       "Случайный лес (N = 2000)") %>% rev))) %>%
   mutate(Изменение = factor(Изменение, levels = c('+.', '-.', '+*','-*', '+**', '-**', 'не значимо')))
 dm_96 <- dm_96_toplot%>%
 
@@ -293,11 +291,7 @@ dm_96 <- dm_96_toplot%>%
                                "#2bd918",
                                '#d60f1a',
                                'white'))+
-<<<<<<< HEAD
-  scale_x_discrete(labels = c("AR","Adaptive LASSO","Elastic Net","LASSO","Post-LASSO","Ridge",
-=======
   scale_x_discrete(labels = c('Случайное блуждание',"AR","Adaptive LASSO","Elastic Net","LASSO","Post-LASSO","Ridge",
->>>>>>> d14211c34802880f78a6cb6a2e67c77fe3f6bdd4
                               "Spike and Slab",
                               "Бустинг (0.1)",
                               "Бустинг (0.2)",
@@ -306,11 +300,7 @@ dm_96 <- dm_96_toplot%>%
                               "Случайный лес (100)" ,"Случайный лес (500)" 
                               ,"Случайный лес (1000)",
                               "Случайный лес (2000)"))+
-<<<<<<< HEAD
-  scale_y_discrete(labels = c("Adaptive LASSO","AR","Elastic Net","LASSO","Post-LASSO","Ridge",
-=======
   scale_y_discrete(labels = c('Случайное блуждание',"AR","Adaptive LASSO","Elastic Net","LASSO","Post-LASSO","Ridge",
->>>>>>> d14211c34802880f78a6cb6a2e67c77fe3f6bdd4
                               "Spike and Slab",
                               "Бустинг (0.1)",
                               "Бустинг (0.2)",
@@ -320,10 +310,6 @@ dm_96 <- dm_96_toplot%>%
                               "Случайный лес (500)" 
                               ,"Случайный лес (1000)",
                               "Случайный лес (2000)") %>% rev)
-<<<<<<< HEAD
-
-=======
->>>>>>> d14211c34802880f78a6cb6a2e67c77fe3f6bdd4
 
 
 cairo_pdf('plot/dm96.pdf')
@@ -355,13 +341,10 @@ dm_00_toplot <- outmat %>%
     
     model_column=factor(model_column, 
                         
-<<<<<<< HEAD
                         levels = c("AR","Adaptive LASSO","Elastic Net","LASSO","Post-LASSO","Ridge",
-=======
                         levels = c('Случайное блуждание',
                                    "AR","Adaptive LASSO",
                                    "Elastic Net","LASSO","Post-LASSO","Ridge",
->>>>>>> d14211c34802880f78a6cb6a2e67c77fe3f6bdd4
                                    "Spike and Slab",
                                    "Бустинг (eta = 0,1)",
                                    "Бустинг (eta = 0,2)",
@@ -369,24 +352,21 @@ dm_00_toplot <- outmat %>%
                                    "Бустинг (eta = 0,4)",
                                    "Случайный лес (N = 100)","Случайный лес (N = 500)" 
                                    ,"Случайный лес (N = 1000)",
-                                   "Случайный лес (N = 2000)")),
+                                   "Случайный лес (N = 2000)"))),
     model_row=factor(model_row,
                      
                      
-<<<<<<< HEAD
                      levels =  c("AR","Adaptive LASSO","Elastic Net","LASSO","Post-LASSO","Ridge",
-=======
                      levels =  c('Случайное блуждание',
                                  "AR","Adaptive LASSO","Elastic Net","LASSO","Post-LASSO","Ridge",
->>>>>>> d14211c34802880f78a6cb6a2e67c77fe3f6bdd4
-                                 "Spike and Slab",
+"Spike and Slab",
                                  "Бустинг (eta = 0,1)",
                                  "Бустинг (eta = 0,2)",
                                  "Бустинг (eta = 0,3)",
                                  "Бустинг (eta = 0,4)",
                                  "Случайный лес (N = 100)","Случайный лес (N = 500)" 
                                  ,"Случайный лес (N = 1000)",
-                                 "Случайный лес (N = 2000)") %>% rev)) %>%
+                                 "Случайный лес (N = 2000)") %>% rev))) %>%
   mutate(Изменение = factor(Изменение, levels = c('+.', '-.', '+*','-*', '+**', '-**', 'не значимо')))
 dm_00 <- dm_00_toplot%>%
   
@@ -408,11 +388,7 @@ dm_00 <- dm_00_toplot%>%
                                "#2bd918",
                                '#d60f1a',
                                'white'))+
-<<<<<<< HEAD
-  scale_x_discrete(labels = c("AR","Adaptive LASSO","Elastic Net","LASSO","Post-LASSO","Ridge",
-=======
   scale_x_discrete(labels = c('Случайное блуждание',"AR","Adaptive LASSO","Elastic Net","LASSO","Post-LASSO","Ridge",
->>>>>>> d14211c34802880f78a6cb6a2e67c77fe3f6bdd4
                               "Spike and Slab",
                               "Бустинг (0.1)",
                               "Бустинг (0.2)",
@@ -421,11 +397,7 @@ dm_00 <- dm_00_toplot%>%
                               "Случайный лес (100)" ,"Случайный лес (500)" 
                               ,"Случайный лес (1000)",
                               "Случайный лес (2000)"))+
-<<<<<<< HEAD
-  scale_y_discrete(labels = c("AR","Adaptive LASSO","Elastic Net","LASSO","Post-LASSO","Ridge",
-=======
   scale_y_discrete(labels = c('Случайное блуждание',"AR","Adaptive LASSO","Elastic Net","LASSO","Post-LASSO","Ridge",
->>>>>>> d14211c34802880f78a6cb6a2e67c77fe3f6bdd4
                               "Spike and Slab",
                               "Бустинг (0.1)",
                               "Бустинг (0.2)",
@@ -435,10 +407,6 @@ dm_00 <- dm_00_toplot%>%
                               "Случайный лес (500)" 
                               ,"Случайный лес (1000)",
                               "Случайный лес (2000)") %>% rev)
-<<<<<<< HEAD
-=======
-
->>>>>>> d14211c34802880f78a6cb6a2e67c77fe3f6bdd4
 
 
 cairo_pdf('plot/dm00.pdf')

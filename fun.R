@@ -336,9 +336,9 @@ train.model <- function(startdt= as.Date('1996-01-01'),
         return(NULL)
       }
       
-      df %<>% .[,'investment']
+      df %<>% .[,target]
       
-      df$y <- df$investment
+      df$y <- df[,target]
       
       df %<>% na.omit 
       
@@ -443,7 +443,8 @@ transform_to_score <- function(df){
 
 get.score <- function(df){
   df %<>%
-    group_by(model, startdt, enddt, lag, h)
+    group_by(model, target, ntree, eta,
+             startdt, enddt, lag, h)
   rbind(df %>% filter(date <= enddt) %>%
           summarise(rmspe = RMSPE(pred, true),
                     rmse = RMSE(pred, true),
